@@ -38,7 +38,13 @@ class UpdateCheckRuleTest {
     @Test
     fun `a newer version says so with its name, date and hash`() {
         assertEquals(
-            UpdateCheckOutcome.NewVersion("1.0.4", published, hash, important = false),
+            UpdateCheckOutcome.NewVersion(
+                "1.0.4",
+                published,
+                hash,
+                important = false,
+                versionCode = 4,
+            ),
             evaluate(manifest(versionCode = 4, minSafe = 3)),
         )
     }
@@ -46,7 +52,13 @@ class UpdateCheckRuleTest {
     @Test
     fun `a safe version above the installed one is important and blocks nothing`() {
         assertEquals(
-            UpdateCheckOutcome.NewVersion("1.0.5", published, hash, important = true),
+            UpdateCheckOutcome.NewVersion(
+                "1.0.5",
+                published,
+                hash,
+                important = true,
+                versionCode = 5,
+            ),
             evaluate(manifest(versionCode = 5, minSafe = 4)),
         )
     }
@@ -69,6 +81,7 @@ class UpdateCheckRuleTest {
                 Instant.parse("2026-10-01T00:00:00Z"),
                 hash,
                 important = false,
+                versionCode = 4,
             ),
             evaluate(old, built = null),
         )
@@ -79,7 +92,13 @@ class UpdateCheckRuleTest {
         val same = manifest(versionCode = 4, publishedAt = builtAt)
 
         assertEquals(
-            UpdateCheckOutcome.NewVersion("1.0.4", builtAt, hash, important = false),
+            UpdateCheckOutcome.NewVersion(
+                "1.0.4",
+                builtAt,
+                hash,
+                important = false,
+                versionCode = 4,
+            ),
             evaluate(same),
         )
     }

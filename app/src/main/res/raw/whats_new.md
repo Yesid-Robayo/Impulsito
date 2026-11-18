@@ -1,5 +1,10 @@
 What each version of {app} brought, newest first.
 
+## 1.0.7
+
+- **New versions are announced:** once a day, with internet, {app} checks whether there is a new version, without sending any data. If there is one, a notification arrives, only once per version, and **Home** says so until it is installed. Nothing is downloaded until **Update** is tapped. It is turned off with **Check for updates automatically**, in **Updates and APK check**.
+- **Notifications at the start:** at the end of the initial setup, a short sheet explains what notifications are for, and then Android asks for the permission. People who already used {app} are asked only once. If it is declined, it is not asked again: notifications are turned on in **Settings**, **Alerts**.
+
 ## 1.0.6
 
 - **Say listens:** on phones where **Say** closed right away, it now listens. {app} asks the phone's voice service for the language it has downloaded, and tries each voice service on the phone until one works.

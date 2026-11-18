@@ -40,7 +40,6 @@ import io.github.yesidrobayo.shopledger.navigation.discardChangesTexts
 import io.github.yesidrobayo.shopledger.navigation.rememberAppViewModel
 import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.media.ProvidePhotos
-import io.github.yesidrobayo.shopledger.ui.permission.LocalNotificationPermission
 import io.github.yesidrobayo.shopledger.ui.unit.ResourceUnitNames
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -119,12 +118,7 @@ fun ProductEditRoute(key: AppNavKey.ProductEdit, navigator: AppNavigator) {
             val unitEditor by viewModel.unitEditor.editor.collectAsStateWithLifecycle()
             val conversionEditor by viewModel.conversionEditor.editor.collectAsStateWithLifecycle()
             val listPriceEditor by viewModel.listPriceEditor.editor.collectAsStateWithLifecycle()
-            val notificationPermission = LocalNotificationPermission.current
             LaunchedEffect(uiState.savedProductId, uiState.closed) {
-                // Con el primer producto se entiende para qué sirven los avisos de stock.
-                if (uiState.savedProductId != null && key.productId == null) {
-                    notificationPermission?.offerAfterNewProduct()
-                }
                 val saved = uiState.savedProductId
                 if (saved != null || uiState.closed) navigator.back()
                 // Un combo sin receta sigue a su receta, que es lo que le falta para venderse.

@@ -12,7 +12,6 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.yesidrobayo.shopledger.BuildConfig
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
@@ -28,8 +27,8 @@ import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.help.HelpMarkdown
 import io.github.yesidrobayo.shopledger.update.ApkUpdateFiles
 import io.github.yesidrobayo.shopledger.update.ApkVerifier
+import io.github.yesidrobayo.shopledger.update.AutomaticUpdateChecks
 import java.io.IOException
-import kotlin.time.Instant
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
@@ -38,7 +37,8 @@ import kotlinx.coroutines.withContext
  *
  * - `Buscar actualización` lee el aviso de versión de `update_manifest_url` y comprueba su firma
  *   con `update_manifest_public_key`, los dos dentro de la app. Sin alguno de los dos, la búsqueda
- *   dice que no se pudo leer el aviso, y nada se bloquea. Solo corre al tocar el botón.
+ *   dice que no se pudo leer el aviso, y nada se bloquea. Corre al tocar el botón; la automática,
+ *   una vez al día, la programa su interruptor.
  * - `Actualizar` baja el APK de la versión anunciada desde las descargas de la versión publicada,
  *   con la dirección que arma `update_apk_url_template` con el nombre de versión del aviso
  *   firmado: con la búsqueda, son las únicas consultas de red fuera del servicio WebDAV, y solo al
@@ -50,9 +50,11 @@ import kotlinx.coroutines.withContext
  * - `Novedades` se lee de los recursos, en el idioma de la interfaz.
  *
  * Sin la base, la pantalla sigue, sin la versión, sin la búsqueda y sin verificar.
+ *
+ * Con [searchNow], desde el aviso de una versión nueva, busca al abrir.
  */
 @Composable
-fun UpdatesRoute(navigator: AppNavigator) {
+fun UpdatesRoute(navigator: AppNavigator, searchNow: Boolean = false) {
     val app = LocalContext.current.applicationContext
     val messages = LocalAppMessages.current
     val notSaved = stringResource(R.string.state_error_save)
@@ -77,8 +79,23 @@ fun UpdatesRoute(navigator: AppNavigator) {
                     changePreference(PreferenceChange.UpdateCheck(enabled)) ==
                         ChangePreferenceResult.Saved
                 },
+                automatic = { container.data.automaticUpdateCheckEnabled() },
+                setAutomatic = { enabled ->
+                    val saved = container.data.setAutomaticUpdateCheck(enabled)
+                    if (saved) {
+                        container.updateCheckDelivery.sync(
+                            settings.get().preferences.updateCheckEnabled,
+                        )
+                    }
+                    saved
+                },
+                searchOnOpen = searchNow,
                 checkForUpdate = {
-                    container.data.checkForUpdate(manifestUrl, publicKey, builtAt())
+                    container.data.checkForUpdate(
+                        manifestUrl,
+                        publicKey,
+                        AutomaticUpdateChecks.builtAt(),
+                    )
                 },
                 lastSearchAt = { container.data.lastUpdateCheckAt() },
                 zone =
@@ -126,6 +143,7 @@ fun UpdatesRoute(navigator: AppNavigator) {
 
             UpdatesAction.Search,
             is UpdatesAction.SetSearchEnabled,
+            is UpdatesAction.SetAutomatic,
             UpdatesAction.MessageShown,
             is UpdatesAction.FileChosen,
             UpdatesAction.StartUpdate,
@@ -169,13 +187,6 @@ fun UpdatesRoute(navigator: AppNavigator) {
         }
     }
 }
-
-/**
- * La fecha de compilación, la del último commit del código, o nula si se compiló sin Git: entonces
- * ningún aviso se descarta por su fecha.
- */
-private fun builtAt(): Instant? =
-    BuildConfig.SOURCE_DATE_MILLIS.takeIf { it > 0 }?.let(Instant::fromEpochMilliseconds)
 
 /**
  * `Novedades` en el idioma de [resources], o nulo si no se pudo leer. Lee del APK: va fuera del

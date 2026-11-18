@@ -100,6 +100,13 @@ private fun HomeLowStockPreview() {
     }
 }
 
+/** Con una versión nueva encontrada: el aviso va bajo el respaldo, encima del héroe. */
+@ThemePreviews
+@Composable
+private fun HomeUpdatePreview() {
+    PreviewTheme { HomeScreen(previewHomeContent(), onAction = {}, update = "1.0.7") }
+}
+
 @ThemePreviews
 @Composable
 private fun HomeSalesPreview() {

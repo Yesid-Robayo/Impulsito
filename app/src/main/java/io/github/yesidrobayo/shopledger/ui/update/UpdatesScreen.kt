@@ -69,7 +69,8 @@ import kotlin.time.Instant
  *    huella no se copia: solo la información para soporte usa el portapapeles.
  * 2. `Buscar actualización`, solo con la búsqueda permitida, con la fecha de la última búsqueda.
  *    Apagada, dice que la app no se conecta para esto.
- * 3. `Permitir buscar actualizaciones` y, debajo, el resultado de la búsqueda de esta visita.
+ * 3. `Permitir buscar actualizaciones`, con él encendido `Buscar actualizaciones
+ *    automáticamente`, una vez al día, y debajo el resultado de la búsqueda de esta visita.
  *    Con una versión nueva, `Actualizar` es la acción principal: baja el APK con su progreso y
  *    `Cancelar`, lo compara, pide una vez el permiso de Android si falta y lo pasa al instalador.
  *    Cada falla dice cuál fue, con `Reintentar`.
@@ -255,6 +256,16 @@ private fun SearchSection(
         action =
             SettingsRowAction.Toggle(enabled) { onAction(UpdatesAction.SetSearchEnabled(it)) },
     )
+    // La automática solo tiene sentido con la búsqueda permitida; mientras se lee, no se inventa.
+    val automatic = uiState.automatic
+    if (enabled && automatic != null) {
+        SettingsRow(
+            title = stringResource(R.string.update_automatic),
+            summary = stringResource(R.string.update_automatic_help),
+            action =
+                SettingsRowAction.Toggle(automatic) { onAction(UpdatesAction.SetAutomatic(it)) },
+        )
+    }
     if (enabled) {
         // TalkBack lo dice al aparecer, sin mover el foco.
         Column(
@@ -657,6 +668,7 @@ private fun UpdatesScreenPreview() {
                             fingerprint = "3F:9A:21:7C:44:D0:8E:1B",
                         ),
                     searchEnabled = true,
+                    automatic = true,
                     lastSearchAt = Instant.parse("2026-10-28T15:00:00Z"),
                     search =
                         SearchUi.Done(
@@ -665,6 +677,7 @@ private fun UpdatesScreenPreview() {
                                 publishedAt = Instant.parse("2026-11-10T12:00:00Z"),
                                 apkSha256 = "0123456789abcdef",
                                 important = true,
+                                versionCode = 5,
                             ),
                         ),
                     now = Instant.parse("2026-11-15T12:00:00Z"),
@@ -692,6 +705,7 @@ private fun UpdatesScreenDownloadingPreview() {
                                 publishedAt = Instant.parse("2026-11-16T12:00:00Z"),
                                 apkSha256 = "0123456789abcdef",
                                 important = false,
+                                versionCode = 5,
                             ),
                         ),
                     now = Instant.parse("2026-11-16T12:00:00Z"),
@@ -719,6 +733,7 @@ private fun UpdatesScreenFailedPreview() {
                                 publishedAt = Instant.parse("2026-11-16T12:00:00Z"),
                                 apkSha256 = "0123456789abcdef",
                                 important = false,
+                                versionCode = 5,
                             ),
                         ),
                     now = Instant.parse("2026-11-16T12:00:00Z"),

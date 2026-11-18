@@ -40,7 +40,7 @@
     <string name="transparency_dest_slots_purpose">What for: write three backup files</string>
     <string name="transparency_dest_slots_sends">What it sends: nothing. That cloud\'s app uploads those files</string>
     <string name="transparency_dest_manifest_title">Public version file on %1$s</string>
-    <string name="transparency_dest_manifest_purpose">What for: find out whether there is a new version</string>
+    <string name="transparency_dest_manifest_purpose">What for: find out whether there is a new version, once a day and when Check for update is tapped</string>
     <string name="transparency_dest_manifest_sends">What it sends: no data</string>
     <string name="transparency_dest_manifest_ip">%1$s sees the IP address when that file is read.</string>
     <string name="transparency_dest_manifest_off">How to turn it off: in Updates</string>

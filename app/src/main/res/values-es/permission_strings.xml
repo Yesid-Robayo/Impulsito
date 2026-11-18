@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="permission_notifications_rationale">Sirve para avisar cuando un producto llegue a su mínimo y cuando las copias necesiten atención.</string>
+    <string name="permission_notifications_rationale">Sirve para avisar cuando las copias necesiten atención, para los recordatorios, como un producto en su mínimo, y para contar cuando haya una versión nueva.</string>
     <string name="permission_notifications_action">Activar avisos</string>
 
     <string name="permission_notifications_denied_inventory">Los avisos están apagados. Esta lista funciona igual.</string>

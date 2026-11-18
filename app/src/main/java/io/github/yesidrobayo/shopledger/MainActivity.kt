@@ -181,6 +181,8 @@ class MainActivity : AppCompatActivity() {
                         container.dailySummaryDelivery.follow(access.ports)
                         container.recurringReminderDelivery.follow(access.ports)
                         container.revenueLimitNoticeDelivery.follow(access.ports)
+                        // La búsqueda automática de versión, si está encendida, con KEEP.
+                        container.updateCheckDelivery.follow(access.ports)
                         // El widget se redibuja con cada venta y con la paleta o el modo discreto. Lee
                         // siempre la base real, así que en la demostración no sigue la de ejemplo.
                         container.quickSaleWidget.follow(access.ports)

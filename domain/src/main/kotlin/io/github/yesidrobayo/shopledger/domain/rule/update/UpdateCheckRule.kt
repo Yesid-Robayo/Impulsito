@@ -48,6 +48,7 @@ object UpdateCheckRule {
                 publishedAt = manifest.publishedAt,
                 apkSha256 = manifest.apkSha256,
                 important = manifest.minSafeVersionCode > installed,
+                versionCode = manifest.versionCode,
             )
 
         else -> UpdateCheckOutcome.Latest(manifest.apkSha256)

@@ -33,7 +33,7 @@
     <!-- %1$s es la fecha de la última búsqueda. -->
     <string name="update_last_search">Last check: %1$s</string>
     <string name="update_allow_search">Allow update checks</string>
-    <string name="update_allow_search_help">It only checks when the button is tapped. No data is sent.</string>
+    <string name="update_allow_search_help">When the button is tapped or once a day. No data is sent.</string>
     <string name="update_latest">This is the latest version</string>
     <!-- %1$s es la versión publicada. -->
     <string name="update_new">A new version is available: %1$s</string>
@@ -76,4 +76,10 @@
     <string name="update_whats_new_error">What\'s new could not be read.</string>
     <!-- La dirección https del APK de cada versión publicada. %1$s es el nombre de la versión del aviso firmado, como 1.0.2, y va en los dos lugares. Va dentro de la app: nunca sale de la red. -->
     <string name="update_apk_url_template" translatable="false">https://github.com/Yesid-Robayo/Impulsito/releases/download/v%1$s/impulsito-%1$s.apk</string>
+    <string name="update_automatic">Check for updates automatically</string>
+    <string name="update_automatic_help">Once a day, with internet, with a notice if there is a new version. No data is sent.</string>
+    <string name="notif_channel_updates">Updates</string>
+    <string name="notif_update_new_title">A new version is available</string>
+    <string name="notif_update_new_body">Version %1$s of %2$s is out. Nothing is downloaded until Update is tapped.</string>
+    <string name="home_update_available">A new version is available: %1$s</string>
 </resources>

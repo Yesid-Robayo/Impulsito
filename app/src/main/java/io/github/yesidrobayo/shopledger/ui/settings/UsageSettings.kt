@@ -131,17 +131,22 @@ class UsageSettingsViewModel(
 }
 
 /**
- * `Avisos`: el interruptor de los avisos de stock. Encendido con los avisos bloqueados en el
- * teléfono, un aviso lo explica y lleva a los ajustes del sistema; la lista de lo que se está
- * acabando funciona igual.
+ * `Avisos`: el interruptor de los avisos de stock. Con los avisos de la app apagados en el
+ * teléfono, sin el permiso o a mano, un aviso lo explica y lleva a los ajustes del sistema, donde
+ * se encienden: es la forma de activarlos tras negar el permiso, porque la app no lo vuelve a pedir
+ * sola. Con solo el canal de stock silenciado, lo dice solo con los avisos de stock encendidos. La
+ * lista de lo que se está acabando funciona igual.
  *
- * @param blocked si los avisos no pueden salir: sin permiso, apagados o con el canal silenciado.
+ * @param blocked si los avisos de stock no pueden salir: sin permiso, apagados o con el canal
+ *   silenciado.
+ * @param appBlocked si los avisos de la app están apagados en el teléfono.
  */
 @Composable
 fun AlertsGroup(
     state: UsageSettingsUiState,
     blocked: Boolean,
     onAction: (UsageAction) -> Unit,
+    appBlocked: Boolean = false,
     more: @Composable () -> Unit = {},
 ) {
     if (state.readFailed) {
@@ -161,7 +166,7 @@ fun AlertsGroup(
         title = stringResource(R.string.settings_stock_alerts),
         action = SettingsRowAction.Toggle(enabled) { onAction(UsageAction.StockAlerts(it)) },
     )
-    if (enabled && blocked) {
+    if (appBlocked || (enabled && blocked)) {
         NoticeCard(
             text = stringResource(R.string.permission_notifications_denied_settings),
             variant = NoticeVariant.INFO,

@@ -1,5 +1,10 @@
 O que cada versão do {app} trouxe, da mais nova para a mais antiga.
 
+## 1.0.7
+
+- **Avisa as novas versões:** uma vez por dia, com internet, o {app} consulta se há uma nova versão, sem enviar nenhum dado. Se houver, chega uma notificação, uma só vez por versão, e **Início** avisa até ela ser instalada. Nada é baixado sem tocar em **Atualizar**. É desligado com **Buscar atualizações automaticamente**, em **Atualizações e verificação de APK**.
+- **Notificações no início:** ao terminar a configuração inicial, uma folha curta explica para que servem as notificações, e depois o Android pede a permissão. Quem já usava o {app} recebe a pergunta uma só vez. Se for recusada, não é pedida de novo: as notificações são ativadas em **Configurações**, **Avisos**.
+
 ## 1.0.6
 
 - **Dizer escuta:** nos telefones em que **Dizer** fechava na hora, agora escuta. O {app} pede ao serviço de voz do telefone o idioma que ele tem baixado e tenta cada serviço de voz do telefone até um funcionar.

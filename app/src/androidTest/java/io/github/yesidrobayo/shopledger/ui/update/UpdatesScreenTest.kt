@@ -99,6 +99,7 @@ class UpdatesScreenTest {
             Instant.parse("2026-11-10T12:00:00Z"),
             "ab",
             important = false,
+            versionCode = 3,
         )
 
     private fun updating(install: InstallUi) = searched(newVersion).copy(install = install)
@@ -280,7 +281,17 @@ class UpdatesScreenTest {
     @Test
     fun aNewVersionShowsItsNameAndLeadsToHowToUpdate() {
         val published = Instant.parse("2026-11-10T12:00:00Z")
-        show(searched(UpdateCheckOutcome.NewVersion("1.0.1", published, "ab", important = false)))
+        show(
+            searched(
+                UpdateCheckOutcome.NewVersion(
+                    "1.0.1",
+                    published,
+                    "ab",
+                    important = false,
+                    versionCode = 2,
+                ),
+            ),
+        )
 
         shown(text(R.string.update_new, "1.0.1"))
         shown(text(R.string.update_new_date, "").trimEnd())
@@ -294,7 +305,17 @@ class UpdatesScreenTest {
     @Test
     fun anImportantUpdateWarnsAndBlocksNothing() {
         val published = Instant.parse("2026-11-10T12:00:00Z")
-        show(searched(UpdateCheckOutcome.NewVersion("1.0.2", published, "ab", important = true)))
+        show(
+            searched(
+                UpdateCheckOutcome.NewVersion(
+                    "1.0.2",
+                    published,
+                    "ab",
+                    important = true,
+                    versionCode = 3,
+                ),
+            ),
+        )
 
         shown(text(R.string.update_important_title))
         shown(text(R.string.update_important_body))
@@ -470,5 +491,36 @@ class UpdatesScreenTest {
         compose.onNodeWithContentDescription(text(R.string.a11y_back)).performClick()
 
         assertEquals(listOf<UpdatesAction>(UpdatesAction.Back), actions)
+    }
+
+    @Test
+    fun theAutomaticCheckIsASwitchUnderTheAllowedSearch() {
+        show(ready(searchEnabled = true).copy(automatic = true))
+
+        shown(text(R.string.update_automatic))
+        shown(text(R.string.update_automatic_help))
+        compose.onNodeWithText(text(R.string.update_automatic)).performClick()
+
+        assertEquals(listOf<UpdatesAction>(UpdatesAction.SetAutomatic(false)), actions)
+    }
+
+    @Test
+    fun theAutomaticCheckTurnsBackOn() {
+        show(ready(searchEnabled = true).copy(automatic = false))
+
+        compose.onNodeWithText(text(R.string.update_automatic)).performScrollTo().performClick()
+
+        assertEquals(listOf<UpdatesAction>(UpdatesAction.SetAutomatic(true)), actions)
+    }
+
+    @Test
+    fun withTheSearchOffOrUnreadTheAutomaticSwitchIsHidden() {
+        val state = mutableStateOf(ready(searchEnabled = false).copy(automatic = true))
+        compose.setContent { PreviewTheme { UpdatesScreen(state.value, { actions += it }) } }
+        absent(text(R.string.update_automatic))
+
+        state.value = ready(searchEnabled = true).copy(automatic = null)
+        compose.waitForIdle()
+        absent(text(R.string.update_automatic))
     }
 }

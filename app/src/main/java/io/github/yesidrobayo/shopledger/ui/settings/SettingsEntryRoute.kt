@@ -158,10 +158,12 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
     val authenticator = LocalDeviceAuthenticator.current
     var deviceLockMissing by remember { mutableStateOf(false) }
     var notificationsBlocked by remember { mutableStateOf(false) }
+    var appNotificationsBlocked by remember { mutableStateOf(false) }
     val overviewViewModel = (overviewModel as? ScreenModel.Ready)?.viewModel
     LifecycleResumeEffect(authenticator, overviewViewModel) {
         deviceLockMissing = !authenticator.hasDeviceCredential()
         notificationsBlocked = NotificationPermissionPrompt.stockAlertsBlocked(context)
+        appNotificationsBlocked = NotificationPermissionPrompt.appNotificationsBlocked(context)
         overviewViewModel?.onReturnToForeground()
         onPauseOrDispose {}
     }
@@ -388,6 +390,7 @@ fun SettingsEntryRoute(onOpen: (AppNavKey) -> Unit, onBack: () -> Unit) {
                 },
                 usage = usage,
                 notificationsBlocked = notificationsBlocked,
+                appNotificationsBlocked = appNotificationsBlocked,
                 onUsageAction = onUsageAction,
                 onChoosePalette = choosePalette,
                 paletteFailed = failedPalette != null,

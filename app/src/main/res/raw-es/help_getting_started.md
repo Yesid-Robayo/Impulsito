@@ -7,6 +7,8 @@
 3. La bienvenida: elegir dónde guardar las copias, traer los datos de otro teléfono o seguir con **Ahora no**.
 4. La protección: el bloqueo con huella o PIN, y el cifrado de las copias, que viene apagado.
 
+Al terminar, en Android 13 o superior, una hoja corta explica para qué sirven las notificaciones: las copias que necesitan atención, los recordatorios y las versiones nuevas. Después Android pide el permiso. Si se rechaza, {app} no lo vuelve a pedir sola: las notificaciones se encienden en **Ajustes**, **Avisos**, con **Abrir ajustes**.
+
 ## Después
 
 - Crear los productos con su precio y, si se conoce, su costo: con el costo se ve la ganancia de cada venta.

@@ -91,12 +91,15 @@ sealed interface UpdateCheckOutcome {
      *
      * @property important si la instalada está debajo de la versión segura: avisa, y nunca
      *   bloquea.
+     * @property versionCode el número de compilación de esa versión: con él se avisa una sola vez
+     *   por versión.
      */
     data class NewVersion(
         val versionName: String,
         val publishedAt: Instant,
         val apkSha256: String,
         val important: Boolean,
+        val versionCode: Long,
     ) : UpdateCheckOutcome
 
     /** El aviso no pasó la comprobación de firma, y se ignoró. */

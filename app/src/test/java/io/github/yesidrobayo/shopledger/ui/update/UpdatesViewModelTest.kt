@@ -63,6 +63,9 @@ class UpdatesViewModelTest {
     private var canInstall = true
     private var discards = 0
     private var whatsNew: List<HelpBlock>? = listOf(NEWS_HEADING)
+    private var automatic = true
+    private var automaticSaveWorks = true
+    private val automaticSaved = mutableListOf<Boolean>()
 
     @Before
     fun useTestMain() = Dispatchers.setMain(dispatcher)
@@ -82,6 +85,7 @@ class UpdatesViewModelTest {
             lastSearch = now
             outcome
         },
+        searchOnOpen: Boolean = false,
     ) = UpdatesViewModel(
         installedApp = installedApp,
         verifyApk = verifyApk,
@@ -91,6 +95,13 @@ class UpdatesViewModelTest {
             if (saveWorks) enabled.value = value
             saveWorks
         },
+        automatic = { automatic },
+        setAutomatic = { value ->
+            automaticSaved += value
+            if (automaticSaveWorks) automatic = value
+            automaticSaveWorks
+        },
+        searchOnOpen = searchOnOpen,
         checkForUpdate = checkForUpdate,
         lastSearchAt = { lastSearch },
         zone = zone,
@@ -112,7 +123,8 @@ class UpdatesViewModelTest {
 
     /** Un modelo que ya buscó y encontró la versión `1.0.1`, con la huella [HASH]. */
     private fun TestScope.withNewVersion(): UpdatesViewModel {
-        outcome = UpdateCheckOutcome.NewVersion("1.0.1", now, HASH, important = false)
+        outcome =
+            UpdateCheckOutcome.NewVersion("1.0.1", now, HASH, important = false, versionCode = 5)
         val model = model()
         advanceUntilIdle()
         model.onAction(UpdatesAction.Search)
@@ -357,7 +369,14 @@ class UpdatesViewModelTest {
     @Test
     fun `a file with the hash of the notice read in this visit says it matches`() =
         runTest(dispatcher) {
-            outcome = UpdateCheckOutcome.NewVersion("1.0.1", now, HASH, important = false)
+            outcome =
+                UpdateCheckOutcome.NewVersion(
+                    "1.0.1",
+                    now,
+                    HASH,
+                    important = false,
+                    versionCode = 5,
+                )
             val model =
                 model(verifyApk = { ApkCheckResult.Match("1.0.1", 4, HASH.uppercase(), false) })
             advanceUntilIdle()
@@ -722,6 +741,70 @@ class UpdatesViewModelTest {
         assertEquals(WhatsNewUi.Failed, model.uiState.value.whatsNew)
     }
 
+    @Test
+    fun `the automatic check is read and starts on`() = runTest(dispatcher) {
+        val model = model()
+        advanceUntilIdle()
+
+        assertEquals(true, model.uiState.value.automatic)
+    }
+
+    @Test
+    fun `turning the automatic check off saves it`() = runTest(dispatcher) {
+        val model = model()
+        advanceUntilIdle()
+
+        model.onAction(UpdatesAction.SetAutomatic(false))
+        advanceUntilIdle()
+
+        assertEquals(listOf(false), automaticSaved)
+        assertEquals(false, model.uiState.value.automatic)
+        assertFalse(model.uiState.value.saveFailed)
+    }
+
+    @Test
+    fun `an automatic switch that was not saved goes back and says so`() = runTest(dispatcher) {
+        automaticSaveWorks = false
+        val model = model()
+        advanceUntilIdle()
+
+        model.onAction(UpdatesAction.SetAutomatic(false))
+        advanceUntilIdle()
+
+        assertEquals(true, model.uiState.value.automatic)
+        assertTrue(model.uiState.value.saveFailed)
+    }
+
+    @Test
+    fun `opened from a new version notice it searches once`() = runTest(dispatcher) {
+        outcome =
+            UpdateCheckOutcome.NewVersion("1.0.1", now, HASH, important = false, versionCode = 5)
+        val model = model(searchOnOpen = true)
+        advanceUntilIdle()
+        enabled.value = false
+        enabled.value = true
+        advanceUntilIdle()
+
+        assertEquals(1, searches)
+        assertEquals(SearchUi.Done(outcome), model.uiState.value.search)
+    }
+
+    @Test
+    fun `opened from a notice with the search off it does not connect`() = runTest(dispatcher) {
+        enabled.value = false
+        model(searchOnOpen = true)
+        advanceUntilIdle()
+
+        assertEquals(0, searches)
+    }
+
+    @Test
+    fun `opened normally it never searches on its own`() = runTest(dispatcher) {
+        model()
+        advanceUntilIdle()
+
+        assertEquals(0, searches)
+    }
     private companion object {
         val HASH = "ab".repeat(32)
         val NEWS_HEADING = HelpBlock.Heading(2, listOf(HelpSpan.Plain("1.0.2")))

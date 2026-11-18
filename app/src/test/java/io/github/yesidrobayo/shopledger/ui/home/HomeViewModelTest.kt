@@ -15,6 +15,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryFilter
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
 import io.github.yesidrobayo.shopledger.domain.model.settings.MeteredBackupPolicy
+import io.github.yesidrobayo.shopledger.domain.model.update.KnownUpdate
 import io.github.yesidrobayo.shopledger.domain.port.Clock
 import io.github.yesidrobayo.shopledger.domain.port.SaleHistorySource
 import io.github.yesidrobayo.shopledger.domain.rule.backup.NoDestinationAcknowledgement
@@ -43,6 +44,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.YearMonth
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
@@ -172,6 +174,10 @@ class HomeViewModelTest {
     private var backupRequests = 0
     private var requestFailure: Exception? = null
 
+    /** La versión nueva que Inicio avisa, o la falla al leerla. */
+    private var available: KnownUpdate? = null
+    private var updateFailure: Exception? = null
+
     private fun TestScope.viewModel(): HomeViewModel {
         val model = HomeViewModel(
             todaySales = { checks ->
@@ -196,12 +202,17 @@ class HomeViewModelTest {
                 backupRequests += 1
                 requestFailure?.let { throw it }
             },
+            availableUpdate = {
+                updateFailure?.let { throw it }
+                available
+            },
         )
         // La pantalla recoge el estado mientras se ve.
         backgroundScope.launch { model.uiState.collect {} }
         backgroundScope.launch { model.backup.collect {} }
         backgroundScope.launch { model.profit.collect {} }
         backgroundScope.launch { model.noDestinationNotice.collect {} }
+        backgroundScope.launch { model.update.collect {} }
         advanceUntilIdle()
         return model
     }
@@ -457,4 +468,27 @@ class HomeViewModelTest {
             assertEquals(NoDestinationNotice.COMPACT, model.noDestinationNotice.value)
             assertEquals(null, notices.saved)
         }
+
+    @Test
+    fun `a new version found is shown until it is installed`() = runTest(dispatcher) {
+        available = KnownUpdate(8, "1.0.8")
+        val model = viewModel()
+
+        assertEquals(KnownUpdate(8, "1.0.8"), model.update.value)
+
+        // Instalada, la búsqueda ya no la da: al volver a primer plano, el aviso se va.
+        available = null
+        model.onReturnToForeground()
+        advanceUntilIdle()
+
+        assertNull(model.update.value)
+    }
+
+    @Test
+    fun `without a new version or if it cannot be read there is no notice`() = runTest(dispatcher) {
+        assertNull(viewModel().update.value)
+
+        updateFailure = IOException("sin lectura")
+        assertNull(viewModel().update.value)
+    }
 }

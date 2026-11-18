@@ -11,6 +11,7 @@ import io.github.yesidrobayo.shopledger.domain.model.report.GoalAdvance
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryFilter
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleHistoryRow
 import io.github.yesidrobayo.shopledger.domain.model.sale.SalesSummary
+import io.github.yesidrobayo.shopledger.domain.model.update.KnownUpdate
 import io.github.yesidrobayo.shopledger.domain.rule.backup.NoDestinationAcknowledgement
 import io.github.yesidrobayo.shopledger.domain.rule.backup.NoDestinationNotice
 import io.github.yesidrobayo.shopledger.domain.rule.backup.NoDestinationNoticeRule
@@ -70,6 +71,8 @@ import kotlinx.coroutines.withContext
  *   fecha.
  * @param requestBackup pide la copia con `Guardar en {provider}`, con la nube del teléfono. Un
  *   fallo al pedirla no cierra la pantalla: el estado del respaldo sigue diciendo lo pendiente.
+ * @param availableUpdate la versión nueva que la búsqueda encontró y todavía no está instalada, o
+ *   nula. No usa la red.
  * @param producible los id de lo que se puede producir hoy, para que las filas de la tarjeta digan
  *   lo mismo que las del inventario.
  */
@@ -90,6 +93,7 @@ class HomeViewModel(
     monthGoal: (Flow<Unit>) -> Flow<GoalAdvance?> = { flowOf(null) },
     private val requestBackup: suspend () -> Unit = {},
     producible: Flow<Set<Long>> = flowOf(emptySet()),
+    private val availableUpdate: suspend () -> KnownUpdate? = { null },
 ) : ViewModel() {
     // La primera mirada a la fecha es al abrir; las demás, al volver a primer plano. Un contador,
     // y no un evento, porque dos vueltas seguidas sin leer entre ellas valen por una.
@@ -139,6 +143,18 @@ class HomeViewModel(
             .flowOn(computation)
             .catch { emit(0) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_AFTER_MS), 0)
+
+    /**
+     * La versión nueva que avisa Inicio, hasta que esté instalada: la encontró la búsqueda
+     * automática o la de la persona. Nula si no hay o si no se puede leer. Se vuelve a mirar al
+     * volver a primer plano, así que se va sola al instalar la versión.
+     */
+    val update: StateFlow<KnownUpdate?> =
+        dayChecks
+            .map { availableUpdate() }
+            .flowOn(computation)
+            .catch { emit(null) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_AFTER_MS), null)
 
     /**
      * La tarjeta por agotarse, aparte de las ventas: si no se puede leer, Inicio sigue mostrando el
@@ -230,6 +246,7 @@ class HomeViewModel(
             is HomeAction.OpenLowStock,
             is HomeAction.OpenProduct,
             HomeAction.OpenGoals,
+            HomeAction.OpenUpdates,
             -> Unit
         }
     }
