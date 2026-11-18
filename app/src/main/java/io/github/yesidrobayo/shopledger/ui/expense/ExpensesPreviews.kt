@@ -1,9 +1,13 @@
 package io.github.yesidrobayo.shopledger.ui.expense
 
 import androidx.compose.runtime.Composable
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategory
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategoryDetails
+import io.github.yesidrobayo.shopledger.domain.model.report.ExpenseCategoryTotal
+import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseCategorySummary
+import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseShareRow
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.ExpenseListDay
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.ExpenseListRow
 import io.github.yesidrobayo.shopledger.ui.components.PreviewSamples
@@ -52,6 +56,48 @@ internal fun previewExpenses(): ExpensesUiState {
         ),
         total = s.LONG_AMOUNT,
     )
+}
+
+/**
+ * Un resumen por categoría inventado, con las partes escritas a mano: arriendo 500.000 de 820.000
+ * es el 60,98 %, servicios 200.000 el 24,39 % y una categoría de 40 caracteres 120.000 el 14,63 %.
+ */
+internal fun previewCategorySummary(): ExpenseCategorySummary = ExpenseCategorySummary(
+    total = Money(820_000),
+    rows = listOf(
+        ExpenseShareRow.Category(
+            ExpenseCategoryTotal(1L, null, "RENT", Money(500_000)),
+            BasisPoints(6_098),
+        ),
+        ExpenseShareRow.Category(
+            ExpenseCategoryTotal(2L, null, "UTILITIES", Money(200_000)),
+            BasisPoints(2_439),
+        ),
+        ExpenseShareRow.Category(
+            ExpenseCategoryTotal(10L, "c".repeat(40), null, Money(120_000)),
+            BasisPoints(1_463),
+        ),
+    ),
+)
+
+@ThemePreviews
+@Composable
+private fun ExpensesCategorySummaryPreview() {
+    PreviewTheme {
+        ExpensesScreen(previewExpenses().copy(categorySummary = previewCategorySummary()), {})
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun ExpensesCategorySummaryFilteredDiscreetPreview() {
+    PreviewTheme(discreet = true) {
+        ExpensesScreen(
+            previewExpenses().copy(categorySummary = previewCategorySummary(), categoryId = 1L),
+            {},
+            ownTab = true,
+        )
+    }
 }
 
 @ThemePreviews

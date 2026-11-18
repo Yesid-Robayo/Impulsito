@@ -86,7 +86,7 @@ fun SupplierListScreen(
     val spacing = AppTheme.spacing
     val sizes = AppTheme.sizes
     val isRoot = navigation == TopBarNavigation.NONE
-    // Una raíz deja libre el alto de la barra inferior, más lo que sobresale Vender.
+    // Una raíz deja libre el alto de la barra inferior y de `Decir`, que flota sobre ella.
     val bottomClearance = if (isRoot) bottomBarClearance() else 0.dp
     Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         Column(Modifier.fillMaxSize()) {

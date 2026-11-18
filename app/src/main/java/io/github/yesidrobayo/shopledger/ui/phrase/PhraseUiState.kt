@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.ui.phrase
 import androidx.compose.runtime.Immutable
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftGap
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIntent
@@ -160,9 +161,21 @@ sealed interface CardProduct {
     /**
      * Un producto que no existe, con el nombre dicho. Si [needsCreating], hay que crearlo antes de
      * registrar, con `Crear «…»`; si no, es el producto nuevo que se crea al registrar.
+     *
+     * Lo demás es lo que la frase dijo de él, y con eso se crea: [usage], para qué es, o `null`
+     * si no se dijo; [service], si es un servicio, sin stock; [category], el nombre de la
+     * categoría que se encontró; y [newCategory], la que se dijo y no existe, que se crea con el
+     * producto.
      */
     @Immutable
-    data class New(val name: String, val needsCreating: Boolean) : CardProduct
+    data class New(
+        val name: String,
+        val needsCreating: Boolean,
+        val usage: ProductUsage? = null,
+        val service: Boolean = false,
+        val category: String? = null,
+        val newCategory: String? = null,
+    ) : CardProduct
 
     /**
      * Falta elegirlo: [candidates] son los igual de posibles, y [spoken] lo que se dijo, para
@@ -257,6 +270,12 @@ sealed interface PickPurpose {
 
     /** El cliente o el proveedor. */
     data object Party : PickPurpose
+
+    /**
+     * La categoría del producto por crear de la línea [index], o del producto nuevo o de la receta
+     * con `null`: una del catálogo, o una nueva con lo escrito.
+     */
+    data class NewCategory(val index: Int?) : PickPurpose
 }
 
 /** El monto que se escribe en la hoja de monto. */

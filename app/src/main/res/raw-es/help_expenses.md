@@ -2,13 +2,15 @@ Un gasto es lo que cuesta mantener el negocio sin ser mercancía para vender: al
 
 ## Registrar un gasto
 
-1. En **Inicio**, tocar **Gasto**, o en **Registros**, **Gastos**, tocar **Nuevo gasto**.
+1. En **Inicio**, tocar **Gasto**, o en **Gastos**, en la barra de abajo, tocar **Nuevo gasto**. Los mismos gastos están también en **Registros**, **Gastos**.
 2. Escribir el **Valor** y elegir la **Categoría**. Si no se elige otra, queda **Otros**, y **Nueva categoría** crea una sin salir.
 3. **Descripción** es opcional. **Fecha**: hoy o una anterior, nunca futura.
 4. Si se llevan cuentas de dinero, elegir la **Cuenta de dinero** de la que sale. Sin cuenta, el gasto se registra igual y no mueve ninguna cuenta.
 5. Tocar **Guardar gasto**.
 
 **Gastos** muestra un mes a la vez, con su **Total del mes**, y se puede filtrar por **Categoría**.
+
+Al empezar la lista, **Por categoría** muestra cuánto se gastó en cada categoría y qué parte del mes es, de mayor a menor. Al tocar una, la lista muestra solo esa, y al tocarla otra vez vuelven todas. Con **Ocultar cifras**, sus montos se ocultan y las barras quedan.
 
 ## Anular o corregir
 

@@ -4690,5 +4690,226 @@
    "unit": null,
    "issues": []
   }
+ },
+ {
+  "id": "pt-141",
+  "text": "comprei 2 quilos de farinha de arroz a 50, é um insumo, na categoria matérias-primas",
+  "tags": [
+   "purchase",
+   "new_product",
+   "traits"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Farinha de arroz",
+      "usage": "INPUT",
+      "category": "raw_materials"
+     },
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": "50",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-142",
+  "text": "vendi uma consultoria de imagem, é um serviço",
+  "tags": [
+   "sale",
+   "new_product",
+   "traits"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Consultoria de imagem",
+      "usage": "SALE",
+      "stock_mode": "UNTRACKED"
+     },
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-143",
+  "text": "comprei 5 quilos de cúrcuma, é matéria prima, na categoria temperos",
+  "tags": [
+   "purchase",
+   "new_product",
+   "traits",
+   "new_category"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Cúrcuma",
+      "usage": "INPUT",
+      "new_category": "Temperos"
+     },
+     "qty": "5",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-144",
+  "text": "comprei 3 litros de leite de amêndoas a 12, é para vender, na categoria bebidas",
+  "tags": [
+   "purchase",
+   "new_product",
+   "traits"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Leite de amêndoas",
+      "usage": "SALE",
+      "category": "drinks"
+     },
+     "qty": "3",
+     "unit": "liter",
+     "unit_price": "12",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-145",
+  "text": "2 quilos de farinha a 50",
+  "tags": [
+   "sale",
+   "no_verb",
+   "ambiguous"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "choose": [
+       "wheat_flour",
+       "corn_flour"
+      ]
+     },
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": "50",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-146",
+  "text": "comprei 2 quilos de farinha de trigo e isso não sei",
+  "tags": [
+   "purchase",
+   "unused_words"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "UNUSED_WORDS"
+   ]
+  }
  }
 ]

@@ -13,7 +13,7 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
  * ventana mediana. Lo decide la clase de ventana, nunca el modelo ni la orientación.
  */
 enum class NavigationLayout {
-    /** `AppBottomBar` sobre las cuatro raíces, con Vender sobresaliendo. */
+    /** `AppBottomBar` sobre las raíces, con `Decir` redondo encima, abajo a la derecha. */
     BAR,
 
     /** `AppNavigationRail` a la izquierda, visible también en los detalles. */
@@ -35,11 +35,17 @@ fun navigationLayoutForWindow(): NavigationLayout {
 }
 
 /**
- * Lo que una raíz deja libre al final para la barra inferior y lo que sobresale Vender. Con el
- * riel no hay barra abajo, y la raíz usa todo el alto.
+ * Lo que una raíz deja libre al final: la barra inferior y, encima, el botón redondo `Decir` con su
+ * margen. Así la última fila y el botón flotante propio de la pantalla, como `Nuevo gasto`, quedan
+ * por encima de `Decir` y nada se tapa. Con el riel no hay barra abajo y `Decir` va en el riel: la
+ * raíz usa todo el alto.
  */
 @Composable
 fun bottomBarClearance(): Dp = when (LocalNavigationLayout.current) {
-    NavigationLayout.BAR -> AppTheme.sizes.bottomBar + AppTheme.sizes.sellButtonOverhang
+    NavigationLayout.BAR -> AppTheme.sizes.bottomBar + sayButtonClearance()
     NavigationLayout.RAIL -> 0.dp
 }
+
+/** Lo que ocupa `Decir` sobre la barra inferior: su diámetro y el margen que lo separa de ella. */
+@Composable
+fun sayButtonClearance(): Dp = AppTheme.sizes.sayButton + AppTheme.spacing.s16

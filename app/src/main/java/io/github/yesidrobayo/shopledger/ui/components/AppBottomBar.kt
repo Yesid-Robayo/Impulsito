@@ -10,16 +10,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -45,6 +41,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
@@ -55,7 +53,7 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.theme.PreviewTheme
 import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
 
-// La sombra de Vender lleva el color de la marca, no negro: se ve como luz del botón y no como hueco.
+// La sombra de la marca lleva su color, no negro: se ve como luz del botón y no como hueco.
 private const val SELL_SHADOW_ALPHA = 0.4f
 
 /**
@@ -70,29 +68,29 @@ data class BottomBarItem(
 )
 
 /**
- * La barra inferior: dos pestañas a cada lado y Vender al centro, sobresaliendo de la barra.
+ * La barra inferior: cinco entradas del mismo ancho, en orden.
  *
- * Es propia porque la barra de Material no contempla una acción central que sobresale. La pestaña
- * activa cambia de contorno a relleno y lleva una píldora detrás del icono: no depende solo del
- * color. Las etiquetas crecen con la letra del sistema solo hasta un tope, porque cinco no caben de
- * otra forma. Una etiqueta que no cabe se achica hasta 10 sp; si aun así no cabe, pasa a dos líneas y
- * la barra crece un poco, y solo una más larga que eso lleva puntos suspensivos. Nunca se corta sin
- * ellos. La presión larga y TalkBack dan la etiqueta completa.
+ * Es propia para medir y limitar sus etiquetas como pide el sistema de diseño. La entrada activa
+ * cambia de contorno a relleno y lleva una píldora detrás del icono: no depende solo del color. Las
+ * etiquetas crecen con la letra del sistema solo hasta un tope, porque cinco no caben de otra forma.
+ * Una etiqueta que no cabe se achica hasta 10 sp; si aun así no cabe, pasa a dos líneas y la barra
+ * crece un poco, y solo una más larga que eso lleva puntos suspensivos. Nunca se corta sin ellos.
+ * La presión larga y TalkBack dan la etiqueta completa.
  *
- * @param items las cuatro pestañas, en orden: las dos primeras van a la izquierda de Vender.
- * @param selected la pestaña activa, o `null` si ninguna lo está.
+ * `Decir` no va en la barra: es el botón redondo [SayFloatingButton], que la navegación pone encima,
+ * abajo a la derecha.
+ *
+ * @param items las cinco entradas, de izquierda a derecha.
+ * @param selected la entrada activa, o `null` si ninguna lo está.
  */
 @Composable
 fun AppBottomBar(
     items: List<BottomBarItem>,
     selected: Int?,
     onSelect: (Int) -> Unit,
-    sellLabel: String,
-    onSell: () -> Unit,
     modifier: Modifier = Modifier,
-    @DrawableRes sellIcon: Int = R.drawable.ic_sell,
 ) {
-    require(items.size == 4) { "La barra tiene cuatro pestañas y Vender al centro" }
+    require(items.size == BAR_ENTRIES) { "La barra tiene cinco entradas" }
     val sizes = AppTheme.sizes
     val density = LocalDensity.current
     // Las medidas de la barra no crecen con la letra: solo sus etiquetas, y solo hasta el tope.
@@ -118,33 +116,16 @@ fun AppBottomBar(
                         .selectableGroup(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                items.take(2).forEachIndexed { index, item ->
+                items.forEachIndexed { index, item ->
                     BottomBarTab(item, selected == index) { onSelect(index) }
-                }
-                Box(
-                    modifier = Modifier.width(sizes.bottomBarCenterSlot).heightIn(
-                        min =
-                            sizes.bottomBar - sizes.hairline,
-                    ),
-                    contentAlignment = Alignment.TopCenter,
-                ) {
-                    // Sobresale de la barra: la mitad superior queda sobre el contenido.
-                    SellButton(
-                        label = sellLabel,
-                        onClick = onSell,
-                        icon = sellIcon,
-                        modifier = Modifier.offset(
-                            y = -(sizes.sellButtonOverhang + sizes.hairline),
-                        ),
-                    )
-                }
-                items.drop(2).forEachIndexed { index, item ->
-                    BottomBarTab(item, selected == index + 2) { onSelect(index + 2) }
                 }
             }
         }
     }
 }
+
+/** Cuántas entradas tiene la barra: `Inicio`, `Vender`, `Gastos`, `Productos` y `Números`. */
+private const val BAR_ENTRIES = 5
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -246,7 +227,10 @@ private fun BottomBarLabel(label: String, color: Color, selected: Boolean) {
     }
 }
 
-/** El botón Vender: un bloque de la marca, con su palabra siempre visible y la única sombra de la app. */
+/**
+ * El bloque de la marca del riel, hoy `Decir`: con su palabra siempre visible y, como el botón
+ * redondo de la barra, la única sombra de la app.
+ */
 @Composable
 fun SellButton(
     label: String,
@@ -292,39 +276,97 @@ fun SellButton(
     }
 }
 
+/**
+ * `Decir` sobre la barra inferior: un círculo de la marca con el micrófono, abajo a la derecha, al
+ * alcance del pulgar. Es el único botón flotante redondo de la app y, con el bloque del riel, lo
+ * único con sombra: así se distingue de los botones flotantes tonales de cada lista, como
+ * `Nuevo gasto`, que van encima de él.
+ *
+ * Mide 56 dp, más que el mínimo táctil de 48 dp. Sin texto a la vista, [label] es lo que lee
+ * TalkBack y lo que muestra la presión larga.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SayFloatingButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val sizes = AppTheme.sizes
+    val colors = AppTheme.colors
+    val shape = RoundedCornerShape(percent = 50)
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+            TooltipAnchorPosition.Above,
+        ),
+        tooltip = { PlainTooltip { Text(label) } },
+        state = rememberTooltipState(),
+        modifier = modifier,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(sizes.sayButton)
+                    .shadow(
+                        elevation = sizes.sellButtonShadow,
+                        shape = shape,
+                        ambientColor = colors.brandFill.copy(alpha = SELL_SHADOW_ALPHA),
+                        spotColor = colors.brandFill.copy(alpha = SELL_SHADOW_ALPHA),
+                    ).clip(shape)
+                    .background(colors.brandFill)
+                    .clickable(role = Role.Button, onClick = onClick)
+                    .semantics { contentDescription = label },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_mic),
+                // La descripción va en el botón entero: el icono no se lee aparte.
+                contentDescription = null,
+                tint = colors.onBrandFill,
+                modifier = Modifier.size(sizes.icon),
+            )
+        }
+    }
+}
+
 @ThemePreviews
 @Composable
 private fun AppBottomBarPreview() {
     PreviewTheme {
-        AppBottomBar(
-            items =
-                listOf(
-                    BottomBarItem(
-                        stringResource(R.string.nav_home),
-                        R.drawable.ic_home,
-                        R.drawable.ic_home_filled,
+        Column(horizontalAlignment = Alignment.End) {
+            SayFloatingButton(
+                label = stringResource(R.string.phrase_action_say),
+                onClick = {},
+                modifier = Modifier.padding(AppTheme.spacing.s16),
+            )
+            AppBottomBar(
+                items =
+                    listOf(
+                        BottomBarItem(
+                            stringResource(R.string.nav_home),
+                            R.drawable.ic_home,
+                            R.drawable.ic_home_filled,
+                        ),
+                        BottomBarItem(
+                            stringResource(R.string.nav_sell),
+                            R.drawable.ic_sell,
+                            R.drawable.ic_sell,
+                        ),
+                        BottomBarItem(
+                            stringResource(R.string.nav_expenses),
+                            R.drawable.ic_payments,
+                            R.drawable.ic_payments,
+                        ),
+                        BottomBarItem(
+                            stringResource(R.string.nav_products),
+                            R.drawable.ic_inventory_2,
+                            R.drawable.ic_inventory_2_filled,
+                        ),
+                        BottomBarItem(
+                            stringResource(R.string.nav_numbers),
+                            R.drawable.ic_bar_chart,
+                            R.drawable.ic_bar_chart_filled,
+                        ),
                     ),
-                    BottomBarItem(
-                        stringResource(R.string.nav_records),
-                        R.drawable.ic_receipt_long,
-                        R.drawable.ic_receipt_long_filled,
-                    ),
-                    BottomBarItem(
-                        stringResource(R.string.nav_products),
-                        R.drawable.ic_inventory_2,
-                        R.drawable.ic_inventory_2_filled,
-                    ),
-                    BottomBarItem(
-                        stringResource(R.string.nav_numbers),
-                        R.drawable.ic_bar_chart,
-                        R.drawable.ic_bar_chart_filled,
-                    ),
-                ),
-            selected = 2,
-            onSelect = {},
-            sellLabel = stringResource(R.string.nav_sell),
-            onSell = {},
-            modifier = Modifier.padding(top = AppTheme.sizes.sellButtonOverhang),
-        )
+                selected = 2,
+                onSelect = {},
+            )
+        }
     }
 }

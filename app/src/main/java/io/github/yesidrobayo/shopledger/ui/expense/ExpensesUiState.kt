@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseCategory
 import io.github.yesidrobayo.shopledger.domain.model.expense.RecurringOccurrence
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseCategorySummary
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.ExpenseListDay
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.ExpenseListRow
 import kotlinx.datetime.DayOfWeek
@@ -19,7 +20,9 @@ import kotlinx.datetime.YearMonth
  *
  * [month] y [today] faltan hasta conocer el calendario del negocio. [categories] son todas, vigentes
  * y archivadas: un gasto viejo puede estar en una archivada, y el filtro también la ofrece.
- * [dueRecurring] es cuántos gastos recurrentes esperan confirmación.
+ * [dueRecurring] es cuántos gastos recurrentes esperan confirmación. [categorySummary] es lo
+ * gastado en el mes por categoría, sin el filtro, o `null` mientras se lee, si el mes no tiene
+ * gastos activos o si no se pudo leer: entonces no aparece.
  */
 @Immutable
 data class ExpensesUiState(
@@ -38,6 +41,7 @@ data class ExpensesUiState(
     val newCategory: NewExpenseCategory? = null,
     val accounts: List<MoneyAccount> = emptyList(),
     val dueRecurring: Int = 0,
+    val categorySummary: ExpenseCategorySummary? = null,
 ) {
     /** Las categorías que se ofrecen en un gasto nuevo: solo las vigentes. */
     val activeCategories: List<ExpenseCategory> get() = categories.filter { !it.isArchived }

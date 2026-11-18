@@ -42,12 +42,22 @@ internal class LineSplitter(
         return lines.filter { it.isNotEmpty() }
     }
 
-    /** Hasta dónde va algo que no se parte: un número, o una unidad con su fracción. */
+    /**
+     * Hasta dónde va algo que no se parte: un número, una unidad con su fracción, o una unidad
+     * con sus gramos ("kilo doscientos", "quilo e duzentos").
+     */
     private fun keptEnd(tokens: List<Token>, index: Int): Int {
-        val number = numbers.read(tokens, index)
+        // Después de "a" o "por" es un monto, con sus centavos: "a 4 e 50 o quilo".
+        val priced = index > 0 && tokens[index - 1].norm in lexicon.amountWords
+        val number = numbers.read(tokens, index, amount = priced)
         if (number != null) return number.end
-        val bare = units.fractionAt(tokens, index) ?: return index
-        return bare.end
+        val bare = units.fractionAt(tokens, index)
+        if (bare != null) return bare.end
+        // "un kilo doscientos", o "kilo doscientos" al principio de una línea.
+        val opens =
+            index == 0 || tokens[index - 1].isSeparator || numbers.startsAt(tokens, index - 1)
+        if (!opens) return index
+        return subunitAt(tokens, index, units, numbers, lexicon)?.end ?: index
     }
 
     /**

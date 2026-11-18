@@ -2,7 +2,7 @@ Instead of opening each screen, you can type or dictate what happened, such as "
 
 ## How to use it
 
-1. Tap **Say**, the button at the bottom center, the widget microphone or the shortcut of the {app} icon.
+1. Tap **Say**, the round microphone button at the bottom right, the widget microphone or the shortcut of the {app} icon.
 2. Speak: the listening screen shows the sentence as you say it. When you finish, or when you tap **Done**, the card appears with the operation, each product with its quantity and amount, the payment and the total.
 3. Check it and tap **Register**.
 
@@ -12,6 +12,7 @@ The first time, {app} explains what it uses the microphone for and Android asks 
 
 - Sales: "sold 2 kilos of rice and a dozen eggs on credit to Mary".
 - Purchases: "bought 10 kilos of flour for 500 from the distributor".
+- Something new, with its type and category: "bought 2 kilos of flour at 50, it's a supply, in the raw materials category". The card offers to create it as a supply in that category. If the category does not exist, the card shows it as **New category**, and it is created along with the product. **Choose category** changes it.
 - Expenses: "paid the electricity 80", "spent 15 on a taxi".
 - Production: "made 20 empanadas", "baked 50 bread rolls".
 - Stock: "2 bread rolls got damaged", "3 milks expired", "gave away a cake", "there are 40 bread rolls left".
@@ -26,7 +27,8 @@ You can name several products in one sentence, with numbers in digits or in word
 
 - If a product matches several, the card shows them so you can choose. If it does not exist, the card offers to create it, or **Choose another**.
 - Tap a line to open **Edit**: change the quantity or the price, **Change product** or **Remove from the card**.
-- You can also correct it with a short sentence, without repeating everything: "no, it was 3", "the flour was corn", "remove the sodas", "add 2 eggs", "cash".
+- You can also correct it with a short sentence, without repeating everything: "no, it was 3", "the flour was corn", "the flour is a supply", "remove the sodas", "add 2 eggs", "cash", "no, it was a purchase".
+- While the card is open, what you say changes only what it names, and the rest stays. A sentence with its verb, like "sold 2 bread rolls", starts another card.
 - **Start over** clears the card.
 
 Anything missing is marked in place, and **Register** saves nothing until it is complete. What you record is the same as if you had done it on its screen, and you void it as usual.

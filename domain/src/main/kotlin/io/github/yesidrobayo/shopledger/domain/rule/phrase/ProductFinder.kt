@@ -68,6 +68,11 @@ internal class ProductFinder(
         }
     }
 
+    /** Si algún producto lleva en su nombre esa medida entera: el 400 y los ml de "Soda 400 ml". */
+    fun hasMeasure(numberWord: String, unitWord: String): Boolean = entries.any { entry ->
+        numberWord in entry.name.texts && unitWord in entry.name.texts
+    }
+
     /** Si el separador entre [before] y [after] es parte del nombre de un producto. */
     fun joins(tokens: List<Token>, before: Int, after: Int): Boolean {
         if (before < 0 || after >= tokens.size) return false
@@ -83,8 +88,9 @@ internal class ProductFinder(
     fun find(span: List<Token>, rule: ProductRule): ProductResolution? {
         val spoken = shaper.shape(span).words
         if (spoken.isEmpty()) return null
-        val preferred = best(spoken, entries.filter { rule.admits(it.product) })
-        val any = preferred ?: best(spoken, entries)
+        val plurals = pluralsOf(span)
+        val preferred = best(spoken, entries.filter { rule.admits(it.product) }, plurals)
+        val any = preferred ?: best(spoken, entries, plurals)
         val issue = if (preferred == null && any != null) rule.fallbackIssue else null
         return ProductResolution(any ?: ProductMatch.Unknown(spokenName(span)), issue)
     }
@@ -92,7 +98,39 @@ internal class ProductFinder(
     /** Si [span] nombra un producto del catálogo que [admits] acepta. */
     fun names(span: List<Token>, admits: (PhraseProduct) -> Boolean): Boolean {
         val spoken = shaper.shape(span).words
-        return spoken.isNotEmpty() && best(spoken, entries.filter { admits(it.product) }) != null
+        val pool = entries.filter { admits(it.product) }
+        return spoken.isNotEmpty() && best(spoken, pool, pluralsOf(span)) != null
+    }
+
+    /**
+     * Las palabras dichas en plural, ya en singular: "oranges" da "orange". Solo las que terminan
+     * en "s": la regla de singular también cambia "berry" a "berrie" para comparar.
+     */
+    private fun pluralsOf(span: List<Token>): Set<String> = span
+        .filter { it.norm.endsWith(PLURAL_END) && lexicon.singular(it.norm) != it.norm }
+        .map { lexicon.singular(it.norm) }
+        .toSet()
+
+    /**
+     * Entre los productos [ids], el que nombra [span]: "las grandes" entre las dos gaseosas por las
+     * que se preguntó. Solo un tamaño elige por la medida del nombre; si no, se compara el nombre
+     * como siempre, solo entre esos. `null` si no elige.
+     */
+    fun among(span: List<Token>, ids: List<Long>): ProductMatch? {
+        val spoken = shaper.shape(span).words
+        val pool = entries.filter { it.product.id in ids }
+        if (spoken.all { it.soft }) {
+            val sized = bySize(pool.map { Candidate(it, complete = true, distance = 0) }, spoken)
+            return sized.singleOrNull()?.let { ProductMatch.Found(it.entry.product.id) }
+        }
+        // Entre los que se preguntó, el complemento basta: "de maíz" entre las harinas.
+        return best(spoken, pool, pluralsOf(span), complements = true)
+    }
+
+    /** Si [span] nombra un producto del catálogo con todas sus palabras dichas sin error. */
+    fun namesExactly(span: List<Token>): Boolean {
+        val spoken = shaper.shape(span).words
+        return entries.any { entry -> score(spoken, entry)?.distance == 0 }
     }
 
     /** El producto que ya se llama exactamente así, para no crear uno repetido. */
@@ -104,9 +142,16 @@ internal class ProductFinder(
         return same.singleOrNull()?.let { ProductMatch.Found(it.entry.product.id) }
     }
 
-    private fun best(spoken: List<ShapedWord>, pool: List<ProductEntry>): ProductMatch? {
-        val candidates = pool.mapNotNull { score(spoken, it) }
+    private fun best(
+        spoken: List<ShapedWord>,
+        pool: List<ProductEntry>,
+        plurals: Set<String>,
+        complements: Boolean = false,
+    ): ProductMatch? {
+        val candidates = pool.mapNotNull { score(spoken, it, complements) }
         if (candidates.isEmpty()) return null
+        // "oranges" con solo "Orange juice": un modificador no va en plural, así que es otra cosa.
+        if (candidates.all { modifierOnly(spoken, plurals, it.entry) }) return null
         val complete = candidates.filter { it.complete }.ifEmpty { candidates }
         val closest = complete.map { it.distance }.min()
         val tied = complete.filter { it.distance == closest }
@@ -118,15 +163,41 @@ internal class ProductFinder(
      * Si todo lo dicho está en el nombre, qué tan cerca. Las palabras de tamaño no excluyen
      * ("gaseosa grande" cabe en "Gaseosa 1,5 L"), salvo que sean lo único dicho.
      */
-    private fun score(spoken: List<ShapedWord>, entry: ProductEntry): Candidate? {
+    private fun score(
+        spoken: List<ShapedWord>,
+        entry: ProductEntry,
+        complements: Boolean = false,
+    ): Candidate? {
         val (soft, hard) = spoken.partition { it.soft }
         val required = hard.ifEmpty { soft }.map { it.text }
         val optional = soft.map { it.text }.filterNot { it in required }
         val first = PhraseWords.cover(required, entry.name.texts)
-        if (first.matched < required.size || saysOnlyComplement(required, entry)) return null
+        val complementOnly = !complements && saysOnlyComplement(required, entry)
+        if (first.matched < required.size || complementOnly) return null
         val second = PhraseWords.cover(optional, first.free)
         val distance = first.distance + second.distance
         return Candidate(entry, complete = second.free.isEmpty(), distance = distance)
+    }
+
+    /**
+     * En un idioma que pone lo importante al final ([PhraseLexicon.headLast]), si lo dicho en
+     * plural solo cubre un modificador del nombre: "oranges" en "Orange juice". "mozzarella" en
+     * "Mozzarella cheese" sí vale, porque un modificador dicho en singular puede ser el producto.
+     */
+    private fun modifierOnly(
+        spoken: List<ShapedWord>,
+        plurals: Set<String>,
+        entry: ProductEntry,
+    ): Boolean {
+        if (!lexicon.headLast) return false
+        val head = entry.name.texts.lastOrNull {
+            it[0] != PhraseWords.CANONICAL_PREFIX && it.length > 1
+        } ?: return false
+        val said = spoken.map { it.text }
+        val coversHead = PhraseWords.cover(said, listOf(head)).matched > 0
+        // Lo dicho ya está en el nombre: si no es su cabeza, es un modificador.
+        val pluralModifier = said.any { word -> word in plurals && word != head }
+        return !coversHead && pluralModifier
     }
 
     /**
@@ -167,4 +238,9 @@ internal class ProductFinder(
     )
 
     private data class Candidate(val entry: ProductEntry, val complete: Boolean, val distance: Int)
+
+    private companion object {
+        /** Cómo termina un plural en los idiomas de la app. */
+        const val PLURAL_END = 's'
+    }
 }

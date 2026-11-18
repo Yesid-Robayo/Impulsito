@@ -25,4 +25,11 @@
     <string name="dialog_correct_expense_body">Esta despesa é anulada e uma nova é aberta com os mesmos dados. Se a nova não for salva, esta continua anulada.</string>
     <string name="notice_fix_archived_category">A categoria original está arquivada. É preciso escolher outra.</string>
     <string name="expense_zone_unknown_title">Este telefone não conhece o fuso horário do negócio. Ao escolhê-lo, as despesas aparecem.</string>
+    <string name="expense_by_category">Por categoria</string>
+    <string name="a11y_expense_share">%1$s, %2$s, %3$s do mês</string>
+    <plurals name="expense_share_others">
+        <item quantity="one">%1$d categoria a mais</item>
+        <item quantity="many">%1$d de categorias a mais</item>
+        <item quantity="other">%1$d categorias a mais</item>
+    </plurals>
 </resources>

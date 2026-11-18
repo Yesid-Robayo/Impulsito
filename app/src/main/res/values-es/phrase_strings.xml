@@ -44,6 +44,8 @@
     <string name="phrase_issue_no_recipe">Ese producto no tiene receta. Definirla antes de producir</string>
     <string name="phrase_issue_no_stock">Ese producto no lleva stock propio: su costo sale de sus componentes</string>
     <string name="phrase_issue_already_exists">Ya existe un producto con ese nombre</string>
+    <string name="phrase_issue_cost_left_out">Un ajuste no guarda el costo dicho. Si cambió, corregirlo en el producto</string>
+    <string name="phrase_issue_unused_words">Una parte de la frase no se entendió y quedó fuera. Revisar la tarjeta</string>
     <string name="phrase_nothing">Así no hay nada que registrar. Decirlo de otra forma</string>
     <!-- La tarjeta: las líneas. -->
     <string name="phrase_line_no_product">Falta elegir el producto</string>
@@ -55,6 +57,9 @@
     <string name="phrase_use_last_cost">Último costo: %1$s</string>
     <string name="phrase_use_last_cost_hidden">Usar el último costo</string>
     <string name="phrase_new_tag">Nuevo</string>
+    <string name="phrase_new_category">Categoría: %1$s</string>
+    <string name="phrase_category_to_create">Categoría nueva: %1$s</string>
+    <string name="phrase_pick_category">Elegir categoría</string>
     <string name="phrase_heard">Se entendió «%1$s»</string>
     <string name="phrase_choose_other">Elegir otro</string>
     <string name="phrase_pick_product">Elegir producto</string>
@@ -125,6 +130,7 @@
     <string name="phrase_mic_denied">Sin permiso del micrófono. Escribir la frase o dictarla con el micrófono del teclado</string>
     <string name="phrase_mic_blocked">El micrófono está sin permiso. Activarlo en los ajustes del teléfono, o dictar con el micrófono del teclado</string>
     <string name="phrase_mic_open_settings">Abrir ajustes del teléfono</string>
+    <string name="phrase_voice_service_no_mic">El servicio de voz del teléfono no tiene permiso del micrófono. Escribir la frase o dictarla con el micrófono del teclado</string>
     <string name="listening_title">Escuchando</string>
     <string name="listening_hint">Decir lo que pasó, como %1$s</string>
     <string name="listening_silent_title">No se oyó ninguna frase</string>

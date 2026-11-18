@@ -60,8 +60,20 @@ enum class PhraseIssue {
     /** Se pidió crear un producto que ya existe. */
     ALREADY_EXISTS,
 
+    /**
+     * Un trozo de la frase no se entendió como un producto y se dejó fuera de la tarjeta, en vez
+     * de proponerlo como uno nuevo: "esto es algo especial".
+     */
+    UNUSED_WORDS,
+
     /** La frase no dice nada que se pueda registrar. */
     NOTHING_UNDERSTOOD,
+
+    /**
+     * Se dijo lo que costó algo en un ajuste, como "tengo 20 kilos de harina que me costaron 4
+     * mil el kilo": el ajuste no guarda costos, así que el costo quedó fuera y se corrige aparte.
+     */
+    COST_LEFT_OUT,
 }
 
 /** Un nombre de la frase: un método de pago, una persona o una categoría. */
@@ -85,9 +97,13 @@ sealed interface ProductMatch {
     data class Choose(val ids: List<Long>) : ProductMatch
 
     /**
-     * No se parece a ninguno: el nombre dicho, en singular y con mayúscula inicial, para crearlo.
+     * No se parece a ninguno: el nombre dicho, en singular y con mayúscula inicial, para crearlo,
+     * y lo que la frase dijo de él, como su uso o su categoría.
      */
-    data class Unknown(val spokenName: String) : ProductMatch
+    data class Unknown(
+        val spokenName: String,
+        val traits: NewProductTraits = NewProductTraits.NONE,
+    ) : ProductMatch
 }
 
 /**

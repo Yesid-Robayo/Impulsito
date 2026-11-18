@@ -47,11 +47,15 @@ internal object PhraseWords {
     /** Lo que debe sobrar del nombre para que una palabra dicha sea su abreviatura. */
     private const val ABBREVIATED = 3
 
-    /** La distancia entre las dos palabras si están lo bastante cerca, o `null`. */
-    fun closeness(a: String, b: String): Int? {
-        if (abbreviates(a, b)) return 1
+    /**
+     * La distancia entre las dos palabras si están lo bastante cerca, o `null`. Con [abbreviated],
+     * el comienzo de una palabra larga también vale: sirve para productos, no para nombres de
+     * categorías o personas, donde "esta" no es "estacionamento".
+     */
+    fun closeness(a: String, b: String, abbreviated: Boolean = true, tolerance: Int = 2): Int? {
+        if (abbreviated && abbreviates(a, b)) return 1
         val distance = distance(a, b)
-        return if (distance <= allowance(a, b)) distance else null
+        return if (distance <= minOf(allowance(a, b), tolerance)) distance else null
     }
 
     /** Si [a] es el comienzo de [b] y a [b] le sobra bastante: "refri" de "refrigerante". */
@@ -97,12 +101,17 @@ internal object PhraseWords {
      * Empareja cada palabra dicha con la palabra libre del nombre que tenga más cerca. Cada palabra
      * del nombre se usa una sola vez, así que "pan pan" no cubre dos veces el mismo "pan".
      */
-    fun cover(spoken: List<String>, name: List<String>): Cover {
+    fun cover(
+        spoken: List<String>,
+        name: List<String>,
+        abbreviated: Boolean = true,
+        tolerance: Int = 2,
+    ): Cover {
         val free = name.toMutableList()
         var matched = 0
         var distance = 0
         for (word in spoken) {
-            val partner = closestPartner(word, free) ?: continue
+            val partner = closestPartner(word, free, abbreviated, tolerance) ?: continue
             free.removeAt(partner.first)
             matched++
             distance += partner.second
@@ -110,7 +119,14 @@ internal object PhraseWords {
         return Cover(matched, distance, free)
     }
 
-    private fun closestPartner(word: String, free: List<String>): Pair<Int, Int>? = free.indices
-        .mapNotNull { index -> closeness(word, free[index])?.let { index to it } }
+    private fun closestPartner(
+        word: String,
+        free: List<String>,
+        abbreviated: Boolean,
+        tolerance: Int,
+    ): Pair<Int, Int>? = free.indices
+        .mapNotNull { index ->
+            closeness(word, free[index], abbreviated, tolerance)?.let { index to it }
+        }
         .minByOrNull { it.second }
 }

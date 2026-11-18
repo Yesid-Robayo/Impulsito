@@ -10,6 +10,10 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
  * Es una foto en memoria: el intérprete no lee la base ni guarda nada. Quien lo llama arma el
  * catálogo con lo que ya tiene a mano, y una frase leída con un catálogo viejo solo propone algo
  * que la persona confirma después.
+ *
+ * [productCategories] son las categorías de producto, para reconocer la que se dice de un producto
+ * nuevo ("en la categoría bebidas"). Vacía, ninguna se reconoce y el producto nuevo se crea sin
+ * categoría.
  */
 data class PhraseCatalog(
     val products: List<PhraseProduct>,
@@ -18,6 +22,7 @@ data class PhraseCatalog(
     val suppliers: List<PhraseName>,
     val customers: List<PhraseName>,
     val expenseCategories: List<PhraseName>,
+    val productCategories: List<PhraseName> = emptyList(),
 )
 
 /**
@@ -61,8 +66,9 @@ data class PhraseUnit(
 )
 
 /**
- * Un nombre que se reconoce en la frase: un método de pago, un proveedor, un cliente o una
- * categoría de gasto. [systemKey] es la clave de los que trae la app, con la que se reconocen sus
- * sinónimos; los que creó la persona no la tienen y se reconocen solo por su nombre.
+ * Un nombre que se reconoce en la frase: un método de pago, un proveedor, un cliente, una
+ * categoría de gasto o una de producto. [systemKey] es la clave de los que trae la app, con la que
+ * se reconocen sus sinónimos; los que creó la persona no la tienen y se reconocen solo por su
+ * nombre.
  */
 data class PhraseName(val id: Long, val systemKey: String?, val name: String)

@@ -2,7 +2,7 @@ En vez de abrir cada pantalla, se puede escribir o dictar lo que pasó, como «v
 
 ## Cómo se usa
 
-1. Tocar **Decir**, el botón de abajo al centro, el micrófono del widget o el atajo del ícono de {app}.
+1. Tocar **Decir**, el botón redondo del micrófono, abajo a la derecha, el micrófono del widget o el atajo del ícono de {app}.
 2. Hablar: la pantalla de escuchar muestra la frase mientras se dice. Al terminar, o al tocar **Listo**, aparece la tarjeta con la operación, cada producto con su cantidad y su monto, el pago y el total.
 3. Revisar y tocar **Registrar**.
 
@@ -12,6 +12,7 @@ La primera vez, {app} explica para qué usa el micrófono y Android pide el perm
 
 - Ventas: «vendí 2 kilos de arroz y una docena de huevos a crédito a María».
 - Compras: «compré 10 kilos de harina por 500 a la distribuidora».
+- Algo nuevo, con su tipo y su categoría: «compré 2 kilos de harina a 50, es un insumo, en la categoría materias primas». La tarjeta ofrece crearlo ya como insumo y en esa categoría. Si la categoría no existe, la tarjeta la muestra como **Categoría nueva**, y se crea junto con el producto. **Elegir categoría** la cambia.
 - Gastos: «pagué la luz 80», «gasté 15 en taxi».
 - Producción: «hice 20 empanadas», «horneé 50 panes».
 - Stock: «se dañaron 2 panes», «se vencieron 3 leches», «regalé una torta», «quedan 40 panes».
@@ -26,7 +27,8 @@ Se pueden nombrar varios productos en una frase, con números en cifras o en pal
 
 - Si un producto se parece a varios, la tarjeta los muestra para elegir. Si no existe, ofrece crearlo, o **Elegir otro**.
 - Tocar una línea abre **Corregir**: se cambia la cantidad o el precio, **Cambiar producto** o **Quitar de la tarjeta**.
-- También se corrige con una frase corta, sin repetir todo: «no, eran 3», «la harina era de maíz», «quita las gaseosas», «agrega 2 huevos», «en efectivo».
+- También se corrige con una frase corta, sin repetir todo: «no, eran 3», «la harina era de maíz», «la harina es insumo», «quita las gaseosas», «agrega 2 huevos», «en efectivo», «no, fue una compra».
+- Con la tarjeta a la vista, lo dicho cambia solo lo que nombra, y lo demás queda. Una frase con su verbo, como «vendí 2 panes», arma otra tarjeta.
 - **Empezar de nuevo** borra la tarjeta.
 
 Lo que falta se marca en su lugar, y **Registrar** no guarda hasta completarlo. Lo registrado queda igual que si se hubiera hecho en su pantalla, y se anula como siempre.

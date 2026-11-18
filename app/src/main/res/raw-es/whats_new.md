@@ -1,5 +1,13 @@
 Lo que trajo cada versión de {app}, de la más nueva a la más antigua.
 
+## 1.0.6
+
+- **Decir escucha:** en los teléfonos donde **Decir** se cerraba de una vez, ahora escucha. {app} le pide al servicio de voz del teléfono el idioma que tiene descargado y prueba cada servicio de voz del teléfono hasta que uno funcione.
+- **Gastos en la barra:** la barra de abajo muestra **Inicio**, **Vender**, **Gastos**, **Productos** y **Números**. **Gastos** abre los gastos del mes, con **Por categoría** arriba de la lista.
+- **Decir, abajo a la derecha:** **Decir** es ahora el botón redondo del micrófono, abajo a la derecha, en **Inicio**, **Gastos**, **Productos** y **Números**. Hace lo mismo que antes.
+- **Entiende más:** muchas más formas de decir cada operación, números como «2 mil 500» o «50 000», el tipo y la categoría de un producto nuevo («es un insumo, en la categoría materias primas»), y una categoría nueva se crea con el producto. Las preguntas, los planes como «mañana compro» y las negaciones no registran nada.
+- **Corregir conserva lo demás:** con la tarjeta abierta, una frase como «no, la harina de trigo» o «quita el pan» cambia solo lo que nombra.
+
 ## 1.0.5
 
 - **Decir, al centro:** el botón de abajo al centro es **Decir**. Se toca y se habla: {app} escucha con su propia pantalla, muestra la frase mientras se dice y después la tarjeta. La primera vez pide el micrófono. La barra muestra **Inicio**, **Vender**, **Decir**, **Productos** y **Números**; **Registros** se abre desde **Inicio**.

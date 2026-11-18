@@ -2,13 +2,15 @@ Uma despesa é o que custa manter o negócio sem ser mercadoria para vender: alu
 
 ## Registrar uma despesa
 
-1. Em **Início**, tocar em **Despesa**, ou em **Registros**, **Despesas**, tocar em **Nova despesa**.
+1. Em **Início**, tocar em **Despesa**, ou em **Despesas**, na barra de baixo, tocar em **Nova despesa**. As mesmas despesas também estão em **Registros**, **Despesas**.
 2. Escrever o **Valor** e escolher a **Categoria**. Se nenhuma outra for escolhida, fica **Outros**, e **Nova categoria** cria uma sem sair.
 3. **Descrição** é opcional. **Data**: hoje ou uma anterior, nunca futura.
 4. Se as contas de dinheiro são usadas, escolher a **Conta de dinheiro** de onde sai. Sem conta, a despesa é registrada igual e não move nenhuma conta.
 5. Tocar em **Salvar despesa**.
 
 **Despesas** mostra um mês por vez, com o **Total do mês**, e pode ser filtrada por **Categoria**.
+
+No começo da lista, **Por categoria** mostra quanto se gastou em cada categoria e que parte do mês representa, da maior para a menor. Ao tocar em uma, a lista mostra só essa, e ao tocar de novo voltam todas. Com **Ocultar valores**, os valores ficam ocultos e as barras continuam.
 
 ## Anular ou corrigir
 

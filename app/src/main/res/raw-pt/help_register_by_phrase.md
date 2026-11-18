@@ -2,7 +2,7 @@ Em vez de abrir cada tela, é possível escrever ou ditar o que aconteceu, como 
 
 ## Como usar
 
-1. Tocar em **Dizer**, o botão embaixo, no centro, no microfone do widget ou no atalho do ícone do {app}.
+1. Tocar em **Dizer**, o botão redondo do microfone, embaixo à direita, no microfone do widget ou no atalho do ícone do {app}.
 2. Falar: a tela de escuta mostra a frase enquanto ela é dita. Ao terminar, ou ao tocar em **Pronto**, aparece o cartão com a operação, cada produto com sua quantidade e seu valor, o pagamento e o total.
 3. Conferir e tocar em **Registrar**.
 
@@ -12,6 +12,7 @@ Na primeira vez, o {app} explica para que usa o microfone e o Android pede a per
 
 - Vendas: «vendi 2 quilos de arroz e uma dúzia de ovos a prazo para a Maria».
 - Compras: «comprei 10 quilos de farinha por 500 na distribuidora».
+- Algo novo, com o tipo e a categoria: «comprei 2 quilos de farinha a 50, é um insumo, na categoria matérias primas». O cartão oferece criá-lo já como insumo e nessa categoria. Se a categoria não existe, o cartão a mostra como **Categoria nova**, e ela é criada junto com o produto. **Escolher categoria** a troca.
 - Despesas: «paguei a luz 80», «gastei 15 de táxi».
 - Produção: «fiz 20 pastéis», «assei 50 pães».
 - Estoque: «estragaram 2 pães», «venceram 3 leites», «dei um bolo de brinde», «sobraram 40 pães».
@@ -26,7 +27,8 @@ Na primeira vez, o {app} explica para que usa o microfone e o Android pede a per
 
 - Se um produto parece com vários, o cartão mostra as opções para escolher. Se não existe, oferece criá-lo, ou **Escolher outro**.
 - Tocar em uma linha abre **Corrigir**: muda a quantidade ou o preço, **Trocar produto** ou **Remover do cartão**.
-- Também se corrige com uma frase curta, sem repetir tudo: «não, eram 3», «a farinha era de milho», «tira os refrigerantes», «mais 2 ovos», «em dinheiro».
+- Também se corrige com uma frase curta, sem repetir tudo: «não, eram 3», «a farinha era de milho», «a farinha é insumo», «tira os refrigerantes», «mais 2 ovos», «em dinheiro», «não, foi uma compra».
+- Com o cartão aberto, o que se diz muda só o que nomeia, e o resto fica. Uma frase com o verbo, como «vendi 2 pães», monta outro cartão.
 - **Começar de novo** apaga o cartão.
 
 O que falta fica marcado no lugar, e **Registrar** não salva até completar. O que se registra fica igual a se tivesse sido feito na sua tela, e se anula como sempre.

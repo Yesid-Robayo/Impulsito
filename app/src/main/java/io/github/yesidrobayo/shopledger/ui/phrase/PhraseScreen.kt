@@ -80,6 +80,7 @@ import io.github.yesidrobayo.shopledger.ui.format.LocalAppFormats
 import io.github.yesidrobayo.shopledger.ui.format.LocalDiscreetMode
 import io.github.yesidrobayo.shopledger.ui.help.HelpTopic
 import io.github.yesidrobayo.shopledger.ui.help.ScreenHelpLink
+import io.github.yesidrobayo.shopledger.ui.product.usageLabel
 import io.github.yesidrobayo.shopledger.ui.stock.reasonLabel
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
@@ -263,6 +264,12 @@ private fun VoiceNoticeCard(notice: VoiceNotice, onAction: (PhraseAction) -> Uni
         VoiceNotice.FAILED ->
             NoticeCard(
                 text = stringResource(R.string.phrase_voice_failed),
+                variant = NoticeVariant.WARNING,
+            )
+
+        VoiceNotice.SERVICE_NO_MIC ->
+            NoticeCard(
+                text = stringResource(R.string.phrase_voice_service_no_mic),
                 variant = NoticeVariant.WARNING,
             )
 
@@ -563,12 +570,14 @@ private fun LineNotes(
     when (val product = line.product) {
         is CardProduct.Missing -> GapTag(R.string.phrase_line_no_product)
 
-        is CardProduct.New ->
+        is CardProduct.New -> {
             if (product.needsCreating) {
                 GapTag(R.string.phrase_line_create_first)
             } else {
                 StatusTag(text = stringResource(R.string.phrase_new_tag), tone = StatusTone.INFO)
             }
+            NewProductTraits(product) { onAction(PhraseAction.PickNewCategory(line.index)) }
+        }
 
         is CardProduct.Chosen -> Unit
     }
@@ -671,8 +680,9 @@ private fun LineAmount(card: PhraseCard, line: CardLine, pricedOnly: Boolean) {
     }
 }
 
+/** El nombre del producto de la tarjeta; uno nuevo deja elegir su categoría, [onPickCategory]. */
 @Composable
-private fun ProductName(product: CardProduct) {
+private fun ProductName(product: CardProduct, onPickCategory: () -> Unit = {}) {
     when (product) {
         is CardProduct.Chosen ->
             Text(text = product.name, style = MaterialTheme.typography.titleMedium)
@@ -684,6 +694,7 @@ private fun ProductName(product: CardProduct) {
             } else {
                 StatusTag(text = stringResource(R.string.phrase_new_tag), tone = StatusTone.INFO)
             }
+            NewProductTraits(product, onPickCategory)
         }
 
         is CardProduct.Missing -> {
@@ -696,6 +707,31 @@ private fun ProductName(product: CardProduct) {
             }
             GapTag(R.string.phrase_line_no_product)
         }
+    }
+}
+
+/**
+ * Lo que la frase dijo del producto nuevo, con lo que se va a crear: su uso, si es un servicio y su
+ * categoría, una del catálogo o una nueva que se crea con él. `Elegir categoría` la cambia a mano.
+ */
+@Composable
+private fun NewProductTraits(product: CardProduct.New, onPickCategory: () -> Unit) {
+    val tags =
+        listOfNotNull(
+            product.usage?.let { stringResource(usageLabel(it)) },
+            if (product.service) stringResource(R.string.term_service) else null,
+            product.category?.let { stringResource(R.string.phrase_new_category, it) },
+            product.newCategory?.let { stringResource(R.string.phrase_category_to_create, it) },
+        )
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
+        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4),
+    ) {
+        tags.forEach { StatusTag(text = it, tone = StatusTone.INFO) }
+        InlineTextButton(
+            text = stringResource(R.string.phrase_pick_category),
+            onClick = onPickCategory,
+        )
     }
 }
 
@@ -759,14 +795,17 @@ private fun TargetSection(
 
             is CardProduct.New ->
                 if (target.needsCreating) {
-                    ProductName(target)
+                    ProductName(target) { onAction(PhraseAction.PickNewCategory(null)) }
                     CreateOrPick(
                         name = target.name,
                         onCreate = { onAction(PhraseAction.CreateTarget(it)) },
                         onPick = { onAction(PhraseAction.PickTarget) },
                     )
                 } else {
-                    ChosenTarget(target) { onAction(PhraseAction.PickTarget) }
+                    ChosenTarget(
+                        target,
+                        onPickCategory = { onAction(PhraseAction.PickNewCategory(null)) },
+                    ) { onAction(PhraseAction.PickTarget) }
                 }
 
             is CardProduct.Chosen -> ChosenTarget(target) { onAction(PhraseAction.PickTarget) }
@@ -788,13 +827,17 @@ private fun TargetSection(
 
 /** El producto de la receta o el producto nuevo ya resuelto, con `Cambiar`. */
 @Composable
-private fun ChosenTarget(target: CardProduct, onChange: () -> Unit) {
+private fun ChosenTarget(
+    target: CardProduct,
+    onPickCategory: () -> Unit = {},
+    onChange: () -> Unit,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(
             Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4),
         ) {
-            ProductName(target)
+            ProductName(target, onPickCategory)
         }
         InlineTextButton(text = stringResource(R.string.phrase_change), onClick = onChange)
     }
@@ -1159,6 +1202,8 @@ private fun PickSheet(
         when (sheet.purpose) {
             is PickPurpose.LineProduct, PickPurpose.Target -> R.string.phrase_pick_product
 
+            is PickPurpose.NewCategory -> R.string.phrase_pick_category
+
             PickPurpose.Party ->
                 if (supplier) R.string.phrase_pick_supplier else R.string.phrase_pick_customer
         }
@@ -1186,6 +1231,9 @@ private fun PickSheet(
 
                                     PickPurpose.Target -> PhraseAction.ChooseTarget(option.id)
 
+                                    is PickPurpose.NewCategory ->
+                                        PhraseAction.ChooseNewCategory(purpose.index, option.id)
+
                                     PickPurpose.Party -> PhraseAction.ChooseParty(option.id)
                                 },
                             )
@@ -1199,6 +1247,9 @@ private fun PickSheet(
                         when (val purpose = sheet.purpose) {
                             is PickPurpose.LineProduct ->
                                 PhraseAction.CreateProduct(purpose.index, name)
+
+                            is PickPurpose.NewCategory ->
+                                PhraseAction.NameNewCategory(purpose.index, name)
 
                             // A una persona no se la crea desde aquí: la hoja no lo ofrece.
                             PickPurpose.Target, PickPurpose.Party -> PhraseAction.CreateTarget(name)
@@ -1276,6 +1327,10 @@ private fun noticeText(issue: PhraseIssue): Int = when (issue) {
     PhraseIssue.NO_STOCK -> R.string.phrase_issue_no_stock
 
     PhraseIssue.ALREADY_EXISTS -> R.string.phrase_issue_already_exists
+
+    PhraseIssue.UNUSED_WORDS -> R.string.phrase_issue_unused_words
+
+    PhraseIssue.COST_LEFT_OUT -> R.string.phrase_issue_cost_left_out
 
     // No llegan a la tarjeta: tienen su propio estado.
     PhraseIssue.MIXED_OPERATIONS -> R.string.phrase_mixed

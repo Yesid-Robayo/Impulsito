@@ -8,6 +8,32 @@ and versions follow [Semantic Versioning](https://semver.org/). Published versio
 
 When a new version is published, it's added at the top with the same content as its release notes.
 
+## [1.0.6] - 2026-11-18
+
+### Added
+
+- **Expenses in the bar:** the bottom bar is **Home**, **Sell**, **Expenses**, **Products** and **Numbers**. **Expenses** opens the month's
+  expenses with **By category** on top: each category with its amount and its share of the month, and tapping it filters the list.
+- **New product by sentence:** the type ("it is an ingredient", "it is for sale", "it is a service") and the category ("in the raw
+  materials category") reach the card. If the category does not exist, it is created together with the product.
+
+### Changed
+
+- **Say, bottom right:** the microphone leaves the bar and becomes a round button on the main tabs. On tablets it stays at the top of
+  the rail.
+- **Understands more:** many more ways of saying each operation, verbs, amounts ("2 thousand 500", "that's 6", "50 000"), measures,
+  payments ("all in cash", "she'll pay me later") and two sentences in one. Questions, plans, denials, returns and cash withdrawals
+  record nothing.
+- **Correcting keeps the rest:** with the card open, what is said changes only what it names: the product, the quantity, the price, the
+  payment, the reason for an adjustment or the operation between sale and purchase. A sentence that corrects nothing no longer clears the
+  card.
+
+### Fixed
+
+- **Say did not listen on some phones:** the voice service got the language without a country and closed at once. Now it is asked with
+  a country, the language the phone has downloaded is used, and each installed voice service is tried.
+- **A describing sentence no longer invents a product:** "this is an ingredient" does not become another line.
+
 ## [1.0.5] - 2026-11-17
 
 ### Changed

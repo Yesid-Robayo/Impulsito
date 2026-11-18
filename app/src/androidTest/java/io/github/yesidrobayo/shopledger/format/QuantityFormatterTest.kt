@@ -24,11 +24,11 @@ class QuantityFormatterTest(device: ForeignDevice) {
     }
 
     @Test
-    fun aUnitWithFractionsAlwaysShowsThreeDecimals() {
+    fun aFractionShowsThreeDecimalsAndAWholeQuantityNone() {
         assertEquals("0,250", quantity("es-AR").format(QuantityMilli(250), allowsFraction = true))
         assertEquals("0.250", quantity("en-US").format(QuantityMilli(250), allowsFraction = true))
         assertEquals("1,500", quantity("pt-BR").format(QuantityMilli(1_500), allowsFraction = true))
-        assertEquals("2.000", quantity("en-US").format(QuantityMilli(2_000), allowsFraction = true))
+        assertEquals("2", quantity("en-US").format(QuantityMilli(2_000), allowsFraction = true))
     }
 
     @Test
@@ -50,10 +50,10 @@ class QuantityFormatterTest(device: ForeignDevice) {
     @Test
     fun largeQuantitiesAreGroupedLikeTheRegionDoes() {
         val onHand = QuantityMilli(Limit.ON_HAND_MILLI.max)
-        assertEquals("8.000.000,000", quantity("es-AR").format(onHand, allowsFraction = true))
+        assertEquals("8.000.000", quantity("es-AR").format(onHand, allowsFraction = true))
         assertEquals("8,000,000", quantity("en-US").format(onHand, allowsFraction = false))
         assertEquals("80,00,000", quantity("en-IN").format(QuantityMilli(8_000_000_000), false))
-        assertEquals("1\u00A0500,000", quantity("fr-FR").format(QuantityMilli(1_500_000), true))
+        assertEquals("1\u00A0500", quantity("fr-FR").format(QuantityMilli(1_500_000), true))
     }
 
     @Test
@@ -82,7 +82,7 @@ class QuantityFormatterTest(device: ForeignDevice) {
     @Test
     fun zeroIsShownInBothKindsOfUnit() {
         assertEquals("0", quantity("es-AR").format(QuantityMilli.ZERO, allowsFraction = false))
-        assertEquals("0,000", quantity("es-AR").format(QuantityMilli.ZERO, allowsFraction = true))
+        assertEquals("0", quantity("es-AR").format(QuantityMilli.ZERO, allowsFraction = true))
     }
 
     @Test

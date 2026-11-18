@@ -1,0 +1,3057 @@
+[
+ {
+  "id": "es-c5000",
+  "initial": "compré 2 kilos de harina",
+  "initial_expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "choose": [
+       "wheat_flour",
+       "corn_flour"
+      ]
+     },
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, la harina de trigo",
+  "tags": [
+   "correction",
+   "product"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5001",
+  "initial": "compré 2 kilos de harina",
+  "initial_expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "choose": [
+       "wheat_flour",
+       "corn_flour"
+      ]
+     },
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, de maíz",
+  "tags": [
+   "correction",
+   "product",
+   "hard"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "corn_flour",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5002",
+  "initial": "vendí 2 panes",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, eran 3",
+  "tags": [
+   "correction",
+   "qty"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5003",
+  "initial": "vendí 2 panes",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, 4",
+  "tags": [
+   "correction",
+   "qty"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "4",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5004",
+  "initial": "vendí 2 panes",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "el pago fue por transferencia",
+  "tags": [
+   "correction",
+   "payment"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "transfer",
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5005",
+  "initial": "vendí 2 panes",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "y también 2 panes integrales",
+  "tags": [
+   "correction",
+   "add"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "whole_bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5006",
+  "initial": "vendí 2 panes",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "agrega 2 huevos",
+  "tags": [
+   "correction",
+   "add"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "egg",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5007",
+  "initial": "vendí 2 panes",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "a 600 cada uno",
+  "tags": [
+   "correction",
+   "price"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": "600",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5008",
+  "initial": "vendí 2 panes",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "fiado a Carlos",
+  "tags": [
+   "correction",
+   "credit",
+   "party"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "on_account",
+   "party": "carlos",
+   "category": null,
+   "total": null,
+   "credit": true,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5009",
+  "initial": "vendí 2 panes",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "a Juan",
+  "tags": [
+   "correction",
+   "party",
+   "unknown",
+   "hard"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": {
+    "new": "Juan"
+   },
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5010",
+  "initial": "vendí 2 panes",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "mitad en efectivo y mitad con tarjeta",
+  "tags": [
+   "correction",
+   "split",
+   "hard"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": {
+    "choose": [
+     "cash",
+     "card"
+    ]
+   },
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5011",
+  "initial": "vendí 2 panes",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "vendí 3 empanadas",
+  "tags": [
+   "correction",
+   "new_phrase"
+  ],
+  "applies": false,
+  "expect": null
+ },
+ {
+  "id": "es-c5012",
+  "initial": "vendí 2 panes",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "hola",
+  "tags": [
+   "correction",
+   "new_phrase"
+  ],
+  "applies": false,
+  "expect": null
+ },
+ {
+  "id": "es-c5013",
+  "initial": "vendí 2 panes",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "quita la gaseosa",
+  "tags": [
+   "correction",
+   "remove",
+   "new_phrase"
+  ],
+  "applies": false,
+  "expect": null
+ },
+ {
+  "id": "es-c5014",
+  "initial": "vendí 2 tortas de chocolate",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "choco_cake",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "a 45 mil",
+  "tags": [
+   "correction",
+   "price"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "choco_cake",
+     "qty": "2",
+     "unit": null,
+     "unit_price": "45000",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5015",
+  "initial": "vendí 2 tortas de chocolate",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "choco_cake",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, eran 3 por 120 mil",
+  "tags": [
+   "correction",
+   "qty",
+   "price",
+   "hard"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "choco_cake",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": "120000"
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5016",
+  "initial": "vendí 3 panes y 2 empanadas",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "empanada",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "quita el pan",
+  "tags": [
+   "correction",
+   "remove"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5017",
+  "initial": "vendí 3 panes y 2 empanadas",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "empanada",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "las empanadas eran 4",
+  "tags": [
+   "correction",
+   "qty"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "empanada",
+     "qty": "4",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5018",
+  "initial": "vendí 3 panes y 2 empanadas",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "empanada",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "todo por 7 mil",
+  "tags": [
+   "correction",
+   "total"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "empanada",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": "7000",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5019",
+  "initial": "vendí 2 bultos de harina de trigo",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "2",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, fue una compra",
+  "tags": [
+   "correction",
+   "intent",
+   "hard"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "2",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5020",
+  "initial": "compré 1 bulto de azúcar",
+  "initial_expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "1",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, fue una venta",
+  "tags": [
+   "correction",
+   "intent",
+   "hard"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "1",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5021",
+  "initial": "compré 1 bulto de azúcar",
+  "initial_expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "1",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "era de Don Ramiro",
+  "tags": [
+   "correction",
+   "party"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "1",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": "ramiro",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5022",
+  "initial": "compré 1 bulto de azúcar",
+  "initial_expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "1",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "lo quedé debiendo",
+  "tags": [
+   "correction",
+   "credit"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "1",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "on_account",
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": true,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5023",
+  "initial": "compré 1 bulto de azúcar donde Don Ramiro",
+  "initial_expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "1",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": "ramiro",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, de la distribuidora",
+  "tags": [
+   "correction",
+   "party"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "1",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": "central",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5024",
+  "initial": "compré 5 kilos de harina de arroz",
+  "initial_expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Harina de arroz"
+     },
+     "qty": "5",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "la harina es insumo",
+  "tags": [
+   "correction",
+   "usage_input",
+   "hard"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Harina de arroz"
+     },
+     "qty": "5",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "extra": {
+   "usage": "INPUT"
+  }
+ },
+ {
+  "id": "es-c5025",
+  "initial": "compré 2 kilos de harina de trigo",
+  "initial_expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "la harina es insumo",
+  "tags": [
+   "correction",
+   "usage_input",
+   "new_phrase"
+  ],
+  "applies": false,
+  "expect": null
+ },
+ {
+  "id": "es-c5026",
+  "initial": "vendí 2 kilos de papa",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "potato",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "eran 3 kilos y medio",
+  "tags": [
+   "correction",
+   "qty",
+   "unit",
+   "words"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "potato",
+     "qty": "3.5",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5027",
+  "initial": "vendí 2 kilos de papa",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "potato",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, eran libras",
+  "tags": [
+   "correction",
+   "unit",
+   "hard"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "potato",
+     "qty": "2",
+     "unit": "pound",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5028",
+  "initial": "vendí 2 kilos de papa",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "potato",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, era tomate",
+  "tags": [
+   "correction",
+   "product"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "tomato",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5029",
+  "initial": "vendí 3 panes a María",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": {
+    "choose": [
+     "maria",
+     "maria_t"
+    ]
+   },
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "a María Torres",
+  "tags": [
+   "correction",
+   "party"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": "maria_t",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5030",
+  "initial": "vendí 3 panes fiado a Carlos",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "on_account",
+   "party": "carlos",
+   "category": null,
+   "total": null,
+   "credit": true,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, en efectivo",
+  "tags": [
+   "correction",
+   "payment",
+   "credit"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "cash",
+   "party": "carlos",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5031",
+  "initial": "compré 2 cajas de gaseosas",
+  "initial_expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "choose": [
+       "soda_small",
+       "soda_big"
+      ]
+     },
+     "qty": "2",
+     "unit": "box",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "eran gaseosas grandes",
+  "tags": [
+   "correction",
+   "product"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "soda_big",
+     "qty": "2",
+     "unit": "box",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5032",
+  "initial": "compré 2 cajas de gaseosas",
+  "initial_expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "choose": [
+       "soda_small",
+       "soda_big"
+      ]
+     },
+     "qty": "2",
+     "unit": "box",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "las grandes",
+  "tags": [
+   "correction",
+   "product",
+   "hard"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "soda_big",
+     "qty": "2",
+     "unit": "box",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5033",
+  "initial": "vendí 2 gaseosas grandes",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "soda_big",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, eran pequeñas",
+  "tags": [
+   "correction",
+   "product",
+   "hard"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "soda_small",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5034",
+  "initial": "vendí 2 panes y un café en taza",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "coffee_cup",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "sin el café",
+  "tags": [
+   "correction",
+   "remove"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5035",
+  "initial": "vendí 3 panes y 2 panes integrales",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "whole_bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "quita los panes",
+  "tags": [
+   "correction",
+   "remove",
+   "ambiguous"
+  ],
+  "applies": false,
+  "expect": null
+ },
+ {
+  "id": "es-c5036",
+  "initial": "compré 10 kilos de papa",
+  "initial_expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "potato",
+     "qty": "10",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "a 2 mil el kilo",
+  "tags": [
+   "correction",
+   "price"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "potato",
+     "qty": "10",
+     "unit": "kilogram",
+     "unit_price": "2000",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5037",
+  "initial": "compré 10 kilos de papa",
+  "initial_expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "potato",
+     "qty": "10",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "todo por 20 mil",
+  "tags": [
+   "correction",
+   "total"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "potato",
+     "qty": "10",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": "20000",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5038",
+  "initial": "pagué la luz, 80 mil",
+  "initial_expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "utilities",
+   "total": "80000",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, eran 85 mil",
+  "tags": [
+   "correction",
+   "amount"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "utilities",
+   "total": "85000",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5039",
+  "initial": "pagué la luz, 80 mil",
+  "initial_expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "utilities",
+   "total": "80000",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, fue el internet",
+  "tags": [
+   "correction",
+   "category"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "internet_phone",
+   "total": "80000",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5040",
+  "initial": "pagué la luz, 80 mil",
+  "initial_expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "utilities",
+   "total": "80000",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "por transferencia",
+  "tags": [
+   "correction",
+   "payment"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": "transfer",
+   "party": null,
+   "category": "utilities",
+   "total": "80000",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5041",
+  "initial": "hice 20 empanadas",
+  "initial_expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "20",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, eran 25",
+  "tags": [
+   "correction",
+   "qty"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "25",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5042",
+  "initial": "hice 20 empanadas",
+  "initial_expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "20",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "y 10 panes",
+  "tags": [
+   "correction",
+   "add"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "20",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "bread",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5043",
+  "initial": "se dañaron 3 panes",
+  "initial_expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "DAMAGED",
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, se vencieron",
+  "tags": [
+   "correction",
+   "reason",
+   "hard"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "EXPIRED",
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5044",
+  "initial": "María Gómez me abonó 20 mil",
+  "initial_expect": {
+   "intent": "CUSTOMER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "maria",
+   "category": null,
+   "total": "20000",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, fueron 25 mil",
+  "tags": [
+   "correction",
+   "amount"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "CUSTOMER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "maria",
+   "category": null,
+   "total": "25000",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5045",
+  "initial": "María Gómez me abonó 20 mil",
+  "initial_expect": {
+   "intent": "CUSTOMER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "maria",
+   "category": null,
+   "total": "20000",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "fue doña Rosa",
+  "tags": [
+   "correction",
+   "party"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "CUSTOMER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "rosa",
+   "category": null,
+   "total": "20000",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5046",
+  "initial": "le pagué 50 mil a Don Ramiro",
+  "initial_expect": {
+   "intent": "SUPPLIER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "ramiro",
+   "category": null,
+   "total": "50000",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "con tarjeta",
+  "tags": [
+   "correction",
+   "payment"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "SUPPLIER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": "card",
+   "party": "ramiro",
+   "category": null,
+   "total": "50000",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5047",
+  "initial": "el pan ahora vale 600",
+  "initial_expect": {
+   "intent": "PRICE_CHANGE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": null,
+     "unit": null,
+     "unit_price": "600",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, 650",
+  "tags": [
+   "correction",
+   "price"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "PRICE_CHANGE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": null,
+     "unit": null,
+     "unit_price": "650",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5048",
+  "initial": "el costo del pan es 400",
+  "initial_expect": {
+   "intent": "COST_CORRECTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": null,
+     "unit": null,
+     "unit_price": "400",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, 450",
+  "tags": [
+   "correction",
+   "price"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "COST_CORRECTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": null,
+     "unit": null,
+     "unit_price": "450",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5049",
+  "initial": "crea el producto vela de coco a 15 mil",
+  "initial_expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Vela de coco"
+   },
+   "target_qty": null,
+   "price": "15000",
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "el costo es 6 mil",
+  "tags": [
+   "correction",
+   "cost"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Vela de coco"
+   },
+   "target_qty": null,
+   "price": "15000",
+   "cost": "6000",
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5050",
+  "initial": "crea el producto vela de coco a 15 mil",
+  "initial_expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Vela de coco"
+   },
+   "target_qty": null,
+   "price": "15000",
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "es para vender",
+  "tags": [
+   "correction",
+   "usage_sale"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Vela de coco"
+   },
+   "target_qty": null,
+   "price": "15000",
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "extra": {
+   "usage": "SALE"
+  }
+ },
+ {
+  "id": "es-c5051",
+  "initial": "crea el producto chocolate en polvo",
+  "initial_expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Chocolate en polvo"
+   },
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "en la categoría materias primas",
+  "tags": [
+   "correction",
+   "product_category"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Chocolate en polvo"
+   },
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "extra": {
+   "product_category": "Materias primas"
+  }
+ },
+ {
+  "id": "es-c5052",
+  "initial": "la torta de chocolate lleva 3 huevos y 200 gramos de azúcar",
+  "initial_expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "egg",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "sugar",
+     "qty": "200",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "choco_cake",
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "y 250 gramos de harina de trigo",
+  "tags": [
+   "correction",
+   "add"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "egg",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "sugar",
+     "qty": "200",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "wheat_flour",
+     "qty": "250",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "choco_cake",
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5053",
+  "initial": "la torta de chocolate lleva 3 huevos y 200 gramos de azúcar",
+  "initial_expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "egg",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "sugar",
+     "qty": "200",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "choco_cake",
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "no, 4 huevos",
+  "tags": [
+   "correction",
+   "qty"
+  ],
+  "applies": true,
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "egg",
+     "qty": "4",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "sugar",
+     "qty": "200",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "choco_cake",
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ }
+]

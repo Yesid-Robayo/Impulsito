@@ -8,6 +8,31 @@ Las versiones publicadas tienen su APK, sus notas y su SHA-256 en [Releases](htt
 
 Cuando sale una versión nueva, se añade arriba con el mismo contenido que sus notas.
 
+## [1.0.6] - 2026-11-18
+
+### Agregado
+
+- **Gastos en la barra:** la barra de abajo es **Inicio**, **Vender**, **Gastos**, **Productos** y **Números**. **Gastos** abre los gastos
+  del mes con **Por categoría** arriba: cada categoría con su monto y su parte del mes, y al tocarla filtra la lista.
+- **Producto nuevo por frase:** el tipo («es un insumo», «es para vender», «es un servicio») y la categoría («en la categoría materias
+  primas») llegan a la tarjeta. Si la categoría no existe, se crea junto con el producto.
+
+### Cambiado
+
+- **Decir, abajo a la derecha:** el micrófono sale de la barra y queda como botón redondo en las pestañas principales. En tableta sigue
+  arriba del riel.
+- **Entiende más:** muchas más formas de decir cada operación, verbos, montos («2 mil 500», «son 6 mil», «50 000»), medidas («un kilo
+  doscientos», «2 tandas de 20»), pagos («todo en efectivo», «me las debe») y dos oraciones en una frase. Las preguntas, los planes, las
+  negaciones, las devoluciones y los retiros de caja no registran nada.
+- **Corregir conserva lo demás:** con la tarjeta abierta, lo dicho cambia solo lo que nombra: el producto, la cantidad, el precio, el pago,
+  el motivo de un ajuste o la operación entre venta y compra. Una frase que no corrige nada ya no borra la tarjeta.
+
+### Corregido
+
+- **Decir no escuchaba en algunos teléfonos:** el servicio de voz recibía el idioma sin país y se cerraba al instante. Ahora se pide con
+  país, se usa el idioma que el teléfono tiene descargado y se prueba cada servicio de voz instalado.
+- **Una oración que describe ya no inventa un producto:** «esto es un insumo» no se vuelve otra línea.
+
 ## [1.0.5] - 2026-11-17
 
 ### Cambiado

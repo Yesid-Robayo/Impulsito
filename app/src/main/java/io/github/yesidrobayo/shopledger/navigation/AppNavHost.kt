@@ -2,7 +2,6 @@ package io.github.yesidrobayo.shopledger.navigation
 
 import android.animation.ValueAnimator
 import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -19,7 +18,6 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -53,15 +51,12 @@ import io.github.yesidrobayo.shopledger.ui.catalog.CatalogRoute
 import io.github.yesidrobayo.shopledger.ui.category.CategoriesRoute
 import io.github.yesidrobayo.shopledger.ui.combo.CombosRoute
 import io.github.yesidrobayo.shopledger.ui.combo.RecipeRoute
-import io.github.yesidrobayo.shopledger.ui.components.AppBottomBar
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
-import io.github.yesidrobayo.shopledger.ui.components.BottomBarItem
 import io.github.yesidrobayo.shopledger.ui.components.LocalDemoMode
 import io.github.yesidrobayo.shopledger.ui.components.LocalNavigationLayout
 import io.github.yesidrobayo.shopledger.ui.components.LocalSayOpener
 import io.github.yesidrobayo.shopledger.ui.components.LocalSettingsOpener
 import io.github.yesidrobayo.shopledger.ui.components.NavigationLayout
-import io.github.yesidrobayo.shopledger.ui.components.PerformanceTags
 import io.github.yesidrobayo.shopledger.ui.components.RailInsets
 import io.github.yesidrobayo.shopledger.ui.components.SnackbarVariant
 import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
@@ -155,7 +150,6 @@ import io.github.yesidrobayo.shopledger.ui.supplier.SupplierListRoute
 import io.github.yesidrobayo.shopledger.ui.supplierreturn.SupplierReturnDetailRoute
 import io.github.yesidrobayo.shopledger.ui.supplierreturn.SupplierReturnRoute
 import io.github.yesidrobayo.shopledger.ui.theme.AppMotion
-import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import io.github.yesidrobayo.shopledger.ui.unit.UnitsRoute
 import io.github.yesidrobayo.shopledger.ui.update.UpdatesRoute
 import io.github.yesidrobayo.shopledger.ui.variant.VariantsRoute
@@ -163,9 +157,10 @@ import io.github.yesidrobayo.shopledger.ui.webdav.WebDavConnectRoute
 import kotlinx.coroutines.flow.first
 
 /**
- * La navegación de la app: la pila de Navigation 3 y la barra inferior encima de las cuatro raíces.
- * Desde una ventana mediana, el riel lateral reemplaza a la barra y se ve también en los detalles;
- * la pila es la misma, y cambiar de clase de ventana no pierde nada de lo abierto.
+ * La navegación de la app: la pila de Navigation 3 y, encima de las raíces, la barra inferior con
+ * el botón redondo `Decir` sobre ella. Desde una ventana mediana, el riel lateral reemplaza a la
+ * barra y se ve también en los detalles; la pila es la misma, y cambiar de clase de ventana no
+ * pierde nada de lo abierto.
  *
  * Cambiar de pestaña es un fundido corto, sin deslizamiento lateral. Abrir un detalle es un eje
  * compartido: la pantalla de abajo se corre a la izquierda y se apaga, y el detalle llega desde
@@ -192,8 +187,8 @@ fun AppNavHost(
             navigator.open(AppNavKey.Onboarding)
         }
     }
-    // Decir, desde la barra, el riel, el micrófono de una pantalla, el widget o el atajo: escucha
-    // encima de lo visible y abre Decir o escribir con la frase oída o, sin ella, con el teclado.
+    // Decir, desde su botón redondo, el riel, el micrófono de la venta, el widget o el atajo:
+    // escucha encima de lo visible y abre Decir o escribir con la frase oída o, sin ella, con el teclado.
     val sayCapture = remember { VoiceCapture() }
     val openSay: () -> Unit =
         remember(navigator, sayCapture) {
@@ -295,70 +290,13 @@ fun AppNavHost(
                 }
             }
         }
-        // La barra sigue el paso de las pantallas: se apaga con la raíz que sale y vuelve cuando
-        // se enciende la que entra. Sin animaciones en el teléfono, Compose la cambia de golpe.
-        AnimatedVisibility(
+        // La barra y `Decir` encima, solo en las raíces de un teléfono: con riel, `Decir` va en él.
+        BottomNavigation(
             visible = navigator.showsBottomBar && !rail,
+            navigator = navigator,
+            onSay = openSay,
             modifier = Modifier.align(Alignment.BottomCenter),
-            enter =
-                fadeIn(
-                    tween(
-                        durationMillis = AppMotion.LONG - AppMotion.SCREEN_EXIT,
-                        delayMillis = AppMotion.SCREEN_EXIT,
-                        easing = AppMotion.EnterEasing,
-                    ),
-                ),
-            exit = fadeOut(tween(AppMotion.SCREEN_EXIT, easing = AppMotion.ExitEasing)),
-        ) {
-            // Mientras se funde, la barra se dibuja en una capa aparte del tamaño de su caja, y
-            // lo que sobresale se recortaría: Vender saldría partido. La caja reserva arriba el
-            // alto que sobresale el botón y su sombra; ese margen es transparente y no recibe toques.
-            val sizes = AppTheme.sizes
-            Box(Modifier.padding(top = sizes.sellButtonOverhang + sizes.sellButtonShadow)) {
-                // La barra muestra Inicio, Vender, Productos y Números, con Decir al centro.
-                // Registros sigue siendo una pestaña por dentro, pero se abre desde Inicio: mientras
-                // se ve, la barra marca Inicio. Vender no es una pestaña: abre una venta a mano.
-                val shown = BAR_SLOTS.map { slot ->
-                    when (slot) {
-                        null ->
-                            BottomBarItem(
-                                stringResource(R.string.nav_sell),
-                                R.drawable.ic_sell,
-                                R.drawable.ic_sell,
-                                tag = PerformanceTags.tab(SELL_SLOT_TAG),
-                            )
-
-                        else ->
-                            BottomBarItem(
-                                stringResource(slot.label),
-                                slot.icon,
-                                slot.selectedIcon,
-                                tag = PerformanceTags.tab(slot.name),
-                            )
-                    }
-                }
-                val current = navigator.currentTab
-                AppBottomBar(
-                    items = shown,
-                    selected =
-                        BAR_SLOTS.indexOf(
-                            if (current == TopLevelDestination.RECORDS) {
-                                TopLevelDestination.HOME
-                            } else {
-                                current
-                            },
-                        ),
-                    onSelect = { index ->
-                        BAR_SLOTS[index]?.let(navigator::selectTab) ?: navigator.sell()
-                    },
-                    // El botón central es Decir: registrar diciendo una frase. Vender a mano sigue en
-                    // Inicio, en la hoja de Decir, en el widget y en el atajo del ícono.
-                    sellLabel = stringResource(R.string.phrase_action_say),
-                    onSell = openSay,
-                    sellIcon = R.drawable.ic_mic,
-                )
-            }
-        }
+        )
     }
 }
 
@@ -379,21 +317,6 @@ private fun say(capture: VoiceCapture, navigator: AppNavigator, open: () -> Unit
         }
     }
 }
-
-/**
- * Lo que muestra la barra de abajo, en orden; `null` es `Vender`, que abre una venta a mano. El
- * botón del centro, `Decir`, va aparte.
- */
-private val BAR_SLOTS: List<TopLevelDestination?> =
-    listOf(
-        TopLevelDestination.HOME,
-        null,
-        TopLevelDestination.PRODUCTS,
-        TopLevelDestination.NUMBERS,
-    )
-
-/** La marca de rendimiento del botón `Vender` de la barra. */
-private const val SELL_SLOT_TAG = "SELL"
 
 // Las raíces llevan esta marca: entre dos raíces, el cambio es de pestaña y no de profundidad.
 private const val TAB_ROOT = "tabRoot"
@@ -461,6 +384,9 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
         is AppNavKey.PurchaseDetail -> PurchaseDetailRoute(key, navigator)
 
         is AppNavKey.Expenses -> ExpensesRoute(key, navigator)
+
+        // La pestaña Gastos: la misma lista, como raíz, sin atrás ni segmentos.
+        AppNavKey.ExpensesTab -> ExpensesRoute(AppNavKey.Expenses(), navigator, ownTab = true)
 
         AppNavKey.RecurringExpenses -> RecurringExpensesRoute(navigator)
 
@@ -695,7 +621,7 @@ internal fun PlaceholderRoute(key: AppNavKey, navigator: AppNavigator) {
         }
     val (empty, emptyTarget) = emptyOf(key, title)
     val isHome = key == AppNavKey.Home
-    // Las cuatro raíces llevan el engranaje, también sin base: los ajustes se abren igual.
+    // Las raíces llevan el engranaje, también sin base: los ajustes se abren igual.
     val isRoot = TopLevelDestination.ofRoot(key) != null
     PlaceholderScreen(
         content =
@@ -743,6 +669,13 @@ private fun emptyOf(key: AppNavKey, title: String): Pair<EmptyContent, AppNavKey
                 body = stringResource(R.string.empty_sales_body),
                 action = stringResource(R.string.empty_sales_action),
             ) to AppNavKey.NewSale()
+
+        TopLevelDestination.EXPENSES ->
+            EmptyContent(
+                title = stringResource(R.string.empty_expenses_title),
+                body = stringResource(R.string.empty_expenses_body),
+                action = stringResource(R.string.empty_expenses_action),
+            ) to AppNavKey.Expenses(startNew = true)
 
         TopLevelDestination.PRODUCTS ->
             EmptyContent(

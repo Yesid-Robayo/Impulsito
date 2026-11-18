@@ -4,6 +4,8 @@ import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.SeedTable
+import io.github.yesidrobayo.shopledger.domain.model.catalog.Category
+import io.github.yesidrobayo.shopledger.domain.model.catalog.CategoryDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
@@ -13,6 +15,7 @@ import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodKind
 import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftTarget
+import io.github.yesidrobayo.shopledger.domain.model.phrase.NewProductTraits
 import io.github.yesidrobayo.shopledger.domain.model.phrase.NumberStyle
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseConversion
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
@@ -25,6 +28,7 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseProduct
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseReading
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseUnit
 import io.github.yesidrobayo.shopledger.domain.testing.FakeAppSettingsRepository
+import io.github.yesidrobayo.shopledger.domain.testing.FakeCategoryRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeCustomerRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeSupplierRepository
@@ -75,6 +79,7 @@ class ReadPhraseUseCaseTest {
         suppliers = FakeSupplierRepository(world.database),
         customers = FakeCustomerRepository(world.database),
         expenseCategories = FakeExpenseCategoryRepository(world.database),
+        productCategories = FakeCategoryRepository(world.database),
     )
 
     init {
@@ -306,7 +311,34 @@ class ReadPhraseUseCaseTest {
         mode: ProductStockMode = ProductStockMode.TRACKED,
     ) = PhraseProduct(id, name, base, conversions, forSale, forPurchase, recipe, mode)
 
+    @Test
+    fun `product categories are in the catalog, and a verb says the operation`() = runTest {
+        world.database.seed { tables ->
+            val details = CategoryDetails("Materia prima", "materia prima", targetMargin = null)
+            tables.copy(
+                categories = mapOf(
+                    MATERIALS to Category(MATERIALS, details, PhraseWorld.EPOCH, PhraseWorld.EPOCH),
+                ),
+            )
+        }
+
+        val result = read("compré 2 kilos de arroz, es un insumo, en la categoría materias primas")
+
+        assertEquals(
+            listOf(PhraseName(MATERIALS, null, "Materia prima")),
+            result.catalog.productCategories,
+        )
+        assertEquals(true, result.statesOperation)
+        val traits = NewProductTraits(usage = ProductUsage.INPUT, categoryId = MATERIALS)
+        assertEquals(
+            DraftTarget.New("Arroz", traits),
+            result.draft?.lines?.single()?.product,
+        )
+        assertEquals(false, read("la harina es insumo").statesOperation)
+    }
+
     private companion object {
+        const val MATERIALS = 77L
         const val BREAD = 100L
         const val FLOUR = 101L
         const val SHIRT = 102L

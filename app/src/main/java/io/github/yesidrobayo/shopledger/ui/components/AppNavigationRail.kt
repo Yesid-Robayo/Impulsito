@@ -62,13 +62,14 @@ sealed interface RailMark {
  * El riel lateral de una ventana mediana o ancha: reemplaza a la barra inferior y se ve también en
  * los detalles.
  *
- * Arriba va Vender, el mismo bloque de la marca que en la barra; debajo, las entradas con la misma
- * píldora de la pestaña activa, y Ajustes al pie. La entrada abierta cambia de contorno a relleno,
- * de color y lleva la píldora: no depende solo del color. Las etiquetas crecen con la letra solo
+ * Arriba va `Decir`, el bloque de la marca, que en el teléfono es el botón redondo sobre la barra;
+ * debajo, las mismas entradas de la barra, con la misma píldora de la activa, y Ajustes al pie. La
+ * entrada abierta cambia de contorno a relleno, de color y lleva la píldora: no depende solo del color. Las etiquetas crecen con la letra solo
  * hasta el tope de la barra, en dos líneas como mucho; TalkBack lee la etiqueta entera. Si la
  * ventana es baja, como un teléfono acostado, el riel se desplaza.
  *
- * @param items las cuatro pestañas y Negocio, en ese orden.
+ * @param items las entradas de la barra, `Inicio`, `Vender`, `Gastos`, `Productos` y `Números`, y
+ *   Negocio, en ese orden.
  * @param selected lo abierto, o `null` si nada del riel lo está.
  */
 @Composable
@@ -217,9 +218,14 @@ private fun AppNavigationRailPreview() {
                         R.drawable.ic_home_filled,
                     ),
                     BottomBarItem(
-                        stringResource(R.string.nav_records),
-                        R.drawable.ic_receipt_long,
-                        R.drawable.ic_receipt_long_filled,
+                        stringResource(R.string.nav_sell),
+                        R.drawable.ic_sell,
+                        R.drawable.ic_sell,
+                    ),
+                    BottomBarItem(
+                        stringResource(R.string.nav_expenses),
+                        R.drawable.ic_payments,
+                        R.drawable.ic_payments,
                     ),
                     BottomBarItem(
                         stringResource(R.string.nav_products),
@@ -246,8 +252,9 @@ private fun AppNavigationRailPreview() {
             selected = RailMark.Entry(2),
             onSelect = {},
             onSettings = {},
-            sellLabel = stringResource(R.string.nav_sell),
+            sellLabel = stringResource(R.string.phrase_action_say),
             onSell = {},
+            sellIcon = R.drawable.ic_mic,
         )
     }
 }

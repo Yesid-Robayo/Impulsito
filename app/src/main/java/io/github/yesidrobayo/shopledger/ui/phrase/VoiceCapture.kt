@@ -30,6 +30,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ShopLedgerApp
+import io.github.yesidrobayo.shopledger.di.VoiceTelemetryLog
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheetContent
@@ -107,7 +108,10 @@ fun VoiceCaptureHost(capture: VoiceCapture, offerTyping: Boolean) {
     val app = context.applicationContext
     val container = (app as ShopLedgerApp).container
     val preference = container.voiceInput
-    val languageTag = LocalAppFormats.current.uiLocale.toLanguageTag()
+    // Con país: sin él, algunos servicios no encuentran el paquete del idioma y fallan al instante.
+    val formats = LocalAppFormats.current
+    val languageTag =
+        SpeechLanguage.tagFor(formats.uiLocale.language, formats.date.formatLocale.tag)
     val scope = rememberCoroutineScope()
     var step by remember { mutableStateOf(CaptureStep(0, CapturePhase.CHECKING)) }
     val permission =
@@ -164,7 +168,10 @@ fun VoiceCaptureHost(capture: VoiceCapture, offerTyping: Boolean) {
             )
 
         CapturePhase.LISTENING -> {
-            val engine = remember(request) { PhoneSpeechEngine(app, languageTag) }
+            val engine =
+                remember(request) {
+                    PhoneSpeechEngine(app, languageTag, VoiceTelemetryLog(container.log))
+                }
             ListeningSheet(engine, offerTyping, onEnd = capture::finish)
         }
     }

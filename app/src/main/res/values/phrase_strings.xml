@@ -44,6 +44,8 @@
     <string name="phrase_issue_no_recipe">That product has no recipe. Set it up before producing</string>
     <string name="phrase_issue_no_stock">That product has no stock of its own: its cost comes from its components</string>
     <string name="phrase_issue_already_exists">A product with that name already exists</string>
+    <string name="phrase_issue_cost_left_out">An adjustment doesn\'t save the cost said. If it changed, correct it in the product</string>
+    <string name="phrase_issue_unused_words">Part of the phrase wasn\'t understood and was left out. Check the card</string>
     <string name="phrase_nothing">There\'s nothing to register like this. Say it another way</string>
     <!-- La tarjeta: las líneas. -->
     <string name="phrase_line_no_product">Choose the product</string>
@@ -55,6 +57,9 @@
     <string name="phrase_use_last_cost">Last cost: %1$s</string>
     <string name="phrase_use_last_cost_hidden">Use the last cost</string>
     <string name="phrase_new_tag">New</string>
+    <string name="phrase_new_category">Category: %1$s</string>
+    <string name="phrase_category_to_create">New category: %1$s</string>
+    <string name="phrase_pick_category">Choose category</string>
     <string name="phrase_heard">Heard \"%1$s\"</string>
     <string name="phrase_choose_other">Choose another</string>
     <string name="phrase_pick_product">Choose product</string>
@@ -125,6 +130,7 @@
     <string name="phrase_mic_denied">No microphone permission. Type the phrase or dictate it with the keyboard microphone</string>
     <string name="phrase_mic_blocked">Microphone permission is off. Turn it on in the phone settings, or dictate with the keyboard microphone</string>
     <string name="phrase_mic_open_settings">Open phone settings</string>
+    <string name="phrase_voice_service_no_mic">The phone\'s voice service has no microphone permission. Type the phrase or dictate it with the keyboard microphone</string>
     <string name="listening_title">Listening</string>
     <string name="listening_hint">Say what happened, like %1$s</string>
     <string name="listening_silent_title">No phrase was heard</string>

@@ -97,6 +97,21 @@ sealed interface PhraseAction {
     /** `Listo` en la hoja del monto. */
     data object SaveAmount : PhraseAction
 
+    /**
+     * `Elegir categoría` en el producto por crear de la línea [index], o en el producto nuevo o el
+     * de la receta con `null`: abre la lista de categorías.
+     */
+    data class PickNewCategory(val index: Int?) : PhraseAction
+
+    /** Pone la categoría [categoryId] del catálogo al producto por crear de [index]. */
+    data class ChooseNewCategory(val index: Int?, val categoryId: Long) : PhraseAction
+
+    /**
+     * `Crear «…»` en la lista de categorías: el producto por crear de [index] va en una categoría
+     * nueva, [name], que se crea con él.
+     */
+    data class NameNewCategory(val index: Int?, val name: String) : PhraseAction
+
     /** Escribe en la búsqueda de la hoja de lista. */
     data class QueryChange(val query: String) : PhraseAction
 

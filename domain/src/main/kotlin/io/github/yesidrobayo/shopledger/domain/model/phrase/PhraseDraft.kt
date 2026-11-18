@@ -41,6 +41,10 @@ data class PhraseDraft(
  * una cantidad que falta escribir. [quantity] va en milésimas de [unitId], y [unitId] `null` es la
  * unidad base del producto. [unitPrice] es el precio o costo de una unidad entera de [unitId], y
  * [lineTotal] lo que se dijo por toda la línea.
+ *
+ * [candidates] son los productos entre los que se pidió elegir cuando falta el producto, como las
+ * dos gaseosas de "2 gaseosas": así una corrección como "las grandes" elige entre ellos. Vacía si
+ * no se pidió elegir o si ya hay producto.
  */
 data class DraftLine(
     val product: DraftTarget?,
@@ -48,6 +52,7 @@ data class DraftLine(
     val unitId: Long?,
     val unitPrice: Money? = null,
     val lineTotal: Money? = null,
+    val candidates: List<Long> = emptyList(),
 )
 
 /** Un producto de la tarjeta: uno del catálogo, o uno nuevo que se nombró y todavía no existe. */
@@ -55,8 +60,12 @@ sealed interface DraftTarget {
     /** Un producto que ya existe. */
     data class Existing(val productId: Long) : DraftTarget
 
-    /** Un producto que no existe, con el nombre como se dijo, para ofrecer crearlo. */
-    data class New(val name: String) : DraftTarget
+    /**
+     * Un producto que no existe, con el nombre como se dijo, para ofrecer crearlo, y lo que se dijo
+     * de él: su uso, si es un servicio y su categoría. Se crea con eso.
+     */
+    data class New(val name: String, val traits: NewProductTraits = NewProductTraits.NONE) :
+        DraftTarget
 }
 
 /**

@@ -161,7 +161,11 @@ internal data class NameHit(val ids: List<Long>, val end: Int)
  * gana a los que solo se dijeron en parte: "María Gómez" elige a una, "María" deja elegir entre las
  * dos.
  */
-internal class NameIndex(private val entries: List<NameEntry>, private val shaper: WordShaper) {
+internal class NameIndex(
+    private val entries: List<NameEntry>,
+    private val shaper: WordShaper,
+    private val tolerance: Int = 2,
+) {
     fun matchAt(tokens: List<Token>, start: Int): NameHit? =
         (MAX_WINDOW downTo 1).firstNotNullOfOrNull { size -> matchWindow(tokens, start, size) }
 
@@ -170,6 +174,9 @@ internal class NameIndex(private val entries: List<NameEntry>, private val shape
         if (end > tokens.size) return null
         val window = tokens.subList(start, end)
         if (window.any { it.isSeparator || it.looksNumeric() }) return null
+        // Un nombre no termina en relleno: en "Charles for a haircut", la persona es "Charles" y
+        // lo demás queda para la línea.
+        if (size > 1 && shaper.nameWords(window.subList(size - 1, size)).isEmpty()) return null
         val spoken = shaper.nameWords(window)
         if (spoken.isEmpty()) return null
         val scored = entries.mapNotNull { entry -> score(spoken, entry) }
@@ -180,7 +187,7 @@ internal class NameIndex(private val entries: List<NameEntry>, private val shape
 
     /** La entrada y si se dijo entera, o `null` si lo dicho no está en ella. */
     private fun score(spoken: List<String>, entry: NameEntry): Pair<NameEntry, Boolean>? {
-        val cover = PhraseWords.cover(spoken, entry.words)
+        val cover = PhraseWords.cover(spoken, entry.words, abbreviated = false, tolerance)
         val complete = cover.free.isEmpty()
         val fits = cover.matched == spoken.size && (entry.partial || complete)
         return if (fits) entry to complete else null
@@ -191,13 +198,15 @@ internal class NameIndex(private val entries: List<NameEntry>, private val shape
 
         /**
          * Los nombres del catálogo, que se pueden decir en parte, y los sinónimos por clave, que se
-         * dicen enteros.
+         * dicen enteros. [tolerance] es cuántos errores de dictado se admiten como máximo en una
+         * palabra: en las categorías de gasto, uno, para que "encargué" no sea "recargué".
          */
         fun of(
             names: List<PhraseName>,
             synonyms: Map<String, List<String>>,
             shaper: WordShaper,
             includeNames: Boolean,
+            tolerance: Int = 2,
         ): NameIndex {
             val catalogEntries = names.map {
                 NameEntry(it.id, shaper.nameWords(PhraseTokenizer.tokenize(it.name)), true)
@@ -212,6 +221,7 @@ internal class NameIndex(private val entries: List<NameEntry>, private val shape
                     includeNames
                 }.orEmpty() + synonymEntries,
                 shaper,
+                tolerance,
             )
         }
 

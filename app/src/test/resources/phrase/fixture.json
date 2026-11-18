@@ -1101,5 +1101,23 @@
     "pt": "Outros"
    }
   }
+ ],
+ "product_categories": [
+  {
+   "key": "raw_materials",
+   "name": {
+    "es": "Materia prima",
+    "en": "Raw material",
+    "pt": "Matéria-prima"
+   }
+  },
+  {
+   "key": "drinks",
+   "name": {
+    "es": "Bebidas",
+    "en": "Drinks",
+    "pt": "Bebidas"
+   }
+  }
  ]
 }

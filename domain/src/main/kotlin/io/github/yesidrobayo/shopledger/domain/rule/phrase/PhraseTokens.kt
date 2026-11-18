@@ -45,10 +45,15 @@ internal object PhraseTokenizer {
     fun tokenize(text: String): List<Token> {
         val tokens = mutableListOf<Token>()
         val word = StringBuilder()
+        var skipNext = false
         for (index in text.indices) {
             val char = text[index]
             when {
+                char in APOSTROPHES && isPossessive(text, index, word) -> skipNext = true
+
                 char in APOSTROPHES -> Unit
+
+                skipNext -> skipNext = false
 
                 char in BREAKS && isInsideNumber(text, index) -> word.append(char)
 
@@ -68,13 +73,34 @@ internal object PhraseTokenizer {
         return tokens
     }
 
+    /**
+     * "Charles's", "Mary's": la "s" de un posesivo después de un nombre propio sobra, para que el
+     * nombre se encuentre. "It's" o "That's" no son posesivos: se quedan como "its" o "thats".
+     */
+    private fun isPossessive(text: String, index: Int, word: StringBuilder): Boolean {
+        val after = text.getOrNull(index + 2)
+        val closes = after == null || !after.isLetterOrDigit()
+        val named = word.isNotEmpty() && word[0].isUpperCase() &&
+            word.toString().lowercase() !in CONTRACTED
+        return text.regionMatches(index + 1, "s", 0, 1, ignoreCase = true) && closes && named
+    }
+
+    /** Palabras que llevan "'s" de "is" y no de un posesivo. */
+    private val CONTRACTED =
+        setOf("it", "that", "he", "she", "what", "there", "here", "who", "where", "how")
+
     /** Una coma o un punto entre dos cifras es parte del número: `1,5` o `2.500`. */
     private fun isInsideNumber(text: String, index: Int): Boolean =
         index > 0 && index + 1 < text.length && text[index - 1].isDigit() &&
             text[index + 1].isDigit()
 
+    /**
+     * Un punto después de una abreviatura conocida no corta: "Sr. Ramiro", "2 kg. de harina". Uno
+     * después de otra palabra corta sí, porque termina una oración: "Vendí pan. Fueron 3 mil".
+     */
     private fun isAbbreviation(word: StringBuilder): Boolean =
-        word.isNotEmpty() && word.length <= ABBREVIATION_LENGTH && word.all(Char::isLetter)
+        word.isNotEmpty() && word.length <= ABBREVIATION_LENGTH && word.all(Char::isLetter) &&
+            TextNormalizer.normalize(word.toString()) in CommonVocabulary.abbreviations
 
     private fun flush(word: StringBuilder, tokens: MutableList<Token>) {
         for (piece in splitDigits(word.toString())) {
@@ -120,6 +146,9 @@ internal class PhraseTable<T>(entries: List<Pair<String, T>>) {
     private val phrases: List<Pair<List<String>, T>> = entries
         .map { (text, value) -> PhraseTokenizer.tokenize(text).map(Token::norm) to value }
         .sortedByDescending { (words, _) -> words.size }
+
+    /** Si tiene alguna frase. */
+    val isNotEmpty: Boolean get() = phrases.isNotEmpty()
 
     fun matchAt(tokens: List<Token>, start: Int): PhraseHit<T>? {
         val (words, value) = phrases.firstOrNull { (words, _) -> startsWith(tokens, start, words) }

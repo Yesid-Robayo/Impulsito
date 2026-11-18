@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -57,6 +58,7 @@ import io.github.yesidrobayo.shopledger.ui.components.ActionState
 import io.github.yesidrobayo.shopledger.ui.components.ActionVariant
 import io.github.yesidrobayo.shopledger.ui.components.AppBottomSheet
 import io.github.yesidrobayo.shopledger.ui.components.AppTextField
+import io.github.yesidrobayo.shopledger.ui.components.AppTopBar
 import io.github.yesidrobayo.shopledger.ui.components.CompactChipRow
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.DateField
@@ -73,10 +75,12 @@ import io.github.yesidrobayo.shopledger.ui.components.OverflowAction
 import io.github.yesidrobayo.shopledger.ui.components.OverflowMenu
 import io.github.yesidrobayo.shopledger.ui.components.PeriodSelector
 import io.github.yesidrobayo.shopledger.ui.components.PrimaryActionButton
+import io.github.yesidrobayo.shopledger.ui.components.SettingsButton
 import io.github.yesidrobayo.shopledger.ui.components.SkeletonBlock
 import io.github.yesidrobayo.shopledger.ui.components.StatTile
 import io.github.yesidrobayo.shopledger.ui.components.StatTileVariant
 import io.github.yesidrobayo.shopledger.ui.components.TonalFab
+import io.github.yesidrobayo.shopledger.ui.components.TopBarNavigation
 import io.github.yesidrobayo.shopledger.ui.components.bottomBarClearance
 import io.github.yesidrobayo.shopledger.ui.components.canGoForward
 import io.github.yesidrobayo.shopledger.ui.components.keepsMessagesAbove
@@ -95,22 +99,28 @@ import io.github.yesidrobayo.shopledger.ui.sale.reasonLabel
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 
 /**
- * Los gastos: el segmento `Gastos` de Registros. Lo que cuesta mantener el negocio, para que la
- * ganancia sea real.
+ * Los gastos: la pestaña `Gastos` de la barra y el segmento `Gastos` de Registros. Lo que cuesta
+ * mantener el negocio, para que la ganancia sea real.
  *
  * - Arriba, el mes con sus flechas, el total del mes en gastos activos y el filtro por categoría.
+ * - Al empezar la lista, lo gastado en el mes por categoría, de mayor a menor, con su barra: tocar
+ *   una aplica su filtro. Sin gastos en el mes no aparece.
  * - La lista va por día, con la categoría, la descripción y el valor. Un gasto anulado va tachado,
  *   con su etiqueta, y no suma.
  * - Tocar un gasto abre su hoja, sin campos editables, con `Anular gasto`. `Nuevo gasto` abre la
  *   hoja del gasto nuevo, con la ayuda de que la mercancía va como compra.
  * - En una ventana ancha, la hoja se abre como panel a la derecha de la lista.
- * - Un gasto no revela costo de productos ni ganancia: el modo discreto no lo cambia.
+ * - Un gasto no revela costo de productos ni ganancia: el modo discreto no lo cambia. Solo el
+ *   resumen por categoría oculta sus montos, como los totales de período.
  *
  * Es pura: recibe el estado y avisa cada acción.
  *
  * @param asTab si va como segmento de la raíz de Registros: con la misma barra de arriba que
  *   `Ventas`, los segmentos y la barra inferior libre. Si no, es un destino propio, como desde
  *   `Gasto` en Inicio: con atrás, el título `Gastos` y sin segmentos.
+ * @param ownTab si es la raíz de su propia pestaña, `Gastos`: con el título `Gastos`, sin atrás ni
+ *   segmentos, con los ajustes al borde como las otras raíces y la barra inferior libre. Manda
+ *   sobre [asTab].
  * @param backupBanner el banner del respaldo bajo la barra, que solo aparece si el estado pide
  *   atención.
  * @param receiptPhotos las fotos del comprobante de un gasto, en su hoja: las da la ruta.
@@ -121,12 +131,13 @@ fun ExpensesScreen(
     onAction: (ExpensesAction) -> Unit,
     modifier: Modifier = Modifier,
     asTab: Boolean = true,
+    ownTab: Boolean = false,
     backupBanner: @Composable () -> Unit = {},
     receiptPhotos: @Composable (ExpenseListRow) -> Unit = {},
 ) {
     val sizes = AppTheme.sizes
-    // Como segmento, el botón y el final de la lista dejan libre la barra inferior y Vender.
-    val barClearance = if (asTab) bottomBarClearance() else 0.dp
+    // Como raíz o segmento, el botón y el final de la lista dejan libres la barra y `Decir`.
+    val barClearance = if (asTab || ownTab) bottomBarClearance() else 0.dp
     Surface(
         modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surface,
@@ -137,11 +148,7 @@ fun ExpensesScreen(
             val boxWidth = maxWidth
             val wide = maxWidth >= EXPANDED_WIDTH
             Column(Modifier.fillMaxSize()) {
-                RecordsTopBar(
-                    asTab = asTab,
-                    title = R.string.records_tab_expenses,
-                    onBack = { onAction(ExpensesAction.ShowSales) },
-                ) {
+                val actions: @Composable RowScope.() -> Unit = {
                     ScreenHelpLink(HelpTopic.EXPENSES)
                     OverflowMenu(
                         listOf(
@@ -152,9 +159,27 @@ fun ExpensesScreen(
                         ),
                     )
                 }
+                if (ownTab) {
+                    AppTopBar(
+                        title = stringResource(R.string.nav_expenses),
+                        navigation = TopBarNavigation.NONE,
+                        onNavigate = {},
+                        navigationLabel = null,
+                    ) {
+                        actions()
+                        SettingsButton()
+                    }
+                } else {
+                    RecordsTopBar(
+                        asTab = asTab,
+                        title = R.string.records_tab_expenses,
+                        onBack = { onAction(ExpensesAction.ShowSales) },
+                        actions = actions,
+                    )
+                }
                 // El mismo banner que Ventas y Compras: cambiar de segmento no mueve la lista.
                 backupBanner()
-                if (asTab) {
+                if (asTab && !ownTab) {
                     RecordsSegments(selected = EXPENSES_SEGMENT) { index ->
                         when (index) {
                             SALES_SEGMENT -> onAction(ExpensesAction.ShowSales)
@@ -339,6 +364,12 @@ private fun ExpenseList(
                 Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = bottom),
             ) {
+                // Arriba, bajo el total del mes, lo gastado por categoría: no cambia con el filtro.
+                uiState.categorySummary?.let { summary ->
+                    item(key = SUMMARY, contentType = SUMMARY) {
+                        CategoryShares(summary, uiState.categoryId, onAction)
+                    }
+                }
                 for (day in content.days) {
                     stickyHeader(key = "day-${day.date}", contentType = DAY) { DayHeader(day) }
                     items(day.rows, key = { it.id }, contentType = { ROW }) { row ->
@@ -894,3 +925,4 @@ private const val NEW_CATEGORY_CHIP = -1L
 private const val SKELETON_ROWS = 6
 private const val DAY = "day"
 private const val ROW = "row"
+private const val SUMMARY = "summary"

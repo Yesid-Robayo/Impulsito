@@ -29,12 +29,17 @@ class ListeningSheetTest {
 
     private fun text(id: Int, vararg args: Any) = resources.getString(id, *args)
 
-    private val engine = FakeSpeechEngine()
+    private var engine = FakeSpeechEngine()
     private val results = mutableListOf<VoiceResult>()
 
-    private fun show(offerTyping: Boolean = true) {
+    private val offline = ListenPlan(ListenMode.OFFLINE_FIRST, 0)
+    private val online = ListenPlan(ListenMode.ONLINE, 0)
+
+    private fun show(offerTyping: Boolean = true, services: Int = 1) {
+        engine = FakeSpeechEngine(ListenPlan.plansFor(onDevice = false, services = services))
+        val shown = engine
         compose.setContent {
-            PreviewTheme { ListeningSheet(engine, offerTyping) { results += it } }
+            PreviewTheme { ListeningSheet(shown, offerTyping) { results += it } }
         }
         compose.waitForIdle()
     }
@@ -49,7 +54,7 @@ class ListeningSheetTest {
     fun itStartsListeningRightAwayWithTheHint() {
         show()
 
-        assertEquals(listOf(ListenPlan.OFFLINE_FIRST), engine.listened)
+        assertEquals(listOf(offline), engine.listened)
         compose.onNodeWithText(text(R.string.listening_title)).assertIsDisplayed()
         compose
             .onNodeWithText(
@@ -109,7 +114,7 @@ class ListeningSheetTest {
 
         send(ListenEvent.Error(ListenError.NETWORK))
 
-        assertEquals(listOf(ListenPlan.OFFLINE_FIRST, ListenPlan.ONLINE), engine.listened)
+        assertEquals(listOf(offline, online), engine.listened)
         compose.onNodeWithText(text(R.string.listening_title)).assertIsDisplayed()
         assertTrue(results.isEmpty())
 
@@ -119,12 +124,56 @@ class ListeningSheetTest {
     }
 
     @Test
-    fun withoutPermissionItEndsWithThatNotice() {
+    fun aServiceWithoutMicrophoneMovesOnAndTheEndSaysSo() {
         show()
 
         send(ListenEvent.Error(ListenError.PERMISSION))
 
-        assertEquals(listOf(VoiceResult.Keyboard(VoiceNotice.NO_PERMISSION)), results)
+        assertEquals(listOf(offline, online), engine.listened)
+        assertTrue(results.isEmpty())
+
+        send(ListenEvent.Error(ListenError.LANGUAGE))
+
+        assertEquals(listOf(VoiceResult.Keyboard(VoiceNotice.SERVICE_NO_MIC)), results)
+    }
+
+    @Test
+    fun theThirdServiceUnderstandsAfterOneWithoutMicrophoneAndOneBroken() {
+        show(services = 3)
+
+        // El primero no tiene micrófono, de las dos formas; el segundo falla en el cliente.
+        send(ListenEvent.Error(ListenError.PERMISSION))
+        send(ListenEvent.Error(ListenError.PERMISSION))
+        send(ListenEvent.Error(ListenError.OTHER))
+        send(ListenEvent.Error(ListenError.OTHER))
+        compose.onNodeWithText(text(R.string.listening_title)).assertIsDisplayed()
+        send(ListenEvent.Ready, ListenEvent.Partial("vendí 3 panes"))
+        compose.onNodeWithText("vendí 3 panes").assertIsDisplayed()
+        send(ListenEvent.Final("vendí 3 panes en efectivo"))
+
+        assertEquals(
+            listOf(
+                ListenPlan(ListenMode.OFFLINE_FIRST, 0),
+                ListenPlan(ListenMode.ONLINE, 0),
+                ListenPlan(ListenMode.OFFLINE_FIRST, 1),
+                ListenPlan(ListenMode.ONLINE, 1),
+                ListenPlan(ListenMode.OFFLINE_FIRST, 2),
+            ),
+            engine.listened,
+        )
+        assertEquals(listOf(VoiceResult.Heard("vendí 3 panes en efectivo")), results)
+    }
+
+    @Test
+    fun aServiceWithoutMicrophoneLeavesTheKeyboardWithItsNotice() {
+        compose.setContent {
+            PreviewTheme {
+                PhraseScreen(PhraseUiState(voiceNotice = VoiceNotice.SERVICE_NO_MIC), onAction = {})
+            }
+        }
+
+        compose.onNodeWithText(text(R.string.phrase_voice_service_no_mic)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.phrase_mic_help)).assertExists()
     }
 
     @Test
@@ -139,7 +188,7 @@ class ListeningSheetTest {
         compose.onNodeWithText(text(R.string.listening_again)).performClick()
         compose.waitForIdle()
 
-        assertEquals(listOf(ListenPlan.OFFLINE_FIRST, ListenPlan.OFFLINE_FIRST), engine.listened)
+        assertEquals(listOf(offline, offline), engine.listened)
         compose.onNodeWithText(text(R.string.listening_title)).assertIsDisplayed()
         assertTrue(results.isEmpty())
     }
@@ -222,7 +271,7 @@ class ListeningSheetTest {
 
 /** Un motor que no oye nada: la prueba manda lo que el de verdad avisaría. */
 private class FakeSpeechEngine(
-    override val plans: List<ListenPlan> = ListenPlan.plansFor(onDevice = false),
+    override val plans: List<ListenPlan> = ListenPlan.plansFor(onDevice = false, services = 1),
 ) : SpeechEngine {
     val listened = mutableListOf<ListenPlan>()
     var stops = 0

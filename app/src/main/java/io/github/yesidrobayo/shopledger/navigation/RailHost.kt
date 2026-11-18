@@ -14,9 +14,20 @@ import io.github.yesidrobayo.shopledger.ui.components.ConfirmDialog
 import io.github.yesidrobayo.shopledger.ui.components.ConfirmVariant
 import io.github.yesidrobayo.shopledger.ui.components.RailMark
 
-/** Lo que el riel muestra, en orden: las cuatro pestañas y Negocio. Ajustes va aparte, al pie. */
+/**
+ * Lo que el riel muestra, en orden: las mismas entradas que la barra del teléfono, con `Vender`
+ * entre `Inicio` y `Gastos`, y después Negocio. Ajustes va aparte, al pie, y `Decir` arriba.
+ * `Registros` no tiene entrada: se abre desde Inicio, y mientras se ve el riel marca Inicio.
+ */
 private val railKeys: List<AppNavKey> =
-    TopLevelDestination.entries.map { it.root } + AppNavKey.BusinessHub
+    listOf(
+        AppNavKey.Home,
+        AppNavKey.NewSale(),
+        AppNavKey.ExpensesTab,
+        AppNavKey.ProductList,
+        AppNavKey.Statistics,
+        AppNavKey.BusinessHub,
+    )
 
 /** Un toque del riel que espera la respuesta a la pregunta de descartar. */
 private data class RailRequest(
@@ -56,27 +67,34 @@ internal fun RailHost(
             pending = RailRequest(key, dropped, texts)
         }
     }
-    val tabs = TopLevelDestination.entries.map {
-        BottomBarItem(stringResource(it.label), it.icon, it.selectedIcon)
+    val items = railKeys.map { key ->
+        val tab = TopLevelDestination.ofRoot(key)
+        when {
+            tab != null -> BottomBarItem(stringResource(tab.label), tab.icon, tab.selectedIcon)
+
+            key is AppNavKey.NewSale ->
+                BottomBarItem(
+                    stringResource(R.string.nav_sell),
+                    R.drawable.ic_sell,
+                    R.drawable.ic_sell,
+                )
+
+            else ->
+                BottomBarItem(
+                    stringResource(R.string.hub_title),
+                    R.drawable.ic_business_center,
+                    R.drawable.ic_business_center,
+                )
+        }
     }
-    val section = navigator.railSection
     AppNavigationRail(
-        items = tabs + BottomBarItem(
-            stringResource(R.string.hub_title),
-            R.drawable.ic_business_center,
-            R.drawable.ic_business_center,
-        ),
+        items = items,
         settings = BottomBarItem(
             stringResource(R.string.settings_title),
             R.drawable.ic_settings,
             R.drawable.ic_settings,
         ),
-        selected =
-            if (section == AppNavKey.Settings) {
-                RailMark.Settings
-            } else {
-                railKeys.indexOf(section).takeIf { it >= 0 }?.let(RailMark::Entry)
-            },
+        selected = railMarkOf(navigator),
         onSelect = { go(railKeys[it]) },
         onSettings = { go(AppNavKey.Settings) },
         sellLabel = stringResource(R.string.phrase_action_say),
@@ -100,4 +118,18 @@ internal fun RailHost(
             dismissLabel = texts.dismiss,
         )
     }
+}
+
+/**
+ * Lo que marca el riel: `Vender` mientras se ve una venta nueva, Ajustes o la sección de
+ * [AppNavigator.railSection], y en Registros, Inicio, como la barra.
+ */
+private fun railMarkOf(navigator: AppNavigator): RailMark? {
+    if (navigator.current is AppNavKey.NewSale) {
+        return RailMark.Entry(railKeys.indexOfFirst { it is AppNavKey.NewSale })
+    }
+    val section = navigator.railSection
+    if (section == AppNavKey.Settings) return RailMark.Settings
+    val shown = TopLevelDestination.ofRoot(section)?.let { barTabOf(it).root } ?: section
+    return railKeys.indexOf(shown).takeIf { it >= 0 }?.let(RailMark::Entry)
 }

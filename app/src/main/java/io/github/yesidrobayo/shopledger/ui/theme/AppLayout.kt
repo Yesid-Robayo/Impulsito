@@ -59,20 +59,20 @@ class AppSizes internal constructor() {
     /** Alto de la barra inferior, sin contar la barra del sistema. */
     val bottomBar: Dp = 72.dp
 
-    /** Ancho de la casilla central de la barra inferior, donde vive Vender. */
-    val bottomBarCenterSlot: Dp = 92.dp
-
-    /** Ancho del botón Vender. */
+    /** Ancho del bloque de la marca del riel, que hoy es `Decir`. */
     val sellButtonWidth: Dp = 76.dp
 
-    /** Alto del botón Vender. */
+    /** Alto del bloque de la marca del riel. */
     val sellButtonHeight: Dp = 60.dp
 
-    /** Cuánto sobresale Vender por encima de la barra inferior. */
-    val sellButtonOverhang: Dp = 14.dp
-
-    /** Sombra del botón Vender, el único elemento con sombra de la app. */
+    /**
+     * Sombra del bloque de la marca: `Decir`, redondo sobre la barra inferior o arriba en el riel.
+     * Es lo único con sombra de la app.
+     */
     val sellButtonShadow: Dp = 6.dp
+
+    /** Diámetro del botón redondo `Decir`, que flota abajo a la derecha sobre la barra inferior. */
+    val sayButton: Dp = 56.dp
 
     /** Ancho de la píldora que marca la pestaña activa. */
     val tabIndicatorWidth: Dp = 52.dp

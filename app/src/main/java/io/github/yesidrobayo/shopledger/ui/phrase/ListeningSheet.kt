@@ -107,19 +107,10 @@ internal class ListeningDriver(
     private fun resultOf(state: ListeningState): VoiceResult = when (state) {
         is ListeningState.Heard -> VoiceResult.Heard(state.text)
 
+        // El permiso de la app ya se dio antes de escuchar: si falta uno, es el de algún servicio.
         is ListeningState.Failed ->
             VoiceResult.Keyboard(
-                when (state.error) {
-                    ListenError.PERMISSION -> VoiceNotice.NO_PERMISSION
-
-                    ListenError.NETWORK,
-                    ListenError.SERVER,
-                    ListenError.LANGUAGE,
-                    ListenError.NO_SPEECH,
-                    ListenError.BUSY,
-                    ListenError.OTHER,
-                    -> VoiceNotice.FAILED
-                },
+                if (state.micDenied) VoiceNotice.SERVICE_NO_MIC else VoiceNotice.FAILED,
             )
 
         ListeningState.Cancelled ->

@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.Scale
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftTarget
+import io.github.yesidrobayo.shopledger.domain.model.phrase.NewProductTraits
 import io.github.yesidrobayo.shopledger.domain.model.phrase.NumberStyle
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseCatalog
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
@@ -23,7 +24,7 @@ internal class CorrectionSession(
     private val moneyDecimals: Int,
     catalog: PhraseCatalog,
 ) {
-    private val numbers = NumberReader(lexicon, style)
+    private val numbers = NumberReader(lexicon, style, cents = moneyDecimals > 0)
     private val units = UnitIndex(catalog.units, lexicon)
     private val shaper = WordShaper(lexicon, numbers, units)
     private val products = ProductFinder(catalog.products, shaper, lexicon)
@@ -34,10 +35,31 @@ internal class CorrectionSession(
     private val unitsById = catalog.units.associateBy { it.id }
     private val onAccount =
         catalog.paymentMethods.firstOrNull { it.systemKey == PhraseSession.ON_ACCOUNT }?.id
+    private val traitReader = TraitReader(lexicon, numbers, shaper, catalog.productCategories)
 
     fun correct(draft: PhraseDraft, text: String): PhraseDraft? {
         val tokens = PhraseTokenizer.tokenize(text).let { it.without(lexicon.fillers.findAll(it)) }
         val body = afterLeads(tokens)
+        return correctBody(draft, body, led = body.size < tokens.size)
+    }
+
+    /**
+     * Lo que dice [body], ya sin "no" ni "perdón" delante; [led] dice si lo traía. Primero lo que
+     * solo una corrección dice: el nombre nuevo del producto que se crea, lo que es ese producto y
+     * la operación que era. Después, lo de siempre: quitar, agregar o cambiar.
+     */
+    private fun correctBody(draft: PhraseDraft, body: List<Token>, led: Boolean): PhraseDraft? {
+        val rename = words.renames.matchAt(body, 0)
+        if (rename != null) return renamedNew(draft, body.subList(rename.end, body.size))
+        // En un gasto o un pago, "la categoría" es la del gasto: no se busca un producto nuevo.
+        val scan = if (shapeOf(draft.intent) in DESCRIBED) traitReader.scan(body) else null
+        if (scan != null && scan.traits.isNotEmpty()) return described(draft, scan)
+        val operation = operationAt(body)
+        if (operation != null) {
+            val switched = switchedTo(draft, operation.value) ?: return null
+            val rest = body.subList(operation.end, body.size)
+            return if (rest.isEmpty()) switched else correctBody(switched, rest, led)
+        }
         val removal = words.removals.matchAt(body, 0)
         if (removal != null) return removed(draft, body.subList(removal.end, body.size))
         val addition = words.additions.matchAt(body, 0)
@@ -49,20 +71,138 @@ internal class CorrectionSession(
         val verbs = lexicon.verbs.findAll(said).filter {
             it.value.intent != null && (!it.value.subordinate || shape == Shape.SINGLE_LINE)
         }
-        val rest = said.without(verbs).filterNot { it.norm in lexicon.pronouns }
-        // Un verbo de operación con productos es otra frase, no una corrección.
-        if (verbs.any { !it.value.subordinate } && namesProducts(rest)) return null
-        val facts = factsReader.read(draft.intent, rest)
-        val base = withFacts(draft, facts) ?: return null
-        val content = facts.rest
+        // Los pronombres quedan para leer el pago y el crédito ("I still owe it") y salen de lo
+        // que nombra líneas.
+        val spoken = said.without(verbs)
+        val rest = spoken.filterNot { it.norm in lexicon.pronouns }
+        val main = verbs.filterNot { it.value.subordinate }
+        // Un verbo de operación con productos es otra frase, no una corrección; salvo después de
+        // un "no" y con un solo producto: "no, vendí 3 panes" corrige la línea del pan.
+        val oneLine = led && splitter.split(rest).size == 1
+        if (main.isNotEmpty() && namesProducts(rest) && !oneLine) return null
+        // "no, compré": la operación era otra, y lo demás queda. Solo entre venta y compra; en
+        // otra operación el verbo se salta, como siempre.
+        val switchTo = main.mapNotNull { SWITCHING_VERBS[it.value] }.distinct().singleOrNull()
+        val switched =
+            switchTo?.takeIf { draft.intent in SWITCHABLE }?.let { switchedTo(draft, it) }
+        // "no, se vencieron": el motivo de un ajuste era otro.
+        val reason = main.mapNotNull { it.value.reason }.distinct().singleOrNull()
+            ?.takeIf { draft.intent == PhraseIntent.STOCK_ADJUSTMENT && it != draft.reason }
+        val current = (switched ?: draft).let {
+            if (reason ==
+                null
+            ) {
+                it
+            } else {
+                it.copy(reason = reason)
+            }
+        }
+        val facts = factsReader.read(current.intent, spoken)
+        val base = withFacts(current, facts) ?: return null
+        val content = facts.rest.filterNot { it.norm in lexicon.pronouns }
         if (shaper.shape(content.without(words.copulas.findAll(content))).words.isEmpty()) {
-            return base.takeIf { facts.any }
+            return base.takeIf { facts.any || switched != null || reason != null }
         }
         return when {
             addition != null -> added(base, content, loose = false)
             separator != null -> added(base, content, loose = true)
             else -> changed(base, content.filterNot(Token::isSeparator), shape)
         }
+    }
+
+    // El producto nuevo y la operación.
+
+    /**
+     * "se llama harina integral": el nombre nuevo del producto que se va a crear. Va al producto
+     * nuevo de la tarjeta o, si hay varios en las líneas, al último que se dijo, con lo que ya se
+     * sabía de él.
+     */
+    private fun renamedNew(draft: PhraseDraft, tokens: List<Token>): PhraseDraft? {
+        if (!named(tokens)) return null
+        val name = products.spokenName(tokens)
+        val target = draft.target
+        if (target is DraftTarget.New) return draft.copy(target = target.copy(name = name))
+        val index = draft.lines.indexOfLast { it.product is DraftTarget.New }
+        if (index < 0) return null
+        val line = draft.lines[index]
+        val product = line.product as DraftTarget.New
+        val renamed = line.copy(product = product.copy(name = name))
+        return draft.copy(
+            lines = draft.lines.mapIndexed { at, old -> if (at == index) renamed else old },
+        )
+    }
+
+    /**
+     * "la harina es insumo", "es materia prima", "en la categoría bebidas": lo que es el producto
+     * que se va a crear. Va al producto nuevo de la tarjeta, o a la línea nueva que se nombra; sin
+     * nombrar ninguna, a la última línea nueva. Lo que no se dice de nuevo queda como estaba. Si
+     * además dice un número ("y son 3 kilos"), eso se corrige también. Si agrega una línea
+     * ("agrega 2 kilos de azúcar, es un insumo"), va a lo nuevo que agrega.
+     */
+    private fun described(draft: PhraseDraft, scan: TraitScan): PhraseDraft? {
+        val said = scan.traits.fold(NewProductTraits.NONE) { all, trait -> all.with(trait.traits) }
+        val opening =
+            words.additions.matchAt(scan.rest, 0) ?: lexicon.separators.matchAt(scan.rest, 0)
+        if (opening != null && named(scan.rest.subList(opening.end, scan.rest.size))) {
+            val grown = correctBody(draft, scan.rest, led = false) ?: return null
+            return grown.copy(
+                lines = grown.lines.mapIndexed { index, line ->
+                    val added = index >= draft.lines.size && line.product is DraftTarget.New
+                    if (added) describedLine(line, said) else line
+                },
+            )
+        }
+        val target = draft.target
+        val rest = scan.rest.filterNot { it.isSeparator }
+        val withTraits = if (target is DraftTarget.New) {
+            draft.copy(target = target.copy(traits = target.traits.with(said)))
+        } else {
+            val aimed = describedLines(draft.lines, rest).ifEmpty { return null }
+            draft.copy(
+                lines = draft.lines.mapIndexed { index, line ->
+                    if (index in aimed) describedLine(line, said) else line
+                },
+            )
+        }
+        val counted = rest.indices.any { numbers.startsAt(rest, it) }
+        return if (counted) correctBody(withTraits, scan.rest, led = false) else withTraits
+    }
+
+    /** Las líneas nuevas que nombra [ref], o la última nueva si no nombra nada. */
+    private fun describedLines(lines: List<DraftLine>, ref: List<Token>): List<Int> {
+        val fresh = lines.indices.filter { lines[it].product is DraftTarget.New }
+        // El nombre va antes del número o de "son": "la harina, son 3 kilos".
+        val number = ref.indices.firstOrNull { numbers.startsAt(ref, it) } ?: ref.size
+        val copula = words.copulas.findAll(ref).firstOrNull()?.start ?: ref.size
+        val name = ref.subList(0, minOf(number, copula))
+        if (!named(name)) return listOfNotNull(fresh.lastOrNull())
+        val spoken = shaper.shape(name).texts
+        return fresh.filter { names(lines[it].product, emptyList(), spoken) }
+    }
+
+    private fun describedLine(line: DraftLine, said: NewProductTraits): DraftLine {
+        val product = line.product as DraftTarget.New
+        return line.copy(product = product.copy(traits = product.traits.with(said)))
+    }
+
+    /** "fue una compra", "era venta": la operación que era, al principio de lo dicho. */
+    private fun operationAt(body: List<Token>): PhraseHit<PhraseIntent>? {
+        var index = words.copulas.matchAt(body, 0)?.end ?: 0
+        if (index < body.size && body[index].norm in lexicon.traitArticles) index++
+        val hit = words.operations.matchAt(body, index) ?: return null
+        return PhraseHit(0, hit.end, hit.value)
+    }
+
+    /**
+     * La misma tarjeta como otra operación: una venta que era una compra, o al revés. Las
+     * líneas, sus cantidades y precios, el pago y el total quedan; la persona no, porque un
+     * cliente no es un proveedor. [intent] es siempre una de las dos; desde otra operación no se
+     * cambia, y la frase se lee como nueva.
+     */
+    private fun switchedTo(draft: PhraseDraft, intent: PhraseIntent): PhraseDraft? = when {
+        intent == draft.intent -> draft
+        draft.intent in SWITCHABLE -> draft.copy(intent = intent, partyId = null)
+        else -> null
     }
 
     private fun afterLeads(tokens: List<Token>): List<Token> {
@@ -96,7 +236,11 @@ internal class CorrectionSession(
             facts.payment == null -> draft.credit
             else -> intent in CREDIT_INTENTS && paymentId != null && paymentId == onAccount
         }
+        val total = facts.total?.let(::money) ?: draft.total
         return draft.copy(
+            // Con una sola línea sin monto, "todo por" es el total de esa línea, como al leer la
+            // frase entera.
+            lines = if (facts.total == null) draft.lines else totaledLines(draft.lines, total),
             paymentMethodId = paymentId,
             credit = credit,
             partyId = if (facts.party == null) draft.partyId else facts.party.ids.singleOrNull(),
@@ -105,8 +249,18 @@ internal class CorrectionSession(
             } else {
                 facts.category.ids.singleOrNull()
             },
-            total = facts.total?.let(::money) ?: draft.total,
+            total = total,
         )
+    }
+
+    /**
+     * Solo una venta o una compra tienen líneas y admiten un total: las demás operaciones con
+     * líneas ya rechazaron el total en [withFacts].
+     */
+    private fun totaledLines(lines: List<DraftLine>, total: Money?): List<DraftLine> {
+        val only = lines.singleOrNull() ?: return lines
+        val unpriced = only.unitPrice == null && only.lineTotal == null
+        return if (unpriced) listOf(only.copy(lineTotal = total)) else lines
     }
 
     // Líneas que salen o se suman.
@@ -138,6 +292,7 @@ internal class CorrectionSession(
                 unitId = line.unitId,
                 unitPrice = line.unitPrice?.let(::money),
                 lineTotal = line.lineTotal?.let(::money),
+                candidates = (match as? ProductMatch.Choose)?.ids.orEmpty(),
             )
         }
         return draft.copy(lines = draft.lines + lines)
@@ -153,8 +308,8 @@ internal class CorrectionSession(
         )
         if (spec.unreadable) return null
         return when (shape) {
-            Shape.LINES -> lineChange(draft, ref, spec, said(spec))
-            Shape.SINGLE_LINE -> lineChange(draft, ref, spec, price(spec))
+            Shape.LINES -> lineChange(draft, ref, spec, said(spec), keepsPrice = false)
+            Shape.SINGLE_LINE -> lineChange(draft, ref, spec, price(spec, draft), keepsPrice = true)
             Shape.AMOUNT -> amountChange(draft, ref, spec)
             Shape.NEW_PRODUCT -> newProductChange(draft, tokens.without(listOfNotNull(copula)))
         }
@@ -185,19 +340,29 @@ internal class CorrectionSession(
         lineTotal = spec.lineTotal?.let(::money),
     )
 
-    /** En un precio o un costo nuevo, el número dicho es el monto, aunque vaya sin "a". */
-    private fun price(spec: LineDraft) = Said(
+    /**
+     * En un precio o un costo nuevo, el número dicho es el monto, aunque vaya sin "a", y con los
+     * miles del que había si no los dice: ver [withThousands].
+     */
+    private fun price(spec: LineDraft, draft: PhraseDraft) = Said(
         quantity = null,
         unitId = spec.unitId,
-        unitPrice = (spec.unitPrice ?: spec.lineTotal ?: spec.quantity)?.let(::money),
+        unitPrice = (spec.unitPrice ?: spec.lineTotal ?: spec.quantity)?.let { said ->
+            withThousands(said, draft.lines.singleOrNull()?.unitPrice)
+        },
         lineTotal = null,
     )
 
+    /**
+     * [keepsPrice]: en un precio o un costo nuevo, el monto dicho es del producto que se corrige,
+     * aunque cambie: "no, el pan integral" sobre "el pan ahora vale 600" es el pan integral a 600.
+     */
     private fun lineChange(
         draft: PhraseDraft,
         ref: List<Token>,
         spec: LineDraft,
         value: Said,
+        keepsPrice: Boolean,
     ): PhraseDraft? {
         val name = spec.span.filterNot { it.norm in lexicon.pronounHeads }
         val rename = if (named(name)) name else emptyList()
@@ -208,7 +373,8 @@ internal class CorrectionSession(
         val rule = ruleOf(draft.intent)
         if (aim.indices.size == 1) {
             val index = aim.indices[0]
-            lines[index] = changedLine(lines[index], aim, value, rule, draft.intent) ?: return null
+            lines[index] = changedLine(lines[index], aim, value, rule, draft.intent, keepsPrice)
+                ?: return null
         } else {
             // Varias líneas pueden ser: lo que se corrigió queda en hueco en todas.
             for (index in aim.indices) lines[index] = holed(lines[index], aim, value)
@@ -236,12 +402,41 @@ internal class CorrectionSession(
         } else {
             emptyList()
         }
+        // "no, la harina de trigo": el producto nuevo va a la línea que se le parece, no a la
+        // última. Si ninguna se parece, o varias, es la última, como siempre.
+        val akin = if (valued) emptyList() else akin(lines, rename)
         return when {
             byName.isNotEmpty() -> Aim(byName, emptyList(), emptyList())
+            akin.size == 1 -> Aim(akin, emptyList(), rename)
             lines.isEmpty() -> null
             else -> Aim(listOf(lines.lastIndex), emptyList(), rename)
         }
     }
+
+    /**
+     * Las líneas a las que se parece el producto dicho: las que esperan elegir si lo dicho es del
+     * catálogo, las de un producto por crear cuyo nombre está entero en lo dicho ("Harina" en
+     * "harina integral"), y las de un producto cuya cabeza está en lo dicho ("Harina de maíz" en
+     * "harina de trigo").
+     */
+    private fun akin(lines: List<DraftLine>, rename: List<Token>): List<Int> {
+        val spoken = shaper.shape(rename).texts
+        val known = matchOf(rename, ANY_PRODUCT) !is ProductMatch.Unknown
+        return lines.indices.filter { index ->
+            when (val product = lines[index].product) {
+                null -> known
+
+                is DraftTarget.New -> covers(spoken, shapedName(product.name))
+
+                is DraftTarget.Existing ->
+                    covers(spoken, shaper.shape(head(product).orEmpty()).texts)
+            }
+        }
+    }
+
+    /** Si todas las palabras de [name], que no está vacío, están en [spoken]. */
+    private fun covers(spoken: List<String>, name: List<String>): Boolean =
+        name.isNotEmpty() && PhraseWords.cover(name, spoken).matched == name.size
 
     /**
      * Las líneas cuyo producto nombran [tokens]. Si nombran productos del catálogo que no están en
@@ -256,8 +451,21 @@ internal class CorrectionSession(
         }
         val spoken = shaper.shape(tokens).texts
         val named = lines.indices.filter { names(lines[it].product, ids, spoken) }
-        if (named.isNotEmpty() || ids.isEmpty() || !toHoles) return named
+        if (named.isNotEmpty()) return named
+        // "without the coffee" con una línea de "Cup of coffee": el nombre de la línea lleva lo
+        // dicho, aunque el catálogo prefiera otro café.
+        val worded = lines.indices.filter { worded(lines[it].product, spoken) }
+        if (worded.size == 1) return worded
+        if (ids.isEmpty() || !toHoles) return named
         return lines.indices.filter { lines[it].product == null }
+    }
+
+    /** Si el nombre del producto que ya tiene la línea lleva todo lo dicho. */
+    private fun worded(product: DraftTarget?, spoken: List<String>): Boolean {
+        val existing = product as? DraftTarget.Existing ?: return false
+        val name = (productsById[existing.productId] ?: return false).name
+        return spoken.isNotEmpty() &&
+            PhraseWords.cover(spoken, shapedName(name)).matched == spoken.size
     }
 
     private fun names(product: DraftTarget?, ids: List<Long>, spoken: List<String>): Boolean =
@@ -276,12 +484,23 @@ internal class CorrectionSession(
         value: Said,
         rule: ProductRule,
         intent: PhraseIntent,
+        keepsPrice: Boolean,
     ): DraftLine? {
+        val chosen = aim.rename.takeIf { line.product == null && line.candidates.isNotEmpty() }
+            ?.let { products.among(it, line.candidates) }
         val product = if (aim.rename.isEmpty()) {
             line.product
+        } else if (chosen is ProductMatch.Found) {
+            // "las grandes": elige entre los productos por los que se preguntó.
+            DraftTarget.Existing(chosen.id)
         } else {
-            val match = renamed(line.product, aim, rule) ?: return null
-            targetOf(match, intent)
+            // Un producto que podría ser varios deja la línea en hueco, para elegir.
+            val match = renamed(line.product, aim, rule)
+            if (match != null) {
+                targetOf(match, intent)
+            } else {
+                extendedNew(line.product, aim) ?: return null
+            }
         }
         // La unidad dicha debe servirle al producto; la que ya tenía se olvida si no le sirve.
         val unitId = value.unitId ?: line.unitId
@@ -290,7 +509,8 @@ internal class CorrectionSession(
         val kept = unitId.takeIf { fits }
         // Un precio dicho antes era de otro producto o de otra unidad: registraría un monto
         // equivocado. Solo queda el que diga la misma corrección.
-        val stale = product != line.product || unitOf(product, kept) != unitOf(product, line.unitId)
+        val stale = !keepsPrice &&
+            (product != line.product || unitOf(product, kept) != unitOf(product, line.unitId))
         val priced = if (stale) unpriced(line) else line
         return valued(priced, value, product, value.quantity ?: line.quantity, kept)
     }
@@ -328,7 +548,21 @@ internal class CorrectionSession(
         unitId = unitId,
         unitPrice = value.unitPrice ?: line.unitPrice.takeIf { value.lineTotal == null },
         lineTotal = value.lineTotal ?: line.lineTotal.takeIf { value.unitPrice == null },
+        // Con el producto elegido, ya no hay entre qué elegir.
+        candidates = line.candidates.takeIf { product == null }.orEmpty(),
     )
+
+    /**
+     * Si lo dicho no da con nada del catálogo, un producto por crear con el nombre dicho, si ese
+     * nombre lleva entero el que tenía: "Harina" pasa a "Harina integral" con lo que ya se sabía de
+     * ella. Si no, `null`: no se entendió.
+     */
+    private fun extendedNew(product: DraftTarget?, aim: Aim): DraftTarget.New? {
+        val fresh = product as? DraftTarget.New ?: return null
+        val spoken = shaper.shape(aim.rename).texts
+        if (!covers(spoken, shapedName(fresh.name))) return null
+        return fresh.copy(name = products.spokenName(aim.rename))
+    }
 
     /**
      * El producto nuevo de una línea: lo nombrado con lo que era ("la harina" + "de maíz"), lo dicho
@@ -362,14 +596,31 @@ internal class CorrectionSession(
     private fun amountChange(draft: PhraseDraft, ref: List<Token>, spec: LineDraft): PhraseDraft? {
         val amount = spec.amount ?: return null
         if (named(ref) || named(spec.span)) return null
-        return draft.copy(total = money(amount))
+        return draft.copy(total = withThousands(amount, draft.total))
+    }
+
+    /**
+     * "no, 90" sobre un gasto de 80 mil: se corrige el número que se dijo, y los miles se dan por
+     * dichos, como en la conversación. Solo si lo dicho es menor que mil, el monto que había es
+     * de miles y con los miles queda cerca de él, a menos de diez veces; si no, vale como se dijo.
+     */
+    private fun withThousands(milli: Long, before: Money?): Money {
+        val said = money(milli)
+        val previous = before ?: return said
+        val thousands = money(milli * THOUSAND)
+        val small = milli < THOUSAND * Scale.MILLI && milli % Scale.MILLI == 0L
+        val near =
+            previous.minor >= thousands.minor / NEAR && previous.minor <= thousands.minor * NEAR
+        return if (small && previous >= money(THOUSAND * Scale.MILLI) && near) thousands else said
     }
 
     /** "a 600" o "600" es el precio; "costo 400", el costo. */
     private fun newProductChange(draft: PhraseDraft, tokens: List<Token>): PhraseDraft? {
         val clean = tokens.dropWhile { it.norm in lexicon.articles }
         val marker = lexicon.productAmounts.matchAt(clean, 0)
-        val amount = numbers.read(clean, marker?.end ?: 0) ?: return null
+        // "o custo é 6": el "é" que sigue a la marca no es parte del monto.
+        val said = clean.drop(marker?.end ?: 0).dropWhile { it.norm in lexicon.changeFillers }
+        val amount = numbers.read(said, 0) ?: return null
         val money = money(amount.milli)
         return if (marker?.value == true) draft.copy(cost = money) else draft.copy(price = money)
     }
@@ -446,6 +697,12 @@ internal class CorrectionSession(
     }
 
     private companion object {
+        /** Mil: los miles que una corrección da por dichos. */
+        const val THOUSAND = 1_000L
+
+        /** Cuántas veces más o menos que el monto anterior puede quedar el corregido. */
+        const val NEAR = 10L
+
         val ANY_PRODUCT = PhraseSession.ANY_PRODUCT
         val CREDIT_INTENTS = PhraseSession.CREDIT_INTENTS
         val PAYMENT_INTENTS = setOf(
@@ -460,6 +717,18 @@ internal class CorrectionSession(
         /** Donde un producto que no está se propone para crearlo, como al leer la frase. */
         val NEW_TARGET_INTENTS =
             setOf(PhraseIntent.SALE, PhraseIntent.PURCHASE, PhraseIntent.RECIPE)
+
+        /** Las formas de tarjeta donde se dice lo que es un producto nuevo. */
+        val DESCRIBED = setOf(Shape.LINES, Shape.NEW_PRODUCT)
+
+        /** Las operaciones que una corrección puede cambiar entre sí: venta y compra. */
+        val SWITCHABLE = setOf(PhraseIntent.SALE, PhraseIntent.PURCHASE)
+
+        /** Los verbos que dicen sin duda una de esas operaciones, "vendí" y "compré", y cuál. */
+        val SWITCHING_VERBS = mapOf(
+            VerbKind.SALE to PhraseIntent.SALE,
+            VerbKind.PURCHASE to PhraseIntent.PURCHASE,
+        )
 
         fun shapeOf(intent: PhraseIntent): Shape = when (intent) {
             PhraseIntent.SALE,

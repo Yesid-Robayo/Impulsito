@@ -172,7 +172,7 @@ class HomeScreenTest {
 
     @Test
     fun theSellShortcutOpensANewSaleByHand() {
-        // El botón central es Decir: vender a mano queda en este atajo de Inicio.
+        // Vender a mano está en la barra y, también, en este atajo de Inicio.
         compose.setContent {
             PreviewTheme { HomeScreen(previewHomeContent(), { actions += it }) }
         }

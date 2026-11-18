@@ -55,8 +55,14 @@ class PhraseDraftTest {
                 intent = PhraseIntent.SALE,
                 lines = listOf(
                     DraftLine(DraftTarget.Existing(BREAD), units(3), null),
-                    DraftLine(null, units(2), null),
-                    DraftLine(null, QuantityMilli(500), KILOGRAM),
+                    // Los huecos recuerdan entre qué se pidió elegir.
+                    DraftLine(null, units(2), null, candidates = listOf(SODA_SMALL, SODA_BIG)),
+                    DraftLine(
+                        null,
+                        QuantityMilli(500),
+                        KILOGRAM,
+                        candidates = listOf(FARMER_CHEESE, MOZZARELLA),
+                    ),
                 ),
                 paymentMethodId = CASH,
             ),

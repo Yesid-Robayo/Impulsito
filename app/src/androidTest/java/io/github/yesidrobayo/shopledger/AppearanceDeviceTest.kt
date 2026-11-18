@@ -35,9 +35,9 @@ import org.junit.runner.RunWith
  * En el teléfono: la paleta y el modo guardados pintan la pantalla, y la barra inferior navega.
  *
  * Toca la pantalla como una persona, con eventos del sistema, y mira los píxeles de la captura: el
- * papel en el margen, la barra y la píldora de la pestaña activa. No usa herramientas de interfaz.
- * Con el argumento `captureDir`, además guarda cada captura en la caché de la app, para revisar la
- * calidad visual a ojo.
+ * papel en el margen, la barra, la píldora de la pestaña activa y el botón redondo `Decir`. No usa
+ * herramientas de interfaz. Con el argumento `captureDir`, además guarda cada captura en la caché
+ * de la app, para revisar la calidad visual a ojo.
  *
  * Deja la paleta y el modo como los encontró.
  */
@@ -89,6 +89,7 @@ class AppearanceDeviceTest {
         val set = paletteOf(appearance.palette)
         val dark = appearance.themeMode == ThemeMode.DARK
         val scheme = if (dark) set.darkScheme else set.lightScheme
+        val brand = (if (dark) set.darkColors else set.lightColors).brandFill
         val bar = Geometry.of(scenario)
         val name = "${appearance.palette.name.lowercase()}-${appearance.themeMode.name.lowercase()}"
 
@@ -98,10 +99,12 @@ class AppearanceDeviceTest {
         awaitPixel("$name inicio activo", scheme.secondaryContainer) {
             it.at(bar.pillX(0), bar.pillY)
         }
+        // Decir, redondo y de la marca, sobre la barra, abajo a la derecha.
+        awaitPixel("$name decir en inicio", brand) { it.at(bar.sayX, bar.sayY) }
         capture("$name-1-home")
 
         // El segundo lugar de la barra es Vender, que abre una venta: Registros se abre desde Inicio.
-        for ((tab, label) in listOf(2 to "products", 3 to "numbers")) {
+        for ((tab, label) in listOf(2 to "expenses", 3 to "products", 4 to "numbers")) {
             tap(bar.tabX(tab), bar.barCenterY)
             awaitPixel("$name $label activo", scheme.secondaryContainer) {
                 it.at(bar.pillX(tab), bar.pillY)
@@ -109,17 +112,18 @@ class AppearanceDeviceTest {
             awaitPixel("$name inicio inactivo", scheme.surfaceContainerLow) {
                 it.at(bar.pillX(0), bar.pillY)
             }
+            awaitPixel("$name decir en $label", brand) { it.at(bar.sayX, bar.sayY) }
             capture("$name-${tab + 1}-$label")
         }
 
-        // Vender, en la barra, abre la venta encima, sin barra; atrás vuelve a la pestaña, y atrás otra
-        // vez a Inicio. El botón del centro es Decir.
+        // Vender, en la barra, abre la venta encima, sin barra; atrás vuelve a la pestaña, y atrás
+        // otra vez a Inicio. Decir es el botón redondo sobre la barra, abajo a la derecha.
         tap(bar.tabX(1), bar.barCenterY)
         awaitPixel("$name venta sin barra", scheme.surface) { it.at(bar.margin, bar.barCenterY) }
-        capture("$name-5-new-sale")
+        capture("$name-6-new-sale")
         pressBack()
         awaitPixel("$name vuelve a números", scheme.secondaryContainer) {
-            it.at(bar.pillX(3), bar.pillY)
+            it.at(bar.pillX(4), bar.pillY)
         }
         pressBack()
         awaitPixel("$name vuelve a inicio", scheme.secondaryContainer) {
@@ -127,7 +131,7 @@ class AppearanceDeviceTest {
         }
     }
 
-    /** Dónde están el margen, la barra, sus pestañas y Vender, en píxeles de la pantalla. */
+    /** Dónde están el margen, la barra y sus cinco casillas iguales, en píxeles de la pantalla. */
     private class Geometry(
         private val width: Int,
         private val dp: Float,
@@ -136,7 +140,7 @@ class AppearanceDeviceTest {
     ) {
         val margin = (2 * dp).roundToInt()
         val barCenterY = barTop + (BAR_DP / 2 * dp).roundToInt()
-        private val tabWidth = (width - CENTER_SLOT_DP * dp) / 4
+        private val tabWidth = width.toFloat() / BAR_ENTRIES
 
         // La píldora va arriba del contenido centrado de la pestaña: icono, separación y etiqueta.
         val pillY: Int =
@@ -147,19 +151,12 @@ class AppearanceDeviceTest {
                     HAIRLINE_DP + (BAR_DP - HAIRLINE_DP - content) / 2 + PILL_HEIGHT_DP / 2
                 barTop + (pillCenter * dp).roundToInt()
             }
-        val sellX = width / 2
-        val sellY = barTop + ((SELL_HEIGHT_DP / 2 - SELL_OVERHANG_DP) * dp).roundToInt()
 
-        fun tabX(index: Int): Int {
-            val before = if (index <
-                2
-            ) {
-                index * tabWidth
-            } else {
-                2 * tabWidth + CENTER_SLOT_DP * dp + (index - 2) * tabWidth
-            }
-            return (before + tabWidth / 2).roundToInt()
-        }
+        fun tabX(index: Int): Int = (index * tabWidth + tabWidth / 2).roundToInt()
+
+        // Dentro del círculo de Decir, a un lado del micrófono: el icono no tapa el color.
+        val sayX = width - ((SAY_MARGIN_DP + SAY_DP / 2 + SAY_SAMPLE_OFFSET_DP) * dp).roundToInt()
+        val sayY = barTop - ((SAY_MARGIN_DP + SAY_DP / 2) * dp).roundToInt()
 
         // Al lado del icono, dentro de la píldora: el icono no tapa el color que se mira.
         fun pillX(index: Int): Int = tabX(index) + (PILL_SAMPLE_OFFSET_DP * dp).roundToInt()
@@ -280,13 +277,14 @@ class AppearanceDeviceTest {
         // Medidas de la barra en dp, las del sistema de diseño.
         const val BAR_DP = 72f
         const val HAIRLINE_DP = 1f
-        const val CENTER_SLOT_DP = 92f
+        const val BAR_ENTRIES = 5
         const val PILL_HEIGHT_DP = 28f
         const val LABEL_GAP_DP = 4f
         const val LABEL_LINE_SP = 16f
         const val MAX_LABEL_SCALE = 1.15f
-        const val SELL_HEIGHT_DP = 60f
-        const val SELL_OVERHANG_DP = 15f
         const val PILL_SAMPLE_OFFSET_DP = 19f
+        const val SAY_DP = 56f
+        const val SAY_MARGIN_DP = 16f
+        const val SAY_SAMPLE_OFFSET_DP = 18f
     }
 }

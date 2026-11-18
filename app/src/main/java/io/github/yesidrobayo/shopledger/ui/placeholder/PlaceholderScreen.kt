@@ -133,7 +133,7 @@ fun PlaceholderScreen(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
                     .navigationBarsPadding()
-                    // Las raíces dejan libre el alto de la barra inferior, más lo que sobresale Vender.
+                    // Las raíces dejan libre el alto de la barra inferior y de `Decir`, que flota sobre ella.
                     .then(
                         if (content.withBottomBar) {
                             Modifier.padding(bottom = bottomBarClearance())

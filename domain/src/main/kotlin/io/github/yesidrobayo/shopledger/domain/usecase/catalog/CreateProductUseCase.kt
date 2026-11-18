@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.CatalogReference
+import io.github.yesidrobayo.shopledger.domain.model.catalog.CategoryDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.InitialCost
 import io.github.yesidrobayo.shopledger.domain.model.catalog.NewPriceChange
 import io.github.yesidrobayo.shopledger.domain.model.catalog.NewProduct
@@ -29,6 +30,8 @@ import io.github.yesidrobayo.shopledger.domain.port.SystemRowRepository
 import io.github.yesidrobayo.shopledger.domain.port.TransactionRunner
 import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.CategoryFormCheck
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.CategoryFormRules
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductFormCheck
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ProductFormRules
 import io.github.yesidrobayo.shopledger.domain.rule.catalog.ReplacementCostRules
@@ -55,11 +58,15 @@ import io.github.yesidrobayo.shopledger.domain.usecase.region.CurrencyLock
  * ([InitialCost]). Con el total, ese total entra entero al valor del stock y el costo por unidad
  * sale de dividirlo, como en una línea de compra: así el redondeo del costo unitario no le quita
  * valor al stock.
+ *
+ * Con una categoría nueva, la crea en la misma transacción, antes del producto, y el producto va en
+ * ella: si el producto no se puede crear, la categoría tampoco queda. Si ya hay una con ese nombre,
+ * comparado sin mayúsculas ni tildes, usa esa en vez de repetirla.
  */
 class CreateProductUseCase(
     private val transactions: TransactionRunner,
     private val products: ProductRepository,
-    categories: CategoryRepository,
+    private val categories: CategoryRepository,
     suppliers: SupplierRepository,
     units: UnitRepository,
     private val systemRows: SystemRowRepository,
@@ -75,14 +82,47 @@ class CreateProductUseCase(
 
     /**
      * Crea el producto de [form] con [initialStock] milésimas de stock inicial, cero sin él, a
-     * [initialCost]: por omisión, el costo por unidad del formulario.
+     * [initialCost]: por omisión, el costo por unidad del formulario. Con [newCategory], el
+     * producto va en la categoría de ese nombre, que se crea si no existe: así la usa `Decir`, que
+     * crea la categoría que se dijo de un producto nuevo.
      */
     suspend operator fun invoke(
         form: ProductForm,
         initialStock: QuantityMilli = QuantityMilli.ZERO,
         initialCost: InitialCost = InitialCost.PerUnit,
+        newCategory: String? = null,
     ): SaveProductResult = storageSafe(SaveProductResult::StorageFailed) {
-        transactions.write { create(form, initialStock, initialCost) }
+        transactions.write {
+            if (newCategory == null) {
+                create(form, initialStock, initialCost)
+            } else {
+                inCategory(newCategory, form, initialStock, initialCost)
+            }
+        }
+    }
+
+    /**
+     * La categoría [name], la que ya tiene ese nombre o una nueva, y el producto en ella, dentro de
+     * la misma transacción. Un nombre que no sirve para una categoría no crea nada.
+     */
+    private suspend fun inCategory(
+        name: String,
+        form: ProductForm,
+        initialStock: QuantityMilli,
+        initialCost: InitialCost,
+    ): TxResult<SaveProductResult> {
+        val valid = when (val check = CategoryFormRules.check(name, targetMargin = null)) {
+            is CategoryFormCheck.Invalid ->
+                return reject(SaveProductResult.MissingReference(CatalogReference.CATEGORY))
+
+            is CategoryFormCheck.Valid -> check
+        }
+        val id = categories.findByNormalizedName(valid.normalizedName)?.id
+            ?: categories.insert(
+                CategoryDetails(valid.name, valid.normalizedName, targetMargin = null),
+                clock.now(),
+            )
+        return create(form.copy(categoryId = id), initialStock, initialCost)
     }
 
     private suspend fun create(

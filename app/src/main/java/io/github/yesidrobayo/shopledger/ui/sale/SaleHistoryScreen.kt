@@ -204,7 +204,7 @@ private fun HistoryList(
     onAction: (SaleHistoryAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Las raíces dejan libre el alto de la barra inferior, más lo que sobresale Vender.
+    // Las raíces dejan libre el alto de la barra inferior y de `Decir`, que flota sobre ella.
     val bottom = bottomBarClearance() + AppTheme.spacing.s16
     Box(modifier.fillMaxWidth()) {
         when (val content = uiState.content) {

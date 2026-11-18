@@ -86,7 +86,9 @@ class OfflineWalkTest {
         scenario = ActivityScenario.launch(MainActivity::class.java)
         await("Inicio", ::atHome)
 
-        // Las pestañas: Registros, Productos, Números y de vuelta Inicio.
+        // Las pestañas: Registros, desde Inicio, y en la barra Productos, Gastos, Números y de
+        // vuelta Inicio. Gastos va después de Productos: en Registros, `Gastos` es también un
+        // segmento.
         for (tab in TABS) visit(text(tab)) { tapText(text(tab)) }
 
         // `Vender`, `Compra` y `Gasto`, cada una desde Inicio y de vuelta.
@@ -282,6 +284,7 @@ class OfflineWalkTest {
             listOf(
                 R.string.nav_records,
                 R.string.nav_products,
+                R.string.nav_expenses,
                 R.string.nav_numbers,
                 R.string.nav_home,
             )

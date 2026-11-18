@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yesidrobayo.shopledger.R
+import io.github.yesidrobayo.shopledger.domain.model.ReportPeriod
 import io.github.yesidrobayo.shopledger.domain.model.document.AttachmentTarget
 import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseCorrections
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.ObserveExpenseMonthUseCase
@@ -49,14 +50,19 @@ import kotlinx.coroutines.flow.map
  * con lo escrito. Guardar o anular deja su aviso en la navegación. Si la base va al rescate, la
  * pantalla no lee nada.
  *
+ * Como raíz de la pestaña `Gastos`, con [ownTab], va sin segmentos ni atrás, con los ajustes al
+ * borde, como las otras raíces.
+ *
  * @param onSegment elige otro segmento de Registros, o `null` si los gastos van como destino
- *   propio.
+ *   propio o como su pestaña.
+ * @param ownTab si es la raíz de la pestaña `Gastos`.
  */
 @Composable
 fun ExpensesRoute(
     key: AppNavKey.Expenses,
     navigator: AppNavigator,
     onSegment: ((RecordsTab) -> Unit)? = null,
+    ownTab: Boolean = false,
 ) {
     val asTab = onSegment != null
     val formats = LocalAppFormats.current
@@ -115,12 +121,18 @@ fun ExpensesRoute(
                 payingAccounts = payingAccounts(),
                 loadRecurring = { prepareRecurring(it) },
                 dueRecurring = recurring().map { it.due.size },
+                // La misma suma por categoría que `Gastos por categoría` de las estadísticas.
+                categoryTotals = { month ->
+                    ports.periodBreakdowns.observeExpenseCategories(ReportPeriod.Month(month))
+                },
             )
         }
     when (model) {
-        ScreenModel.Opening -> ExpensesScreen(ExpensesUiState(), onAction = {}, asTab = asTab)
+        ScreenModel.Opening ->
+            ExpensesScreen(ExpensesUiState(), onAction = {}, asTab = asTab, ownTab = ownTab)
 
-        ScreenModel.Unavailable -> PlaceholderRoute(key, navigator)
+        ScreenModel.Unavailable ->
+            PlaceholderRoute(if (ownTab) AppNavKey.ExpensesTab else key, navigator)
 
         is ScreenModel.Ready -> {
             val viewModel = model.viewModel
@@ -179,9 +191,11 @@ fun ExpensesRoute(
                 onAction = { action ->
                     viewModel.onAction(action)
                     when (action) {
-                        // Sin segmentos, la flecha de atrás también llega como `Ventas`.
-                        ExpensesAction.ShowSales -> when (onSegment) {
-                            null -> navigator.back()
+                        // Sin segmentos, la flecha de atrás también llega como `Ventas`. Como
+                        // pestaña no hay ni segmentos ni atrás: no llega.
+                        ExpensesAction.ShowSales -> when {
+                            ownTab -> Unit
+                            onSegment == null -> navigator.back()
                             else -> onSegment(RecordsTab.SALES)
                         }
 
@@ -225,6 +239,7 @@ fun ExpensesRoute(
                     }
                 },
                 asTab = asTab,
+                ownTab = ownTab,
                 backupBanner = { RootBackupBanner(navigator::open) },
                 receiptPhotos = { row ->
                     ReceiptPhotosRoute(AttachmentTarget.Expense(row.id), canAdd = !row.voided)

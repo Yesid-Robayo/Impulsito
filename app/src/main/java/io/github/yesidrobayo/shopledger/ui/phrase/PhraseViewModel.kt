@@ -6,9 +6,11 @@ import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftTarget
 import io.github.yesidrobayo.shopledger.domain.model.phrase.NameMatch
+import io.github.yesidrobayo.shopledger.domain.model.phrase.NewProductTraits
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseCatalog
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIntent
@@ -48,9 +50,11 @@ import kotlinx.coroutines.withContext
  *   descarta, y lo único que sobrevive a que Android cierre el proceso es lo escrito en el campo.
  * - **Preguntar antes que adivinar.** Lo dudoso queda como hueco en su lugar de la tarjeta, y
  *   `Registrar` dice qué falta en vez de registrar.
- * - **Corregir sin empezar de nuevo.** Con la tarjeta a la vista, una frase corta la corrige; si no
- *   es una corrección, se lee como una frase nueva. Cada línea y cada dato también se tocan y se
- *   cambian a mano.
+ * - **Corregir sin empezar de nuevo.** Con la tarjeta a la vista, lo que se dice o se escribe se
+ *   prueba primero como corrección, y cambia solo lo nombrado. Si no corrige nada, solo una
+ *   operación dicha con su verbo y con algo que registrar ("vendí 2 panes") reemplaza la tarjeta;
+ *   ante la duda, la tarjeta sigue como estaba y dice que no se entendió. Cada línea y cada dato
+ *   también se tocan y se cambian a mano.
  * - **Un error nunca borra lo escrito**, ni la tarjeta.
  *
  * @param read lee la frase con el catálogo del negocio.
@@ -175,12 +179,31 @@ class PhraseViewModel(
 
             is PhraseAction.CreateTarget ->
                 if (session?.draft?.intent == PhraseIntent.NEW_PRODUCT) {
-                    // El producto nuevo se crea al registrar: aquí solo cambia su nombre.
-                    editDraft { it.copy(target = DraftTarget.New(action.name.trim())) }
+                    // El producto nuevo se crea al registrar: aquí solo cambia su nombre, y lo que
+                    // se dijo de él queda.
+                    editDraft { draft ->
+                        val name = action.name.trim()
+                        val said = (draft.target as? DraftTarget.New)?.copy(name = name)
+                        draft.copy(target = said ?: DraftTarget.New(name))
+                    }
                     closeSheet()
                 } else {
                     createProduct(PickPurpose.Target, action.name)
                 }
+
+            is PhraseAction.PickNewCategory -> openPick(PickPurpose.NewCategory(action.index))
+
+            is PhraseAction.ChooseNewCategory ->
+                editNewProduct(action.index, NewProductTraits(categoryId = action.categoryId))
+
+            is PhraseAction.NameNewCategory -> {
+                val name = action.name.trim()
+                // Con mayúscula inicial, como se propone una categoría dicha.
+                val shown = name.replaceFirstChar { it.uppercaseChar() }
+                if (name.isNotEmpty()) {
+                    editNewProduct(action.index, NewProductTraits(newCategory = shown))
+                }
+            }
 
             is PhraseAction.OpenAmount -> openAmount(action.field)
 
@@ -259,11 +282,12 @@ class PhraseViewModel(
     }
 
     /**
-     * Muestra lo que se leyó. Si no se entendió y había una tarjeta, la tarjeta sigue como estaba,
-     * con el aviso arriba: una frase mal dicha no borra lo ya revisado.
+     * Muestra lo que se leyó. Con una tarjeta a la vista, solo la reemplaza una operación dicha con
+     * su verbo y con algo que registrar. Si no, la tarjeta sigue como estaba, con el aviso arriba:
+     * una frase mal dicha, o que no se sabe qué corrige, no borra lo ya revisado.
      */
     private suspend fun show(result: PhraseReadResult, previous: Session?) {
-        val draft = result.draft
+        val draft = result.draft?.takeIf { previous == null || replacesCard(result, it) }
         if (draft == null) {
             val mixed = PhraseIssue.MIXED_OPERATIONS in result.reading.issues
             if (previous != null) {
@@ -313,6 +337,33 @@ class PhraseViewModel(
             )
         }
         closeSheet()
+    }
+
+    /**
+     * Cambia lo que se sabe del producto por crear de la línea [index], o del producto nuevo o el
+     * de la receta con `null`, con [said] encima, y cierra la hoja. Si ya no es un producto por
+     * crear, solo cierra la hoja.
+     */
+    private fun editNewProduct(index: Int?, said: NewProductTraits) {
+        val draft = session?.draft
+        if (draft == null) {
+            closeSheet()
+            return
+        }
+        if (index == null) {
+            val target = draft.target as? DraftTarget.New
+            if (target != null) {
+                editDraft { it.copy(target = target.copy(traits = target.traits.with(said))) }
+            }
+            closeSheet()
+            return
+        }
+        val product = draft.lines.getOrNull(index)?.product as? DraftTarget.New
+        if (product == null) {
+            closeSheet()
+            return
+        }
+        editLine(index) { it.copy(product = product.copy(traits = product.traits.with(said))) }
     }
 
     private inline fun <reified T : PhraseSheet> updateSheet(
@@ -495,6 +546,7 @@ class PhraseViewModel(
             when (purpose) {
                 is PickPurpose.LineProduct -> intent in CREATES_LINE_PRODUCTS
                 PickPurpose.Target -> true
+                is PickPurpose.NewCategory -> true
                 PickPurpose.Party -> false
             }
         state.update {
@@ -528,6 +580,9 @@ class PhraseViewModel(
 
                 PickPurpose.Party ->
                     current.partyNames().map { CardOption(it.id, it.name) }
+
+                is PickPurpose.NewCategory ->
+                    catalog.productCategories.map { CardOption(it.id, it.name) }
             }
         val wanted = TextNormalizer.normalize(query.trim())
         if (wanted.isEmpty()) return all
@@ -588,13 +643,16 @@ class PhraseViewModel(
         val stage = state.value.stage as? PhraseStage.Card ?: return
         val clean = name.trim()
         if (clean.isEmpty() || stage.registering || work?.isActive == true) return
-        val unitId =
+        val line =
             (purpose as? PickPurpose.LineProduct)?.let { current.draft.lines.getOrNull(it.index) }
-                ?.unitId
+        val unitId = line?.unitId
+        // Lo que se dijo del producto, como su uso o su categoría, se usa al crearlo.
+        val spoken = if (line != null) line.product else current.draft.target
+        val traits = (spoken as? DraftTarget.New)?.traits ?: NewProductTraits.NONE
         val request =
             PhraseDraft(
                 intent = PhraseIntent.NEW_PRODUCT,
-                target = DraftTarget.New(clean),
+                target = DraftTarget.New(clean, traits),
                 unitId = unitId,
             )
         work = viewModelScope.launch {
@@ -630,7 +688,7 @@ class PhraseViewModel(
 
                             PickPurpose.Target -> named.edited(draft.copy(target = chosen))
 
-                            PickPurpose.Party -> named
+                            is PickPurpose.NewCategory, PickPurpose.Party -> named
                         }
                     session = next
                     state.update { it.copy(stage = PhraseStage.Card(cardOf(next))) }
@@ -781,7 +839,7 @@ class PhraseViewModel(
                                 ?.let { CardProduct.Chosen(target.productId, it) }
                                 ?: CardProduct.Missing(emptyList(), null, canCreate = false)
 
-                        is DraftTarget.New -> CardProduct.New(target.name, needsCreating = true)
+                        is DraftTarget.New -> newProduct(target, needsCreating = true, catalog)
 
                         null ->
                             CardProduct.Missing(
@@ -824,6 +882,8 @@ class PhraseViewModel(
             } else {
                 null
             }
+        // Tras pasar de venta a compra, la persona leída es del otro lado: no se ofrece.
+        val readParty = reading.party.takeIf { reading.intent == intent }
         val party =
             if (intent in WITH_PARTY) {
                 val names = session.partyNames().associateBy { it.id }
@@ -831,10 +891,10 @@ class PhraseViewModel(
                     supplier = intent in SUPPLIER_PARTY,
                     chosen = draft.partyId?.let(names::get)?.let { CardOption(it.id, it.name) },
                     candidates =
-                        (reading.party as? NameMatch.Choose)?.ids.orEmpty()
+                        (readParty as? NameMatch.Choose)?.ids.orEmpty()
                             .mapNotNull(names::get)
                             .map { CardOption(it.id, it.name) },
-                    spoken = (reading.party as? NameMatch.Unknown)?.spoken,
+                    spoken = (readParty as? NameMatch.Unknown)?.spoken,
                 )
             } else {
                 null
@@ -857,9 +917,10 @@ class PhraseViewModel(
                             ?: CardProduct.Missing(emptyList(), null, canCreate = true)
 
                     is DraftTarget.New ->
-                        CardProduct.New(
-                            chosen.name,
+                        newProduct(
+                            chosen,
                             needsCreating = intent != PhraseIntent.NEW_PRODUCT,
+                            catalog,
                         )
 
                     null ->
@@ -889,6 +950,8 @@ class PhraseViewModel(
                     PhraseIssue.NO_RECIPE,
                     PhraseIssue.NO_STOCK,
                     PhraseIssue.ALREADY_EXISTS,
+                    PhraseIssue.UNUSED_WORDS,
+                    PhraseIssue.COST_LEFT_OUT,
                     -> !session.edited
 
                     // Sin propuesta no hay tarjeta: estos se muestran en su propio estado.
@@ -970,6 +1033,38 @@ class PhraseViewModel(
         /** Las que muestran costos, que el modo discreto oculta. */
         val SENSITIVE = setOf(PhraseIntent.PURCHASE, PhraseIntent.COST_CORRECTION)
     }
+}
+
+/**
+ * Un producto por crear en la tarjeta, con lo que se dijo de él: su uso, si es un servicio y su
+ * categoría por su nombre. Una categoría que ya no está en el catálogo no se nombra.
+ */
+private fun newProduct(
+    target: DraftTarget.New,
+    needsCreating: Boolean,
+    catalog: PhraseCatalog,
+): CardProduct.New {
+    val traits = target.traits
+    return CardProduct.New(
+        name = target.name,
+        needsCreating = needsCreating,
+        usage = traits.usage,
+        service = traits.stockMode == ProductStockMode.UNTRACKED,
+        category = traits.categoryId?.let { id ->
+            catalog.productCategories.firstOrNull { it.id == id }?.name
+        },
+        newCategory = traits.newCategory,
+    )
+}
+
+/**
+ * Si lo leído reemplaza la tarjeta a la vista: la frase dice con un verbo qué operación es, y tiene
+ * algo que registrar. "la harina es insumo" o "2 panes" no lo hacen, y la tarjeta sigue.
+ */
+private fun replacesCard(result: PhraseReadResult, draft: PhraseDraft): Boolean {
+    val content = draft.lines.isNotEmpty() || draft.total != null || draft.target != null ||
+        draft.price != null || draft.cost != null
+    return result.statesOperation && content
 }
 
 /** Si el producto es de [intent]: en una venta, que se venda; en una compra, que se compre. */

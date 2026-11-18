@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Scale
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeLine
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseRequest
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftLine
@@ -70,6 +71,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentResu
  * - **Un producto nuevo se crea antes.** Ningún caso de uso crea un producto dentro de la misma
  *   escritura de una venta, una compra o una receta, así que una línea con un producto nuevo es
  *   un hueco: la tarjeta lo crea con un producto nuevo de esta misma función y lo vuelve a elegir.
+ *   Se crea con lo que se dijo de él: su uso, si es un servicio y su categoría, que se crea con
+ *   él si no existe.
  * - **Las unidades** se respetan donde la operación las admite: una presentación de venta en la
  *   venta y una de compra en la compra. Lo demás se lleva a la unidad base, con la conversión que
  *   guardó la persona o, entre unidades métricas, con su medida; un precio dicho por esa unidad va
@@ -300,13 +303,21 @@ class RegisterPhraseUseCase(
         val target = requireNotNull(draft.target as? DraftTarget.New) {
             "Un producto nuevo completo tiene su nombre"
         }
+        // Lo que se dijo del producto: su uso, si es un servicio y su categoría. Lo que no se dijo
+        // queda como en un producto nuevo de siempre.
+        val traits = target.traits
         val form = ProductForm(
             name = target.name,
+            categoryId = traits.categoryId,
             baseUnitId = draft.unitId,
+            stockMode = traits.stockMode ?: ProductStockMode.TRACKED,
             salePrice = draft.price ?: Money.ZERO,
             cost = draft.cost ?: Money.ZERO,
+            usage = traits.usage,
         )
-        val result = writers.product(form)
+        // Una categoría dicha que no está en el catálogo se crea con el producto, en su misma
+        // transacción.
+        val result = writers.product(form, traits.newCategory.takeIf { traits.categoryId == null })
         if (result is SaveProductResult.Saved) return registered(draft, result.productId)
         if (result is SaveProductResult.StorageFailed) return failed(result.failure)
         return rejected(PhraseRejection.Product(result))

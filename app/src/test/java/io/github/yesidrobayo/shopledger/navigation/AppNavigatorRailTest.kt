@@ -40,6 +40,16 @@ class AppNavigatorRailTest {
     }
 
     @Test
+    fun theExpensesTabFromTheRailIsMarkedLikeTheOtherTabs() {
+        navigator.openFromRail(AppNavKey.ProductList)
+
+        navigator.openFromRail(AppNavKey.ExpensesTab)
+
+        assertEquals(listOf(AppNavKey.Home, AppNavKey.ExpensesTab), stack)
+        assertEquals(AppNavKey.ExpensesTab, navigator.railSection)
+    }
+
+    @Test
     fun businessAndSettingsOpenOnTopAndAreMarked() {
         navigator.openFromRail(AppNavKey.ProductList)
 

@@ -222,8 +222,8 @@ fun HomeScreen(
 }
 
 /**
- * Lo que el contenido deja libre al final: la barra del sistema, la barra inferior y lo que
- * sobresale `Vender`, para que la última venta no quede debajo.
+ * Lo que el contenido deja libre al final: la barra del sistema, la barra inferior y `Decir`,
+ * que flota sobre ella, para que la última venta no quede debajo.
  */
 @Composable
 private fun bottomSpace(): Dp {

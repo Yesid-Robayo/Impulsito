@@ -1,5 +1,13 @@
 O que cada versão do {app} trouxe, da mais nova para a mais antiga.
 
+## 1.0.6
+
+- **Dizer escuta:** nos telefones em que **Dizer** fechava na hora, agora escuta. O {app} pede ao serviço de voz do telefone o idioma que ele tem baixado e tenta cada serviço de voz do telefone até um funcionar.
+- **Despesas na barra:** a barra de baixo mostra **Início**, **Vender**, **Despesas**, **Produtos** e **Números**. **Despesas** abre as despesas do mês, com **Por categoria** acima da lista.
+- **Dizer, embaixo à direita:** **Dizer** agora é o botão redondo do microfone, embaixo à direita, em **Início**, **Despesas**, **Produtos** e **Números**. Faz o mesmo que antes.
+- **Entende mais:** muitas outras formas de dizer cada operação, números como «2 mil e 500» ou «50 000», o tipo e a categoria de um produto novo («é um insumo, na categoria matérias-primas»), e uma categoria nova é criada com o produto. Perguntas, planos como «amanhã compro» e negações não registram nada.
+- **Corrigir mantém o resto:** com o cartão aberto, uma frase como «não, a farinha de trigo» ou «tira o pão» muda só o que ela nomeia.
+
 ## 1.0.5
 
 - **Dizer, no centro:** o botão embaixo, no centro, é **Dizer**. Toca-se e fala-se: o {app} escuta com sua própria tela, mostra a frase enquanto é dita e depois o cartão. Na primeira vez pede o microfone. A barra mostra **Início**, **Vender**, **Dizer**, **Produtos** e **Números**; **Registros** abre pelo **Início**.

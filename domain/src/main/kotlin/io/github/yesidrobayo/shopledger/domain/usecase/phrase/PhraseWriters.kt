@@ -51,7 +51,8 @@ class PhraseWriters(
     val supplierPayment: suspend (SupplierPaymentRequest) -> PaySupplierResult,
     val cost: suspend (productId: Long, newCost: Money) -> CorrectCostResult,
     val price: suspend (productId: Long, newPrice: Money) -> ChangePriceResult,
-    val product: suspend (ProductForm) -> SaveProductResult,
+    /** Crea un producto; con una categoría nueva por su nombre, la crea con él. */
+    val product: suspend (ProductForm, newCategory: String?) -> SaveProductResult,
     val recipe: suspend (parentId: Long, lines: List<RecipeLine>) -> SaveRecipeResult,
 ) {
     companion object {
@@ -78,7 +79,7 @@ class PhraseWriters(
             supplierPayment = { supplierPayment(it) },
             cost = { productId, newCost -> cost(productId, newCost) },
             price = { productId, newPrice -> price(productId, newPrice) },
-            product = { product(it) },
+            product = { form, newCategory -> product(form, newCategory = newCategory) },
             recipe = { parentId, lines -> recipe(parentId, lines) },
         )
     }

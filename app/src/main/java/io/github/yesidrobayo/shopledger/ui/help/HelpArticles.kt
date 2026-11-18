@@ -361,7 +361,7 @@ fun HelpArticleId.target(): HelpTarget? = when (this) {
 
     HelpArticleId.PAYABLES -> HelpTarget(AppNavKey.Payables, R.string.payable_title)
 
-    HelpArticleId.EXPENSES -> HelpTarget(AppNavKey.Expenses(), R.string.records_tab_expenses)
+    HelpArticleId.EXPENSES -> HelpTarget(AppNavKey.ExpensesTab, R.string.nav_expenses)
 
     HelpArticleId.RESTOCK -> HelpTarget(AppNavKey.Replenishment(), R.string.reorder_title)
 

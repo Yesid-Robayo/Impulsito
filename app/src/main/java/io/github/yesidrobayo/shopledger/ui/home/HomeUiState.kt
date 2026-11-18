@@ -86,8 +86,8 @@ sealed interface HomeAction {
     data object AcknowledgeNoDestination : HomeAction
 
     /**
-     * El atajo `Vender`: abre una venta nueva a mano. El botón central de la barra es `Decir`, así
-     * que vender a mano queda aquí, a un toque desde Inicio.
+     * El atajo `Vender`: abre una venta nueva a mano, lo mismo que `Vender` en la barra, junto a
+     * los atajos `Compra` y `Gasto`.
      */
     data object NewSale : HomeAction
 

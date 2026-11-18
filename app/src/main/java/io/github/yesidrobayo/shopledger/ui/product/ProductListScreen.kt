@@ -87,7 +87,7 @@ fun ProductListScreen(
 ) {
     val spacing = AppTheme.spacing
     val sizes = AppTheme.sizes
-    // Las raíces dejan libre el alto de la barra inferior, más lo que sobresale Vender.
+    // Las raíces dejan libre el alto de la barra inferior y de `Decir`, que flota sobre ella.
     val bottomClearance = bottomBarClearance()
     Box(
         modifier

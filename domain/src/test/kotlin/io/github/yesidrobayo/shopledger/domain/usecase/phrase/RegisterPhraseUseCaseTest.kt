@@ -4,6 +4,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeLine
@@ -13,6 +14,7 @@ import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftGap
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftTarget
+import io.github.yesidrobayo.shopledger.domain.model.phrase.NewProductTraits
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIntent
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineAmount
@@ -785,6 +787,35 @@ class RegisterPhraseUseCaseTest {
             ),
             writers.requests,
         )
+    }
+
+    @Test
+    fun `a new product is created with its usage, its stock mode and its category`() = runTest {
+        val flour = NewProductTraits(usage = ProductUsage.INPUT, categoryId = 51L)
+        val service = NewProductTraits(
+            usage = ProductUsage.SALE,
+            stockMode = ProductStockMode.UNTRACKED,
+            newCategory = "Servicios",
+        )
+        register(
+            PhraseDraft(PhraseIntent.NEW_PRODUCT, target = DraftTarget.New("Harina", flour)),
+        )
+        register(
+            PhraseDraft(PhraseIntent.NEW_PRODUCT, target = DraftTarget.New("Asesoría", service)),
+        )
+        assertEquals(
+            listOf(
+                ProductForm(name = "Harina", categoryId = 51L, usage = ProductUsage.INPUT),
+                ProductForm(
+                    name = "Asesoría",
+                    stockMode = ProductStockMode.UNTRACKED,
+                    usage = ProductUsage.SALE,
+                ),
+            ),
+            writers.requests,
+        )
+        // La categoría que no existe se pide crear con el producto; la que existe, no.
+        assertEquals(listOf(null, "Servicios"), writers.newCategories)
     }
 
     @Test

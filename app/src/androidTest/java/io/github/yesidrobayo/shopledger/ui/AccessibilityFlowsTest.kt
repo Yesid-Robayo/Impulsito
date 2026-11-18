@@ -22,6 +22,7 @@ import io.github.yesidrobayo.shopledger.ui.destination.DestinationChoiceScreen
 import io.github.yesidrobayo.shopledger.ui.destination.DestinationChoiceUiState
 import io.github.yesidrobayo.shopledger.ui.expense.ExpenseForm
 import io.github.yesidrobayo.shopledger.ui.expense.ExpensesScreen
+import io.github.yesidrobayo.shopledger.ui.expense.previewCategorySummary
 import io.github.yesidrobayo.shopledger.ui.expense.previewExpenses
 import io.github.yesidrobayo.shopledger.ui.purchase.NewPurchaseScreen
 import io.github.yesidrobayo.shopledger.ui.purchase.NewPurchaseUiState
@@ -127,6 +128,13 @@ class AccessibilityFlowsTest {
         val problems = mutableListOf<String>()
         val list = previewExpenses()
         measure(problems, "gastos") { ExpensesScreen(list, onAction = {}) }
+        measure(problems, "gastos por categoría") {
+            ExpensesScreen(
+                list.copy(categorySummary = previewCategorySummary()),
+                onAction = {},
+                ownTab = true,
+            )
+        }
         measure(problems, "gasto nuevo") {
             ExpensesScreen(
                 list.copy(

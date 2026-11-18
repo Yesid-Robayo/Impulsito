@@ -46,7 +46,7 @@ class RegisterPhraseWithUseCasesTest {
         supplierPayment = { error("No es un pago") },
         cost = { _, _ -> error("No es un costo") },
         price = { _, _ -> error("No es un precio") },
-        product = { error("No es un producto") },
+        product = { _, _ -> error("No es un producto") },
         recipe = { _, _ -> error("No es una receta") },
     )
 

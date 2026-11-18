@@ -9440,5 +9440,227 @@
    "unit": null,
    "issues": []
   }
+ },
+ {
+  "id": "es-280",
+  "text": "compré 2 kilos de harina de arroz a 50 mil, esto es un insumo, en la categoría materias primas",
+  "tags": [
+   "purchase",
+   "new_product",
+   "traits"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Harina de arroz",
+      "usage": "INPUT",
+      "category": "raw_materials"
+     },
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": "50000",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-281",
+  "text": "compré 3 litros de leche de almendras a 12 000, es para vender, categoría bebidas",
+  "tags": [
+   "purchase",
+   "new_product",
+   "traits",
+   "spaced_number"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Leche de almendras",
+      "usage": "SALE",
+      "category": "drinks"
+     },
+     "qty": "3",
+     "unit": "liter",
+     "unit_price": "12000",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-282",
+  "text": "vendí una asesoría de imagen, es un servicio",
+  "tags": [
+   "sale",
+   "new_product",
+   "traits"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Asesoría de imagen",
+      "usage": "SALE",
+      "stock_mode": "UNTRACKED"
+     },
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-283",
+  "text": "compré 5 kilos de cúrcuma, es materia prima, en la categoría especias",
+  "tags": [
+   "purchase",
+   "new_product",
+   "traits",
+   "new_category"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Cúrcuma",
+      "usage": "INPUT",
+      "new_category": "Especias"
+     },
+     "qty": "5",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-284",
+  "text": "2 kilos de harina a 50000",
+  "tags": [
+   "sale",
+   "no_verb",
+   "ambiguous"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "choose": [
+       "wheat_flour",
+       "corn_flour"
+      ]
+     },
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": "50000",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-285",
+  "text": "compré 2 kilos de harina de trigo y esto es algo raro",
+  "tags": [
+   "purchase",
+   "unused_words"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "UNUSED_WORDS"
+   ]
+  }
  }
 ]

@@ -2,13 +2,15 @@ An expense is what it costs to run the business without being merchandise to sel
 
 ## Record an expense
 
-1. In **Home**, tap **Expense**, or in **Records**, **Expenses**, tap **New expense**.
+1. In **Home**, tap **Expense**, or in **Expenses**, in the bottom bar, tap **New expense**. The same expenses are also in **Records**, **Expenses**.
 2. Enter the **Amount** and choose the **Category**. If no other is chosen, it stays **Other**, and **New category** creates one without leaving.
 3. **Description** is optional. **Date**: today or an earlier one, never a future one.
 4. If money accounts are used, choose the **Money account** it comes from. Without an account, the expense is still recorded and moves no account.
 5. Tap **Save expense**.
 
 **Expenses** shows one month at a time, with its **Month total**, and can be filtered by **Category**.
+
+At the start of the list, **By category** shows how much was spent in each category and what share of the month it is, from largest to smallest. Tapping one shows only that one in the list, and tapping it again shows them all. With **Hide figures**, its amounts are hidden and the bars stay.
 
 ## Void or correct
 

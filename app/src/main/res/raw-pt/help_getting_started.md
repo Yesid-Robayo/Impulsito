@@ -12,7 +12,8 @@
 - Criar os produtos com o preço e, se for conhecido, o custo: com o custo, aparece o lucro de cada venda.
 - Registrar cada venda com **Vender**, e cada compra e cada despesa na hora.
 - Ver em **Início** as vendas de hoje e o estado da cópia.
-- Para registrar sem entrar em cada tela, **Dizer**, o botão embaixo, no centro, entende frases como «vendi 3 pães em dinheiro»: ver [dizer ou escrever](help_register_by_phrase).
+- A barra de baixo tem **Início**, **Vender**, **Despesas**, **Produtos** e **Números**. **Registros** abre-se em **Início**.
+- Para registrar sem entrar em cada tela, **Dizer**, o botão redondo do microfone, embaixo à direita, entende frases como «vendi 3 pães em dinheiro»: ver [dizer ou escrever](help_register_by_phrase).
 - O que não se usa todo dia, como clientes, caixa ou unidades, fica em **Negócio**, em **Início**: ver [o centro Negócio](help_business_hub). A configuração fica em **Configurações**.
 
 O que não se usa não atrapalha: uma ferramenta aparece em **Em uso** com o primeiro registro.

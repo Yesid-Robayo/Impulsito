@@ -372,10 +372,10 @@ class PhraseSaleTest {
     fun `a measured unit converts to the base of the product, a counted one does not`() {
         assertEquals(emptySet<PhraseIssue>(), spanish("vendí 500 gramos de queso campesino").issues)
         assertEquals(emptySet<PhraseIssue>(), spanish("vendí una docena de huevos").issues)
-        assertEquals(
-            setOf(PhraseIssue.UNIT_NOT_FOR_PRODUCT),
-            spanish("vendí una docena de panes").issues,
-        )
+        // El pan no se lleva por docena: una docena son 12 panes, no una unidad que no admite.
+        val dozen = spanish("vendí una docena de panes")
+        assertEquals(emptySet<PhraseIssue>(), dozen.issues)
+        assertEquals(listOf(line(found(BREAD), units(12))), dozen.lines)
         assertEquals(
             setOf(PhraseIssue.UNIT_NOT_FOR_PRODUCT),
             spanish("vendí 2 kilos de pan").issues,

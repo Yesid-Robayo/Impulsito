@@ -56,6 +56,9 @@ internal data class RecipeCall(val parentId: Long, val lines: List<RecipeLine>)
 internal class RecordingWriters {
     val requests = mutableListOf<Any>()
 
+    /** La categoría nueva que se pidió crear con cada producto, `null` si ninguna. */
+    val newCategories = mutableListOf<String?>()
+
     var sale: RegisterSaleResult = RegisterSaleResult.Registered(saleId = 11L)
     var purchase: RegisterPurchaseResult = RegisterPurchaseResult.Registered(12L, emptyList())
     var expense: RegisterExpenseResult = RegisterExpenseResult.Registered(13L)
@@ -110,8 +113,9 @@ internal class RecordingWriters {
             requests += AmountCall(productId, amount)
             price
         },
-        product = { form: ProductForm ->
+        product = { form: ProductForm, newCategory: String? ->
             requests += form
+            newCategories += newCategory
             product
         },
         recipe = { parentId, lines ->

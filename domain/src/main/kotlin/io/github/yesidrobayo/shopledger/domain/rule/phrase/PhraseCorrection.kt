@@ -28,6 +28,16 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLanguage
  *   catálogo tiene ese método), "fiado". Un método que no es el de crédito quita el crédito.
  * - **Persona:** "a María", "era de Don Ramiro", del lado que usa la operación.
  * - **Categoría** de un gasto: "era la luz".
+ * - **Producto por crear:** "la harina es insumo", "es para vender", "en la categoría bebidas"
+ *   cambian solo eso del producto nuevo que se nombra, o del último; "se llama harina integral" o
+ *   "no, harina integral" le cambian el nombre y conservan lo demás; "no, la harina de trigo" lo
+ *   cambia por uno del catálogo en la línea que se le parece, no en la última.
+ * - **Operación:** "no, fue una compra", "no, compré", "it was a sale": una venta pasa a compra o
+ *   al revés, con sus líneas, cantidades, precios y pago; la persona se quita, porque un cliente no
+ *   es un proveedor. Desde otra operación no se cambia.
+ *
+ * Un verbo de operación con productos es una frase nueva, salvo después de un "no" y con un solo
+ * producto: "no, vendí 3 panes" corrige la línea del pan.
  *
  * Devuelve `null` cuando no la entiende como corrección, y la pantalla la lee entonces como frase
  * nueva: si tiene un verbo de operación y nombra productos ("vendí 2 panes"), si no dice nada que

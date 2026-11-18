@@ -825,36 +825,46 @@ private fun StructurePage() {
 
 @Composable
 private fun BottomBarSample(resources: android.content.res.Resources) {
-    AppBottomBar(
-        items =
-            listOf(
-                BottomBarItem(
-                    resources.getString(R.string.nav_home),
-                    R.drawable.ic_home,
-                    R.drawable.ic_home_filled,
+    // `Decir` flota sobre la barra, abajo a la derecha, como en la navegación.
+    Column(horizontalAlignment = Alignment.End) {
+        SayFloatingButton(
+            label = resources.getString(R.string.phrase_action_say),
+            onClick = {},
+            modifier = Modifier.padding(end = AppTheme.spacing.s16, bottom = AppTheme.spacing.s16),
+        )
+        AppBottomBar(
+            items =
+                listOf(
+                    BottomBarItem(
+                        resources.getString(R.string.nav_home),
+                        R.drawable.ic_home,
+                        R.drawable.ic_home_filled,
+                    ),
+                    BottomBarItem(
+                        resources.getString(R.string.nav_sell),
+                        R.drawable.ic_sell,
+                        R.drawable.ic_sell,
+                    ),
+                    BottomBarItem(
+                        resources.getString(R.string.nav_expenses),
+                        R.drawable.ic_payments,
+                        R.drawable.ic_payments,
+                    ),
+                    BottomBarItem(
+                        resources.getString(R.string.nav_products),
+                        R.drawable.ic_inventory_2,
+                        R.drawable.ic_inventory_2_filled,
+                    ),
+                    BottomBarItem(
+                        resources.getString(R.string.nav_numbers),
+                        R.drawable.ic_bar_chart,
+                        R.drawable.ic_bar_chart_filled,
+                    ),
                 ),
-                BottomBarItem(
-                    resources.getString(R.string.nav_records),
-                    R.drawable.ic_receipt_long,
-                    R.drawable.ic_receipt_long_filled,
-                ),
-                BottomBarItem(
-                    resources.getString(R.string.nav_products),
-                    R.drawable.ic_inventory_2,
-                    R.drawable.ic_inventory_2_filled,
-                ),
-                BottomBarItem(
-                    resources.getString(R.string.nav_numbers),
-                    R.drawable.ic_bar_chart,
-                    R.drawable.ic_bar_chart_filled,
-                ),
-            ),
-        selected = 2,
-        onSelect = {},
-        sellLabel = resources.getString(R.string.nav_sell),
-        onSell = {},
-        modifier = Modifier.padding(top = AppTheme.sizes.sellButtonOverhang),
-    )
+            selected = 2,
+            onSelect = {},
+        )
+    }
 }
 
 /** El primer uso ocupa la pantalla entera, con su acción fija abajo: no va dentro del desplazamiento. */

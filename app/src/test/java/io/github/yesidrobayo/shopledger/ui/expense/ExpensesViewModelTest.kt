@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.ui.expense
 
+import io.github.yesidrobayo.shopledger.domain.model.BasisPoints
 import io.github.yesidrobayo.shopledger.domain.model.BusinessDate
 import io.github.yesidrobayo.shopledger.domain.model.BusinessTimeZone
 import io.github.yesidrobayo.shopledger.domain.model.Money
@@ -16,9 +17,11 @@ import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountDetails
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccountKind
 import io.github.yesidrobayo.shopledger.domain.model.region.DigitGrouping
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.model.report.ExpenseCategoryTotal
 import io.github.yesidrobayo.shopledger.domain.model.settings.CurrencyCode
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseCorrection
+import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseShareRow
 import io.github.yesidrobayo.shopledger.domain.rule.expense.RecurringRegistration
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
@@ -145,6 +148,12 @@ class ExpensesViewModelTest {
     private var registration: RecurringRegistration? = null
     private val dueRecurring = MutableStateFlow(0)
 
+    /** Lo gastado por categoría en cada mes, como lo suma la base; cada lectura queda anotada. */
+    private val categoryTotals =
+        MutableStateFlow<Map<YearMonth, List<ExpenseCategoryTotal>>>(emptyMap())
+    private val totalsAsked = mutableListOf<YearMonth>()
+    private var totalsFail = false
+
     private val payingAccounts = MutableStateFlow<List<MoneyAccount>>(emptyList())
 
     private fun account(id: Long) = MoneyAccount(
@@ -182,6 +191,14 @@ class ExpensesViewModelTest {
             payingAccounts = payingAccounts,
             loadRecurring = { registration },
             dueRecurring = dueRecurring,
+            categoryTotals = { month ->
+                totalsAsked += month
+                if (totalsFail) {
+                    flow { error("lectura inventada") }
+                } else {
+                    categoryTotals.map { it[month].orEmpty() }
+                }
+            },
         )
         advanceUntilIdle()
         return model
@@ -724,4 +741,60 @@ class ExpensesViewModelTest {
             advanceUntilIdle()
             assertNull(model.uiState.value.form?.categoryId)
         }
+
+    @Test
+    fun `the summary by category comes from the month totals and keeps them under a filter`() =
+        runTest(dispatcher) {
+            months.data.value = mapOf(november to listOf(row(1, 600_000), row(2, 200_000)))
+            categoryTotals.value = mapOf(
+                november to listOf(
+                    ExpenseCategoryTotal(9, null, "OTHER", Money(200_000)),
+                    ExpenseCategoryTotal(1, null, "RENT", Money(600_000)),
+                ),
+            )
+            val model = viewModel()
+
+            // 600.000 de 800.000 son el 75 %, y 200.000 el 25 %.
+            val summary = requireNotNull(model.uiState.value.categorySummary)
+            assertEquals(Money(800_000), summary.total)
+            assertEquals(listOf(1L, 9L), summary.rows.map { categoryIdOf(it) })
+            assertEquals(
+                listOf(BasisPoints(7_500), BasisPoints(2_500)),
+                summary.rows.map { it.share },
+            )
+
+            // Filtrar no cambia el resumen ni lo vuelve a leer: solo marca la elegida.
+            model.onAction(ExpensesAction.CategoryFilterChange(1))
+            advanceUntilIdle()
+            assertEquals(1L, model.uiState.value.categoryId)
+            assertEquals(summary, model.uiState.value.categorySummary)
+            assertEquals(listOf(november), totalsAsked)
+        }
+
+    @Test
+    fun `another month reads its own summary and a month without expenses has none`() =
+        runTest(dispatcher) {
+            categoryTotals.value =
+                mapOf(november to listOf(ExpenseCategoryTotal(1, null, "RENT", Money(600_000))))
+            val model = viewModel()
+
+            model.onAction(ExpensesAction.PreviousMonth)
+            advanceUntilIdle()
+
+            assertEquals(listOf(november, YearMonth(2026, 10)), totalsAsked)
+            assertNull(model.uiState.value.categorySummary)
+        }
+
+    @Test
+    fun `a summary that cannot be read leaves the list as it is`() = runTest(dispatcher) {
+        months.data.value = mapOf(november to listOf(row(1, 600_000)))
+        totalsFail = true
+        val model = viewModel()
+
+        assertNull(model.uiState.value.categorySummary)
+        assertTrue(model.uiState.value.content is ExpensesContent.Days)
+    }
+
+    private fun categoryIdOf(row: ExpenseShareRow): Long? =
+        (row as? ExpenseShareRow.Category)?.total?.categoryId
 }

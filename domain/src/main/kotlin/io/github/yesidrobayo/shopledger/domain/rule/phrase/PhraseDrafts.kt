@@ -19,7 +19,7 @@ import io.github.yesidrobayo.shopledger.domain.model.sumOrNull
  * La tarjeta que propone esta lectura, o `null` si no se entendió ninguna operación.
  *
  * - Lo que tiene uno claro pasa a su id. Lo que deja elegir entre varios queda como hueco, en
- *   `null`, para que la persona elija.
+ *   `null`, para que la persona elija; una línea guarda entre qué productos se pedía elegir.
  * - Un producto que no existe se ofrece crear donde tiene sentido: en una venta, una compra y una
  *   receta, y como el producto de una receta o el que se crea. En las demás operaciones queda como
  *   hueco: no se produce, ajusta ni corrige algo que no existe.
@@ -28,13 +28,16 @@ import io.github.yesidrobayo.shopledger.domain.model.sumOrNull
  *   poner un kilo de sal en la receta sería inventar el dato. Si alguna cantidad no se pudo leer,
  *   las que faltan se preguntan todas, porque no se sabe cuál era.
  * - En una venta o una compra de una sola línea sin monto, el "todo por" es el total de esa línea.
+ * - Lo que se dijo de un producto nuevo (su uso, su categoría) viaja con él. En una compra no
+ *   viaja que sea un servicio: lo que se compra lleva stock, y un servicio no lo lleva.
  */
 fun PhraseReading.toDraft(): PhraseDraft? {
     val intent = intent ?: return null
     val unreadable = PhraseIssue.UNREADABLE_QUANTITY in issues
     val fallback = if (!unreadable && assumesOne(intent, reason)) ONE else null
     val creatable = intent in CREATABLE_LINES
-    val lines = lines.map { it.toDraftLine(creatable, fallback) }
+    val stocked = intent == PhraseIntent.PURCHASE
+    val lines = lines.map { it.toDraftLine(creatable, stocked, fallback) }
     return PhraseDraft(
         intent = intent,
         reason = reason,
@@ -151,20 +154,31 @@ private fun assumesOne(intent: PhraseIntent, reason: StockAdjustmentReason?): Bo
         -> false
     }
 
-private fun PhraseLine.toDraftLine(creatable: Boolean, fallback: QuantityMilli?): DraftLine =
-    DraftLine(
-        product = product.toDraftTarget(creatable),
-        quantity = quantity ?: fallback,
-        unitId = unitId,
-        unitPrice = unitPrice,
-        lineTotal = lineTotal,
-    )
+private fun PhraseLine.toDraftLine(
+    creatable: Boolean,
+    stocked: Boolean,
+    fallback: QuantityMilli?,
+): DraftLine = DraftLine(
+    product = product.toDraftTarget(creatable, stocked),
+    quantity = quantity ?: fallback,
+    unitId = unitId,
+    unitPrice = unitPrice,
+    lineTotal = lineTotal,
+    candidates = (product as? ProductMatch.Choose)?.ids.orEmpty(),
+)
 
-private fun ProductMatch.toDraftTarget(creatable: Boolean): DraftTarget? = when (this) {
-    is ProductMatch.Found -> DraftTarget.Existing(id)
-    is ProductMatch.Choose -> null
-    is ProductMatch.Unknown -> if (creatable) DraftTarget.New(spokenName) else null
-}
+private fun ProductMatch.toDraftTarget(creatable: Boolean, stocked: Boolean = false): DraftTarget? =
+    when (this) {
+        is ProductMatch.Found -> DraftTarget.Existing(id)
+
+        is ProductMatch.Choose -> null
+
+        is ProductMatch.Unknown -> when {
+            !creatable -> null
+            stocked -> DraftTarget.New(spokenName, traits.copy(stockMode = null))
+            else -> DraftTarget.New(spokenName, traits)
+        }
+    }
 
 private fun NameMatch?.foundId(): Long? = (this as? NameMatch.Found)?.id
 

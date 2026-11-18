@@ -1,27 +1,61 @@
 package io.github.yesidrobayo.shopledger.ui.phrase
 
-/**
- * Cómo se pide cada intento de escuchar, en orden. El primero que sirve se queda; los demás solo se
- * usan si el anterior falló por algo que otro motor u otra forma de pedirlo puede resolver.
- */
-enum class ListenPlan {
+/** Cómo se le pide a un servicio de voz que escuche. */
+enum class ListenMode {
     /** El motor del teléfono que trabaja sin red, si lo tiene. */
     ON_DEVICE,
 
-    /** El motor de siempre, pidiéndole que prefiera trabajar sin conexión. */
+    /** Un servicio de voz, pidiéndole que prefiera trabajar sin conexión. */
     OFFLINE_FIRST,
 
-    /** El motor de siempre, sin esa preferencia: puede usar la red si no tiene el idioma. */
+    /** El mismo servicio, sin esa preferencia: puede usar la red si no tiene el idioma. */
     ONLINE,
-    ;
+}
 
+/**
+ * Un intento de escuchar: el modo y el servicio que lo atiende.
+ *
+ * @param service el lugar del servicio en la lista que arma el motor, sin saber cuál es: así la
+ *   máquina no depende de Android. `null` es el motor sin red o, si el teléfono no lista ningún
+ *   servicio, el predeterminado del sistema.
+ */
+data class ListenPlan(val mode: ListenMode, val service: Int? = null) {
     companion object {
         /**
-         * Los intentos en orden. Con un motor sin red en el teléfono, ese va primero; sin él, se
-         * empieza por pedir sin conexión.
+         * Los intentos en orden: el motor sin red, si está, y luego cada servicio de [services], ya
+         * ordenados, primero sin conexión y después con red. Sin servicios listados, el
+         * predeterminado del sistema de las dos formas.
          */
-        fun plansFor(onDevice: Boolean): List<ListenPlan> =
-            if (onDevice) entries.toList() else listOf(OFFLINE_FIRST, ONLINE)
+        fun plansFor(onDevice: Boolean, services: Int): List<ListenPlan> {
+            val first = if (onDevice) listOf(ListenPlan(ListenMode.ON_DEVICE)) else emptyList()
+            val chosen: List<Int?> = if (services > 0) (0 until services).toList() else listOf(null)
+            return first +
+                chosen.flatMap { service ->
+                    listOf(
+                        ListenPlan(ListenMode.OFFLINE_FIRST, service),
+                        ListenPlan(ListenMode.ONLINE, service),
+                    )
+                }
+        }
+
+        /**
+         * En qué orden probar los servicios de voz de [packages], que llegan en el orden del
+         * sistema: primero los de [PREFERRED_PACKAGES], en ese orden, porque son los que atienden a
+         * cualquier app en casi todos los teléfonos; después el resto, como vinieron. Devuelve sus
+         * lugares en [packages].
+         */
+        fun serviceOrder(packages: List<String>): List<Int> = packages.indices.sortedBy { index ->
+            PREFERRED_PACKAGES.indexOf(packages[index]).takeIf { it >= 0 }
+                ?: PREFERRED_PACKAGES.size
+        }
+
+        /** Los paquetes de servicio de voz que se prueban primero, en orden. */
+        val PREFERRED_PACKAGES =
+            listOf(
+                "com.google.android.googlequicksearchbox",
+                "com.google.android.as",
+                "com.google.android.tts",
+            )
     }
 }
 
@@ -39,7 +73,10 @@ enum class ListenError {
     /** No se oyó nada que se pudiera convertir en texto. */
     NO_SPEECH,
 
-    /** La app no tiene el permiso del micrófono. */
+    /**
+     * El servicio de voz no tiene el permiso del micrófono. El de la app ya se pidió antes de
+     * escuchar: este lo da el sistema a ese servicio, que es otra app.
+     */
     PERMISSION,
 
     /** El servicio de voz está ocupado con otra app. */
@@ -49,28 +86,37 @@ enum class ListenError {
     OTHER,
 }
 
-/** En qué va la pantalla de escuchar. */
+/**
+ * En qué va la pantalla de escuchar. En cada estado de un intento, `micDenied` dice si algún
+ * intento anterior falló porque su servicio no tiene el micrófono: si al final ninguno sirve, el
+ * aviso lo dice.
+ */
 sealed interface ListeningState {
     /** Todavía no empezó. */
     data object Idle : ListeningState
 
     /** El motor se está preparando con el intento [attempt]. */
-    data class Starting(val attempt: Int) : ListeningState
+    data class Starting(val attempt: Int, val micDenied: Boolean = false) : ListeningState
 
     /** Escuchando: [partial] es lo que va entendiendo, vacío al comienzo. */
-    data class Listening(val attempt: Int, val partial: String) : ListeningState
+    data class Listening(val attempt: Int, val partial: String, val micDenied: Boolean = false) :
+        ListeningState
 
     /** Se tocó `Listo`: el motor termina de convertir lo dicho hasta ahí. */
-    data class Finishing(val attempt: Int, val partial: String) : ListeningState
+    data class Finishing(val attempt: Int, val partial: String, val micDenied: Boolean = false) :
+        ListeningState
 
     /** No se oyó ninguna frase: se ofrece escuchar otra vez con el mismo intento, o escribir. */
-    data class Silent(val attempt: Int) : ListeningState
+    data class Silent(val attempt: Int, val micDenied: Boolean = false) : ListeningState
 
     /** Terminó con [text]: va a la tarjeta. */
     data class Heard(val text: String) : ListeningState
 
-    /** Ningún intento sirvió, por [error]: queda el teclado. */
-    data class Failed(val error: ListenError) : ListeningState
+    /**
+     * Ningún intento sirvió; [error] es el del último. Con [micDenied], alguno falló porque su
+     * servicio no tiene el micrófono.
+     */
+    data class Failed(val error: ListenError, val micDenied: Boolean = false) : ListeningState
 
     /** La persona cerró la pantalla de escuchar. */
     data object Cancelled : ListeningState
@@ -133,10 +179,10 @@ data class ListenStep(val state: ListeningState, val command: ListenCommand = Li
 /**
  * Las reglas de la pantalla de escuchar, sin nada de Android: así se prueban en la JVM.
  *
- * - **Fallar hacia el teclado, nunca a medias.** Si un intento falla por red, idioma o servidor, se
- *   prueba el siguiente de [plans] sin preguntar; si ya no quedan, termina en
- *   [ListeningState.Failed] y la hoja abre con el teclado. El motor sin red cae al de siempre por
- *   cualquier fallo, porque es el que más falta de idiomas.
+ * - **Fallar hacia el teclado, nunca a medias.** Si un intento falla por cualquier cosa que no
+ *   sea silencio, se prueba el siguiente de [plans] sin preguntar: otro modo u otro servicio de voz
+ *   pueden servir donde el anterior no, como un servicio sin micrófono o sin el idioma. Si ya no
+ *   quedan, termina en [ListeningState.Failed] con el último error, y la hoja abre con el teclado.
  * - **Lo dicho no se pierde.** Si el motor falla después de haber entendido algo, ese texto se
  *   usa: la persona lo revisa en la tarjeta antes de registrar.
  * - **El silencio no es un fallo.** Sin frase, se ofrece escuchar otra vez o escribir.
@@ -164,7 +210,7 @@ class ListeningMachine(private val plans: List<ListenPlan>) {
     private fun start(state: ListeningState): ListenStep = when (state) {
         ListeningState.Idle -> listen(0)
 
-        is ListeningState.Silent -> listen(state.attempt)
+        is ListeningState.Silent -> listen(state.attempt, state.micDenied)
 
         // Ya está escuchando, o ya terminó: un segundo toque no abre otro intento.
         is ListeningState.Starting,
@@ -177,7 +223,8 @@ class ListeningMachine(private val plans: List<ListenPlan>) {
     }
 
     private fun ready(state: ListeningState): ListenStep = when (state) {
-        is ListeningState.Starting -> ListenStep(ListeningState.Listening(state.attempt, ""))
+        is ListeningState.Starting ->
+            ListenStep(ListeningState.Listening(state.attempt, "", state.micDenied))
 
         ListeningState.Idle,
         is ListeningState.Listening,
@@ -191,7 +238,8 @@ class ListeningMachine(private val plans: List<ListenPlan>) {
 
     private fun partial(state: ListeningState, text: String): ListenStep = when (state) {
         // Algunos motores mandan lo entendido sin avisar antes que ya oyen.
-        is ListeningState.Starting -> ListenStep(ListeningState.Listening(state.attempt, text))
+        is ListeningState.Starting ->
+            ListenStep(ListeningState.Listening(state.attempt, text, state.micDenied))
 
         is ListeningState.Listening ->
             ListenStep(state.copy(partial = text.ifEmpty { state.partial }))
@@ -212,7 +260,10 @@ class ListeningMachine(private val plans: List<ListenPlan>) {
         val attempt = state.attemptOrNull() ?: return ListenStep(state)
         val heard = text.ifEmpty { state.partialOrEmpty() }
         return if (heard.isEmpty()) {
-            ListenStep(ListeningState.Silent(attempt), ListenCommand.Release)
+            ListenStep(
+                ListeningState.Silent(attempt, state.micDeniedOrFalse()),
+                ListenCommand.Release,
+            )
         } else {
             ListenStep(ListeningState.Heard(heard), ListenCommand.Release)
         }
@@ -221,27 +272,35 @@ class ListeningMachine(private val plans: List<ListenPlan>) {
     private fun error(state: ListeningState, error: ListenError): ListenStep {
         val attempt = state.attemptOrNull() ?: return ListenStep(state)
         val partial = state.partialOrEmpty()
+        val micDenied = state.micDeniedOrFalse() || error == ListenError.PERMISSION
         return when {
             partial.isNotEmpty() -> ListenStep(ListeningState.Heard(partial), ListenCommand.Release)
 
+            // El servicio oyó bien y no hubo frase: otro servicio no oiría más.
             error == ListenError.NO_SPEECH ->
-                ListenStep(ListeningState.Silent(attempt), ListenCommand.Release)
+                ListenStep(
+                    ListeningState.Silent(attempt, state.micDeniedOrFalse()),
+                    ListenCommand.Release,
+                )
 
-            error == ListenError.PERMISSION ->
-                ListenStep(ListeningState.Failed(error), ListenCommand.Release)
+            attempt + 1 < plans.size -> listen(attempt + 1, micDenied)
 
-            fallsBack(plans[attempt], error) && attempt + 1 < plans.size -> listen(attempt + 1)
-
-            else -> ListenStep(ListeningState.Failed(error), ListenCommand.Release)
+            else -> ListenStep(ListeningState.Failed(error, micDenied), ListenCommand.Release)
         }
     }
 
     private fun finish(state: ListeningState): ListenStep = when (state) {
         is ListeningState.Starting ->
-            ListenStep(ListeningState.Finishing(state.attempt, ""), ListenCommand.Stop)
+            ListenStep(
+                ListeningState.Finishing(state.attempt, "", state.micDenied),
+                ListenCommand.Stop,
+            )
 
         is ListeningState.Listening ->
-            ListenStep(ListeningState.Finishing(state.attempt, state.partial), ListenCommand.Stop)
+            ListenStep(
+                ListeningState.Finishing(state.attempt, state.partial, state.micDenied),
+                ListenCommand.Stop,
+            )
 
         ListeningState.Idle,
         is ListeningState.Finishing,
@@ -252,15 +311,10 @@ class ListeningMachine(private val plans: List<ListenPlan>) {
         -> ListenStep(state)
     }
 
-    private fun listen(attempt: Int): ListenStep =
-        ListenStep(ListeningState.Starting(attempt), ListenCommand.Listen(plans[attempt]))
-
-    /** Si vale probar el intento siguiente después de que [plan] falló por [error]. */
-    private fun fallsBack(plan: ListenPlan, error: ListenError): Boolean = when (plan) {
-        ListenPlan.ON_DEVICE -> true
-        ListenPlan.OFFLINE_FIRST -> error in RETRIED_ONLINE
-        ListenPlan.ONLINE -> false
-    }
+    private fun listen(attempt: Int, micDenied: Boolean = false): ListenStep = ListenStep(
+        ListeningState.Starting(attempt, micDenied),
+        ListenCommand.Listen(plans[attempt]),
+    )
 
     private fun ListeningState.attemptOrNull(): Int? = when (this) {
         is ListeningState.Starting -> attempt
@@ -275,6 +329,23 @@ class ListeningMachine(private val plans: List<ListenPlan>) {
         is ListeningState.Failed,
         ListeningState.Cancelled,
         -> null
+    }
+
+    private fun ListeningState.micDeniedOrFalse(): Boolean = when (this) {
+        is ListeningState.Starting -> micDenied
+
+        is ListeningState.Listening -> micDenied
+
+        is ListeningState.Finishing -> micDenied
+
+        is ListeningState.Silent -> micDenied
+
+        is ListeningState.Failed -> micDenied
+
+        ListeningState.Idle,
+        is ListeningState.Heard,
+        ListeningState.Cancelled,
+        -> false
     }
 
     private fun ListeningState.partialOrEmpty(): String = when (this) {
@@ -292,9 +363,6 @@ class ListeningMachine(private val plans: List<ListenPlan>) {
     }
 
     private companion object {
-        /** Los fallos que un servicio sin el idioma descargado da al pedirle que no use la red. */
-        val RETRIED_ONLINE = setOf(ListenError.NETWORK, ListenError.LANGUAGE, ListenError.SERVER)
-
         /** Una frase dictada nunca es tan larga: lo que sobra no es una operación. */
         const val MAX_HEARD_LENGTH = 500
 
@@ -304,8 +372,11 @@ class ListeningMachine(private val plans: List<ListenPlan>) {
 
 /** Por qué `Decir o escribir` abre con el teclado y no con la frase oída. */
 enum class VoiceNotice {
-    /** El servicio de voz no pudo escuchar, ni sin conexión ni por la red. */
+    /** Ningún servicio de voz pudo escuchar, ni sin conexión ni por la red. */
     FAILED,
+
+    /** Ningún servicio sirvió, y alguno no tiene el permiso del micrófono en el teléfono. */
+    SERVICE_NO_MIC,
 
     /** La persona no dio el permiso del micrófono. */
     NO_PERMISSION,

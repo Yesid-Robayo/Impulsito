@@ -4707,5 +4707,226 @@
    "unit": null,
    "issues": []
   }
+ },
+ {
+  "id": "en-141",
+  "text": "bought 2 kilos of rice flour at 50, it's a supply, in the raw materials category",
+  "tags": [
+   "purchase",
+   "new_product",
+   "traits"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Rice flour",
+      "usage": "INPUT",
+      "category": "raw_materials"
+     },
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": "50",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "en-142",
+  "text": "sold a styling consultation, it's a service",
+  "tags": [
+   "sale",
+   "new_product",
+   "traits"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Styling consultation",
+      "usage": "SALE",
+      "stock_mode": "UNTRACKED"
+     },
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "en-143",
+  "text": "bought 3 kilos of turmeric, it's a raw material, category spices",
+  "tags": [
+   "purchase",
+   "new_product",
+   "traits",
+   "new_category"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Turmeric",
+      "usage": "INPUT",
+      "new_category": "Spices"
+     },
+     "qty": "3",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "en-144",
+  "text": "bought 2 liters of almond milk at 12, it's for sale, in the drinks category",
+  "tags": [
+   "purchase",
+   "new_product",
+   "traits"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Almond milk",
+      "usage": "SALE",
+      "category": "drinks"
+     },
+     "qty": "2",
+     "unit": "liter",
+     "unit_price": "12",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "en-145",
+  "text": "2 kilos of flour at 50",
+  "tags": [
+   "sale",
+   "no_verb",
+   "ambiguous"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "choose": [
+       "wheat_flour",
+       "corn_flour"
+      ]
+     },
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": "50",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "en-146",
+  "text": "bought 2 kilos of wheat flour and this is something odd",
+  "tags": [
+   "purchase",
+   "unused_words"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "UNUSED_WORDS"
+   ]
+  }
  }
 ]

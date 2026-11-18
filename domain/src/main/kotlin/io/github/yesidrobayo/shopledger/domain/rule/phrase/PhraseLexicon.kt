@@ -16,8 +16,10 @@ internal class PhraseLexicon(vocabulary: PhraseVocabulary) {
     val totalAfter = PhraseTable.of(vocabulary.totalAfter)
     val amountMarkers = PhraseTable(
         vocabulary.unitPriceBefore.map { it to AmountKind.UNIT } +
-            vocabulary.lineTotalBefore.map { it to AmountKind.LINE },
+            vocabulary.lineTotalBefore.map { it to AmountKind.LINE } +
+            vocabulary.costClauses.map { it to AmountKind.COST },
     )
+    val headLast: Boolean = vocabulary.headLast
     val eachAfter = PhraseTable.of(vocabulary.eachAfter)
     val perUnitLeads = words(vocabulary.perUnitLeads)
     val amountFor = words(vocabulary.amountFor)
@@ -52,7 +54,9 @@ internal class PhraseLexicon(vocabulary: PhraseVocabulary) {
      * el comienzo de otra línea: "a 500", "por 2", "de 400", "dos mil".
      */
     val amountBound: Set<String> = connectors + perUnitLeads + numberWords.keys +
-        words(vocabulary.unitPriceBefore + vocabulary.lineTotalBefore + vocabulary.amountFor)
+        words(vocabulary.unitPriceBefore + vocabulary.lineTotalBefore + vocabulary.amountFor) +
+        // De "que me costaron", solo el verbo: "que" solo no dice que sigue un monto.
+        vocabulary.costClauses.mapNotNull { tokens(it).lastOrNull() }
 
     /**
      * Tamaño dicho: 1 para lo grande y -1 para lo pequeño, para desempatar por la medida del
@@ -74,10 +78,71 @@ internal class PhraseLexicon(vocabulary: PhraseVocabulary) {
     )
     val changeFillers = words(vocabulary.changeFillers)
     val pronouns = words(vocabulary.pronouns)
-    val questions = words(vocabulary.questions)
+    val questions = PhraseTable.of(vocabulary.questions)
+    val refusals = PhraseTable.of(vocabulary.refusals.phrases)
+    val negations = PhraseTable.of(vocabulary.refusals.negations)
+    val notYet = PhraseTable.of(vocabulary.refusals.notYet)
+    val percents = PhraseTable.of(vocabulary.refusals.percents)
+    val fromPrepositions = words(vocabulary.speech.fromPrepositions)
+    val selfFixes = PhraseTable.of(vocabulary.speech.selfFixes)
+    val createLeads = PhraseTable.of(vocabulary.speech.createLeads)
+    val priceCopulas = words(vocabulary.speech.priceCopulas)
+    val softFillers = words(vocabulary.speech.softFillers)
+    val demonstratives = words(vocabulary.speech.demonstratives)
+    val lineCopulas = PhraseTable.of(vocabulary.speech.lineCopulas)
+    val batches = words(vocabulary.speech.batches)
+    val decimalWords = words(vocabulary.speech.decimalWords)
+    val tenderedBefore = PhraseTable.of(vocabulary.speech.tenderedBefore)
+    val tenderedAfter = PhraseTable.of(vocabulary.speech.tenderedAfter)
+    val shares = PhraseTable.of(vocabulary.speech.shares)
+    val genericParties = PhraseTable.of(vocabulary.speech.genericParties)
+    val recipeEach = PhraseTable.of(vocabulary.speech.recipeEach)
+    val priceSetters = PhraseTable.of(vocabulary.speech.priceSetters)
+    val setterMarkers = words(vocabulary.speech.setterMarkers)
+
+    /** Lo que va antes y después de la persona en una forma de crédito, ya normalizado. */
+    val creditWraps: List<Pair<List<String>, List<String>>> =
+        vocabulary.speech.creditWraps.map { (before, after) -> tokens(before) to tokens(after) }
+    val cents = words(CommonVocabulary.cents)
+
+    /** Las marcas de monto de una sola palabra: "a", "por", "at". */
+    val amountWords: Set<String> =
+        words(vocabulary.unitPriceBefore + vocabulary.lineTotalBefore).filterNot {
+            ' ' in it
+        }.toSet()
+
+    /**
+     * Palabras que pueden seguir a un precio dicho en dos partes sin que la segunda sea otra
+     * línea: "the kilo", "each", "in cash", "and".
+     */
+    val afterPrice: Set<String> = separatorWords + perUnitLeads + currencies + cents +
+        words(vocabulary.paymentPrepositions + vocabulary.amountFor + vocabulary.toPrepositions) +
+        words(vocabulary.eachAfter.map { it.split(' ').first() })
+    val countFactors: Map<String, Long> = CommonVocabulary.countFactors
     val yieldLeads = words(vocabulary.yieldLeads)
     val pronounHeads = words(vocabulary.pronounHeads)
     val containers = words(vocabulary.containers)
+    val traitLeads = PhraseTable.of(vocabulary.traits.leads)
+    val traitArticles = words(vocabulary.traits.articles)
+    val kinds = PhraseTable(vocabulary.traits.kinds.toList())
+    val plainKinds = PhraseTable(vocabulary.traits.plainKinds.toList())
+    val categoryBefore = PhraseTable.of(vocabulary.traits.categoryBefore)
+    val categoryAfter = PhraseTable.of(vocabulary.traits.categoryAfter)
+    val categoryAfterLeads = PhraseTable.of(vocabulary.traits.categoryAfterLeads)
+
+    /** Cualquier marca de categoría, antes o después del nombre: cortan el nombre de otra. */
+    val categoryMarks =
+        PhraseTable.of(vocabulary.traits.categoryBefore + vocabulary.traits.categoryAfter)
+    val descriptionWords = words(vocabulary.traits.descriptionWords)
+
+    /**
+     * Palabras que cortan el nombre de una categoría dicha: un pago, un monto, a quién va, o la
+     * apertura de otra descripción.
+     */
+    val stopsCategory: Set<String> = words(
+        vocabulary.paymentPrepositions + vocabulary.toPrepositions + vocabulary.unitPriceBefore +
+            vocabulary.lineTotalBefore + vocabulary.traits.leads,
+    )
 
     /** Palabras que no cuentan al comparar un nombre de persona, de pago o de categoría. */
     val nameStopwords = stopwords + honorifics + articles
@@ -95,6 +160,8 @@ internal class PhraseLexicon(vocabulary: PhraseVocabulary) {
     private fun keyed(map: Map<String, Long>): Map<String, Long> = map.mapKeys { (word, _) ->
         normalized(word)
     }
+
+    private fun tokens(text: String): List<String> = PhraseTokenizer.tokenize(text).map { it.norm }
 
     private fun normalized(text: String): String =
         PhraseTokenizer.tokenize(text).joinToString(" ") {

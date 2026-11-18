@@ -25,4 +25,10 @@
     <string name="dialog_correct_expense_body">This expense is voided and a new one opens with the same data. If the new one is not saved, this one stays voided anyway.</string>
     <string name="notice_fix_archived_category">The original category is archived. Choose another.</string>
     <string name="expense_zone_unknown_title">This phone does not know the business time zone. Choose it to see the expenses.</string>
+    <string name="expense_by_category">By category</string>
+    <string name="a11y_expense_share">%1$s, %2$s, %3$s of the month</string>
+    <plurals name="expense_share_others">
+        <item quantity="one">%1$d more category</item>
+        <item quantity="other">%1$d more categories</item>
+    </plurals>
 </resources>

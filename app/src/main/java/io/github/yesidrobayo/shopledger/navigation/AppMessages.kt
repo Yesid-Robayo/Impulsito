@@ -24,6 +24,7 @@ import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarHost
 import io.github.yesidrobayo.shopledger.ui.components.AppSnackbarVisuals
 import io.github.yesidrobayo.shopledger.ui.components.LocalMessageClearance
 import io.github.yesidrobayo.shopledger.ui.components.MessageClearance
+import io.github.yesidrobayo.shopledger.ui.components.sayButtonClearance
 import io.github.yesidrobayo.shopledger.ui.theme.AppMotion
 import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
 import kotlinx.coroutines.CoroutineScope
@@ -55,10 +56,11 @@ val LocalAppMessages =
 /**
  * [content], la navegación entera, con los mensajes de [host] encima.
  *
- * El mensaje va sobre la barra inferior en las raíces ([showsBottomBar]) y sobre la barra del sistema
- * en lo demás. Si la pantalla visible marcó un área fija abajo con `keepsMessagesAbove`, como el
- * panel de la venta, va encima de ella: un mensaje que sigue a la vista, como `Venta registrada` con
- * `Deshacer`, nunca tapa el botón principal de la pantalla siguiente.
+ * El mensaje va sobre la barra inferior y su botón `Decir` en las raíces ([showsBottomBar]), y
+ * sobre la barra del sistema en lo demás. Si la pantalla visible marcó un área fija abajo con
+ * `keepsMessagesAbove`, como el panel de la venta, va encima de ella: un mensaje que sigue a la
+ * vista, como `Venta registrada` con `Deshacer`, nunca tapa el botón principal de la pantalla
+ * siguiente.
  */
 @Composable
 internal fun NavigationMessages(
@@ -73,7 +75,8 @@ internal fun NavigationMessages(
         val resting =
             WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
                 if (showsBottomBar) {
-                    AppTheme.sizes.bottomBar + AppTheme.sizes.sellButtonOverhang
+                    // Encima de la barra y de `Decir`, que flota sobre ella: el mensaje no lo tapa.
+                    AppTheme.sizes.bottomBar + sayButtonClearance()
                 } else {
                     AppTheme.spacing.s16
                 }

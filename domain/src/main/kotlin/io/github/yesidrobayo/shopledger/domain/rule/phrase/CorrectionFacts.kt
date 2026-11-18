@@ -56,12 +56,15 @@ internal class CorrectionFactsReader(
             includeNames = true,
         )
 
-    fun read(intent: PhraseIntent, tokens: List<Token>): CorrectionFacts {
+    fun read(intent: PhraseIntent, said: List<Token>): CorrectionFacts {
+        // "on Charles's tab": el crédito, y la persona queda para buscarla como siempre.
+        val wrapped = CreditWraps.unwrap(said, lexicon)
+        val tokens = wrapped.tokens
         val credit = lexicon.credit.findAll(tokens)
         val total = first(tokens.without(credit)) { all, index ->
             totalBefore(all, index) ?: totalAfter(all, index)
         }
-        val payment = first(total.rest, ::paymentAt)
+        val payment = payments(total.rest)
         val side = sides[intent]
         val party = if (side == null) {
             Extracted(null, payment.rest)
@@ -74,7 +77,7 @@ internal class CorrectionFactsReader(
             Extracted(null, party.rest)
         }
         return CorrectionFacts(
-            credit = credit.isNotEmpty(),
+            credit = credit.isNotEmpty() || wrapped.credit,
             payment = payment.value,
             party = party.value,
             category = category.value,
@@ -92,7 +95,7 @@ internal class CorrectionFactsReader(
     /** "todo por 30000", "en total 12000". */
     private fun totalBefore(tokens: List<Token>, index: Int): Extracted<Long>? {
         val marker = lexicon.totalBefore.matchAt(tokens, index) ?: return null
-        val amount = numbers.read(tokens, marker.end) ?: return null
+        val amount = numbers.read(tokens, marker.end, amount = true) ?: return null
         return Extracted(amount.milli, tokens.cut(index, amount.end))
     }
 
@@ -103,12 +106,14 @@ internal class CorrectionFactsReader(
         return Extracted(amount.milli, tokens.cut(index, marker.end))
     }
 
-    /** "en efectivo", "por transferencia", o un sinónimo suelto: "cash". */
-    private fun paymentAt(tokens: List<Token>, index: Int): Extracted<NameHit>? {
-        val prepositioned = tokens[index].norm in lexicon.paymentPrepositions
-        val afterPreposition = if (prepositioned) payments.matchAt(tokens, index + 1) else null
-        val hit = afterPreposition ?: loosePayments.matchAt(tokens, index) ?: return null
-        return Extracted(hit, tokens.cut(index, hit.end))
+    /**
+     * "en efectivo", "por transferencia", o un sinónimo suelto: "cash". Dos métodos distintos,
+     * como en "mitad en efectivo y mitad con tarjeta", dejan el pago por elegir.
+     */
+    private fun payments(tokens: List<Token>): Extracted<NameHit> {
+        val found = PaymentScan.all(tokens, lexicon, payments, loosePayments)
+        if (found.ids.isEmpty()) return Extracted(null, tokens)
+        return Extracted(NameHit(found.ids, 0), found.rest)
     }
 
     /**

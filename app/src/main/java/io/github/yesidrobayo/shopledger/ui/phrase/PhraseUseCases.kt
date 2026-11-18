@@ -72,6 +72,7 @@ internal fun phraseUseCases(
             suppliers = ports.suppliers,
             customers = ports.customers,
             expenseCategories = ports.expenseCategories,
+            productCategories = ports.categories,
         )
     val writers =
         PhraseWriters.of(

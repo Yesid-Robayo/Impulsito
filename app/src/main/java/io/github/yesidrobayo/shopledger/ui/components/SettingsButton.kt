@@ -14,7 +14,7 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
 val LocalSettingsOpener = staticCompositionLocalOf<() -> Unit> { {} }
 
 /**
- * El engranaje de los ajustes en la barra de arriba de las cuatro pestañas. Va siempre último,
+ * El engranaje de los ajustes en la barra de arriba de las pestañas. Va siempre último,
  * al borde derecho, después del menú si lo hay: así queda en el mismo punto en cada pestaña, el
  * que el pulgar ya conoce de Inicio.
  */

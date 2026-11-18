@@ -49,6 +49,14 @@ class ExpensesGalleryTest {
         val voidable = (list.content as ExpensesContent.Days).days.last().rows.single()
         val scenes: List<Pair<String, @Composable () -> Unit>> = listOf(
             "list" to { ExpensesScreen(list, onAction = {}) },
+            // La pestaña Gastos, con el resumen por categoría y una categoría elegida.
+            "tab-summary" to {
+                ExpensesScreen(
+                    list.copy(categorySummary = previewCategorySummary(), categoryId = 1L),
+                    onAction = {},
+                    ownTab = true,
+                )
+            },
             "empty" to {
                 ExpensesScreen(
                     list.copy(content = ExpensesContent.Empty, total = Money.ZERO),

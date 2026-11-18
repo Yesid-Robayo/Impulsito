@@ -2,7 +2,7 @@ Una venta queda guardada en el teléfono al tocar **Registrar venta**, con o sin
 
 ## Paso a paso
 
-1. Tocar **Vender** en **Inicio**. También está **Vender a mano** en **Decir**, el botón de abajo al centro.
+1. Tocar **Vender** en la barra de abajo o en **Inicio**. También está **Vender a mano** en **Decir**, el botón redondo del micrófono, abajo a la derecha.
 2. Elegir los productos en **Más vendidos**, o buscarlos por nombre o por código. Cada toque suma uno.
 3. Para cambiar la cantidad o el precio de esa línea, o para hacer un descuento, tocar la línea.
 4. Elegir el método de pago, si no es el de siempre.

@@ -1,5 +1,6 @@
 package io.github.yesidrobayo.shopledger.domain.rule.phrase
 
+import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIntent
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLanguage
 
 /**
@@ -12,17 +13,23 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLanguage
  * - [removals] abren una línea que sale: "quita las gaseosas".
  * - [additions] abren una línea que se suma: "agrega 2 huevos". Las palabras que separan líneas en
  *   una frase ("y", "también") también suman, pero con más cuidado: ver la corrección.
+ * - [renames] abren el nombre nuevo del producto que se va a crear: "se llama harina integral".
+ * - [operations] nombran la operación que era: "fue una **compra**".
  */
 internal class CorrectionVocabulary(
     leads: List<String>,
     copulas: List<String>,
     removals: List<String>,
     additions: List<String>,
+    renames: List<String>,
+    operations: Map<String, PhraseIntent>,
 ) {
     val leads: PhraseTable<Unit> = PhraseTable.of(leads)
     val copulas: PhraseTable<Unit> = PhraseTable.of(copulas)
     val removals: PhraseTable<Unit> = PhraseTable.of(removals)
     val additions: PhraseTable<Unit> = PhraseTable.of(additions)
+    val renames: PhraseTable<Unit> = PhraseTable.of(renames)
+    val operations: PhraseTable<PhraseIntent> = PhraseTable(operations.toList())
 }
 
 /** El vocabulario de corrección de cada idioma, compilado una sola vez. */
@@ -47,6 +54,20 @@ internal object CorrectionVocabularies {
             "suma", "sumá", "súmale", "sumar", "pon", "poné", "ponle", "ponme", "incluye",
             "incluí", "incluir", "falta", "faltó", "faltan", "faltaron", "me faltó", "se me olvidó",
         ),
+        renames = listOf(
+            "se llama",
+            "se llamaba",
+            "llámalo",
+            "llámala",
+            "ponle de nombre",
+            "el nombre es",
+            "de nombre",
+            "su nombre es",
+        ),
+        operations = mapOf(
+            "compra" to PhraseIntent.PURCHASE,
+            "venta" to PhraseIntent.SALE,
+        ),
     )
 
     private val english = CorrectionVocabulary(
@@ -66,6 +87,19 @@ internal object CorrectionVocabularies {
             "add", "also add", "add also", "and add", "plus add", "include", "put", "throw in",
             "forgot", "i forgot", "missing",
         ),
+        renames = listOf(
+            "its called",
+            "it is called",
+            "call it",
+            "name it",
+            "the name is",
+            "its name is",
+            "it was called",
+        ),
+        operations = mapOf(
+            "purchase" to PhraseIntent.PURCHASE,
+            "sale" to PhraseIntent.SALE,
+        ),
     )
 
     private val portuguese = CorrectionVocabulary(
@@ -82,6 +116,11 @@ internal object CorrectionVocabularies {
         additions = listOf(
             "adiciona", "adicione", "adicionar", "acrescenta", "acrescente", "acrescentar", "põe",
             "ponha", "coloca", "coloque", "inclui", "inclua", "bota", "faltou", "esqueci",
+        ),
+        renames = listOf("se chama", "chama", "o nome é", "chame de", "o nome dele é"),
+        operations = mapOf(
+            "compra" to PhraseIntent.PURCHASE,
+            "venda" to PhraseIntent.SALE,
         ),
     )
 

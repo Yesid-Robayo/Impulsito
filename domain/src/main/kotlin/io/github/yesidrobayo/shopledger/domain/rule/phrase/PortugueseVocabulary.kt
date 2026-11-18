@@ -6,18 +6,25 @@ internal object PortugueseVocabulary {
         VerbKind.SALE to listOf(
             "vendi", "vendemos", "vendeu", "venderam", "venda", "venda de", "levaram", "levou",
             "me compraram",
-            "me comprou", "compraram", "comprou de mim", "cobrei", "cobramos",
+            "me comprou", "compraram", "comprou de mim",
+            // "saíram" sem "do forno" é o que se vendeu no balcão.
+            "saíram", "despachei", "despachamos", "fiz uma venda de", "fizemos uma venda de",
         ),
+        VerbKind.SELL_NOW to listOf("vendo", "eu vendo"),
+        VerbKind.COLLECT to listOf("cobrei", "cobramos"),
         VerbKind.PURCHASE to listOf(
             "comprei", "compramos", "compro", "compra de", "chegaram", "chegou",
 
             "me trouxeram", "me entregaram", "abasteci", "repus", "trouxe", "trouxemos",
+            "me vendeu", "me venderam", "nos vendeu", "encomendei", "comprou",
         ),
         VerbKind.PRODUCTION to listOf(
             "fiz", "fizemos", "produzi", "produzimos", "preparei", "preparamos", "assei", "assamos",
             "fabriquei",
             "fabricamos", "cozinhei", "fornada de", "produção de", "uma fornada de",
-            "tirei do forno", "saiu uma fornada de",
+            "tirei do forno", "saiu uma fornada de", "saíram do forno", "envasei", "envasamos",
+            "do forno",
+            "fritei", "fritamos", "montei", "montamos", "embalei", "engarrafei",
         ),
         VerbKind.COUNT to listOf(
             "contei", "contamos", "sobraram", "sobrou", "restam", "restaram", "sobram", "tem",
@@ -30,6 +37,8 @@ internal object PortugueseVocabulary {
             "quebraram", "quebrado", "quebrados", "quebrada", "quebradas", "danificado",
             "danificados", "danificou",
             "caiu", "caíram", "apodreceu", "apodreceram", "podre", "podres", "amassou",
+            "queimou", "queimaram", "queimei", "azedou", "azedaram", "derramou", "derramaram",
+            "rachou", "racharam", "joguei fora", "jogamos fora", "joguei no lixo",
         ),
         VerbKind.EXPIRED to listOf(
             "venceu", "venceram", "vencido", "vencidos", "vencida", "vencidas", "fora da validade",
@@ -39,15 +48,18 @@ internal object PortugueseVocabulary {
         VerbKind.LOST to listOf(
             "perdi", "perdemos", "se perdeu", "perdeu", "perderam", "roubaram", "roubou",
             "foi roubado",
-            "foram roubados", "sumiu", "sumiram", "furtaram", "extraviou",
+            "foram roubados", "sumiu", "sumiram", "furtaram", "extraviou", "extraviaram",
+            "sem pagar",
+            "se extraviaram", "extraviei",
         ),
         VerbKind.OWN_USE to listOf(
             "comi", "comemos", "bebi", "bebemos", "consumo próprio", "uso próprio", "uso pessoal",
             "usamos em casa",
             "usei em casa", "para casa", "pra casa", "levei pra casa", "levei para casa", "em casa",
+            "pro almoço", "para o almoço", "pro lanche", "pro café da manhã",
         ),
         VerbKind.GIFT to listOf(
-            "dei", "demos", "dei de presente", "de presente", "presenteei", "brinde", "de brinde",
+            "dei de presente", "de presente", "presenteei", "brinde", "de brinde",
             "amostra",
             "de amostra", "como amostra", "amostra grátis", "dei de graça", "de graça",
         ),
@@ -58,14 +70,16 @@ internal object PortugueseVocabulary {
         ),
         VerbKind.RECIPE_USES to listOf(
             "leva", "levam", "uso", "usamos", "usa", "coloco", "colocamos", "ponho", "precisa",
-            "preciso",
+            "preciso", "é feito com", "é feita com", "são feitos com", "são feitas com",
+            "feito com", "feita com",
         ),
         VerbKind.NEW_PRODUCT to listOf(
             "novo produto", "produto novo", "criar produto", "cria produto", "criar o produto",
             "cria o produto", "cria",
             "criar", "adiciona", "adicionar", "adicione", "cadastra", "cadastrar", "cadastre",
             "vou vender",
-            "vou começar a vender", "comecei a vender",
+            "vou começar a vender", "comecei a vender", "quero vender", "quero começar a vender",
+            "vamos vender",
         ),
         VerbKind.COST to listOf(
             "o custo do", "o custo da", "o custo de", "custo do", "custo da", "custo de", "o custo",
@@ -73,7 +87,8 @@ internal object PortugueseVocabulary {
             "corrige o custo do", "corrige o custo da", "corrigir o custo do",
             "corrigir o custo da", "me sai",
             "me custa", "me custam", "novo custo", "está me custando", "tá me custando",
-            "me sai por",
+            "me sai por", "me custando", "agora me custa", "o custo real do", "o custo real da",
+            "custo real do", "custo real da", "o custo real de",
         ),
         VerbKind.PRICE to listOf(
             "o preço do", "o preço da", "o preço de", "preço do", "preço da", "preço de",
@@ -82,7 +97,9 @@ internal object PortugueseVocabulary {
             "baixa", "baixou",
             "abaixa", "novo preço", "muda o preço do", "muda o preço da", "mudar o preço do",
             "mudar o preço da", "agora a", "agora por", "a partir de hoje", "a partir de agora",
-            "passa a", "passa para", "vai para",
+            "passa a", "passa para", "vai para", "agora eu vendo", "fica em", "ficou em",
+            "está a", "está por", "agora está a", "estão a", "agora estão a", "aumentei",
+            "abaixei", "subi o preço do", "subi o preço da", "aumentei o preço do",
         ),
         VerbKind.PAY_IN to listOf(
             "me pagou",
@@ -93,16 +110,22 @@ internal object PortugueseVocabulary {
             "me mandou",
             "me transferiu",
             "me abonou",
+            "me transferiram",
+            "me fez um pix",
+            "me depositou",
+            "foi paga",
+            "foi pago",
         ),
         VerbKind.PAY_OUT to
             listOf(
                 "paguei", "pagamos", "gastei", "gastamos", "gasto", "gasto de", "transferi",
-                "mandei", "fiz uma recarga", "recarreguei",
+                "mandei", "fiz uma recarga", "recarreguei", "investi", "me cobrou", "me cobraram",
             ),
         VerbKind.PAY_ANY to listOf("pagou", "pago", "pagaram", "abonou", "pagamento", "quitou"),
         VerbKind.RECEIVE to listOf("recebi", "recebemos"),
         VerbKind.TOOK to emptyList(),
         VerbKind.TAKE to listOf("usei", "tirei", "peguei"),
+        VerbKind.GAVE to listOf("dei", "demos", "dei pra ele", "dei pra ela"),
         VerbKind.RECIPE_YIELDS to listOf("saem", "me saem", "rende", "rendem", "dá para"),
         VerbKind.SETTLE_OUT to listOf("abonei", "quitei", "acertei com", "acertei"),
     )
@@ -120,7 +143,8 @@ internal object PortugueseVocabulary {
             "pendura", "fica devendo",
             "ficou devendo", "ficou me devendo", "fiquei devendo", "pago depois",
             "vou pagar depois", "paga depois",
-            "me paga depois", "a crédito", "no fiado",
+            "me paga depois", "a crédito", "no fiado", "ela paga depois", "ele paga depois",
+            "vai me pagar depois", "me paga mais tarde",
         ),
         verbs = verbs,
         totalBefore = listOf(
@@ -130,6 +154,14 @@ internal object PortugueseVocabulary {
         totalAfter = listOf("no total", "ao todo", "por tudo", "de total"),
         unitPriceBefore = listOf("a", "@", "cada um a", "cada uma a", "cada a"),
         lineTotalBefore = listOf("por", "em"),
+        costClauses = listOf(
+            "que me custaram",
+            "que me custou",
+            "que custaram",
+            "que custou",
+            "que saíram",
+            "que saiu",
+        ),
         eachAfter = listOf(
             "cada",
             "cada um",
@@ -205,7 +237,16 @@ internal object PortugueseVocabulary {
                 "débito",
                 "maquininha",
             ),
-            "transfer" to listOf("transferência", "transferência bancária", "depósito"),
+            "transfer" to listOf(
+                "transferência",
+                "transferência bancária",
+                "depósito",
+                "transferiu",
+                "transferiram",
+                "transferi",
+                "transferimos",
+                "depositou",
+            ),
             "wallet" to listOf("carteira", "carteira digital"),
         ),
         categorySynonyms = mapOf(
@@ -219,6 +260,8 @@ internal object PortugueseVocabulary {
                 "conta de água",
                 "conta de energia",
                 "contas",
+                "conta da luz",
+                "conta da água",
             ),
             "internet_phone" to
                 listOf(
@@ -248,14 +291,29 @@ internal object PortugueseVocabulary {
                 ),
             "taxes_fees" to listOf("impostos", "imposto", "taxa", "taxas", "multa", "alvará"),
             "wages" to
-                listOf("salário", "salários", "diária", "ajudante", "funcionário", "funcionária"),
+                listOf(
+                    "salário",
+                    "salários",
+                    "diária",
+                    "ajudante",
+                    "funcionário",
+                    "funcionária",
+                    "folha de pagamento",
+                    "folha",
+                ),
         ),
         yieldLeads = listOf("com", "usando"),
         pronounHeads = emptyList(),
-        questions = listOf("quanto", "quanta", "quantos", "quantas", "qual", "quais", "quando"),
-        pronouns = listOf("se", "me", "nos", "lhe", "eu", "nós"),
+        questions = listOf(
+            "quanto", "quanta", "quantos", "quantas", "qual", "quais", "quando", "onde", "quem",
+            "a quanto", "o que", "será que", "como",
+        ),
+        pronouns = listOf(
+            "se", "me", "nos", "lhe", "eu", "nós", "ele", "ela", "eles", "elas", "você",
+        ),
         containers = listOf(
             "garrafa", "saco", "saquinho", "pote", "lata", "copo", "bandeja", "vidro", "sacola",
+            "amostra",
         ),
         productLead = listOf(
             "produto",
@@ -265,6 +323,8 @@ internal object PortugueseVocabulary {
             "nova",
             "chamado",
             "chamada",
+            "se chama",
+            "que se chama",
         ),
         priceKeywords = listOf(
             "a", "por", "preço", "preço de", "preço de venda", "o preço é", "vendo a", "vendo por",
@@ -278,8 +338,136 @@ internal object PortugueseVocabulary {
         changeFillers = listOf(
             "agora", "é", "e", "vai ser", "fica", "novo", "nova", "preço", "custo",
         ),
+        // "é" se escribe sin tilde al normalizar: la apertura "e" solo cuenta seguida de un tipo.
+        traits = TraitVocabulary(
+            leads = listOf(
+                "isso é", "isto é", "esse é", "essa é", "este é", "esta é", "que é", "que são",
+                "é", "são", "como", "uso como", "vai como", "registra como",
+            ),
+            articles = listOf("um", "uma"),
+            kinds = mapOf(
+                "insumo" to SpokenKind.INPUT,
+                "insumos" to SpokenKind.INPUT,
+                "ingrediente" to SpokenKind.INPUT,
+                "ingredientes" to SpokenKind.INPUT,
+                "produto" to SpokenKind.SALE,
+                "produtos" to SpokenKind.SALE,
+                "produto para vender" to SpokenKind.SALE,
+                "produto de venda" to SpokenKind.SALE,
+                "serviço" to SpokenKind.SERVICE,
+                "serviços" to SpokenKind.SERVICE,
+                "as duas coisas" to SpokenKind.BOTH,
+            ),
+            plainKinds = mapOf(
+                "matéria prima" to SpokenKind.INPUT,
+                "matérias primas" to SpokenKind.INPUT,
+                "não se vende" to SpokenKind.INPUT,
+                "não é para vender" to SpokenKind.INPUT,
+                "não é para venda" to SpokenKind.INPUT,
+                "para vender" to SpokenKind.SALE,
+                "para venda" to SpokenKind.SALE,
+                "para a venda" to SpokenKind.SALE,
+                "para revenda" to SpokenKind.SALE,
+                "para revender" to SpokenKind.SALE,
+                "pra vender" to SpokenKind.SALE,
+                "pra venda" to SpokenKind.SALE,
+                "insumo e para vender" to SpokenKind.BOTH,
+                "pra vender e pra embalar" to SpokenKind.BOTH,
+                "para vender e para embalar" to SpokenKind.BOTH,
+                "eu vendo e também uso" to SpokenKind.BOTH,
+                "vendo e também uso" to SpokenKind.BOTH,
+                "eu vendo e uso" to SpokenKind.BOTH,
+                "eu vendo e também uso nas receitas" to SpokenKind.BOTH,
+            ),
+            categoryBefore = listOf(
+                "na categoria de", "na categoria", "da categoria de", "da categoria",
+                "em categoria", "vai na categoria", "categoria de", "a categoria", "categoria",
+            ),
+            categoryAfter = emptyList(),
+            categoryAfterLeads = emptyList(),
+            descriptionWords = listOf("isso", "isto", "são"),
+        ),
         singularRules = PORTUGUESE_SINGULAR,
         displayRules = PORTUGUESE_SINGULAR,
+        refusals = Refusals(
+            phrases = listOf(
+                // Devoluções: têm seu próprio fluxo.
+                "me devolveram", "devolveram", "me devolveu", "devolveu", "devolvi",
+                "devolvemos", "devolução", "devolver", "devolve",
+                // Anular ou apagar: nada se apaga a partir de uma frase.
+                "cancela", "cancelar", "cancelei", "apaga", "apagar", "apaguei", "exclui",
+                "excluir", "estorna", "estornar", "desfaz", "desfazer", "anula", "anular",
+                // Dinheiro que não é venda nem gasto: saques, depósitos e empréstimos.
+                "do caixa", "pro banco", "para o banco", "no banco", "saquei", "retirei",
+                "me emprestaram", "me emprestou", "emprestei", "empréstimo", "emprestado",
+                "paguei a mim", "me paguei",
+                // Uma dívida dita como fato não diz o que aconteceu hoje.
+                "me deve", "me devem", "devo pro", "devo pra", "devo ao",
+                // Orçamentos, listas de preços e mudanças de todos os preços.
+                "orçamento", "orçar", "cotação", "cota", "lista de atacado", "tabela de preços",
+                "na lista", "preço de atacado", "todos os preços", "todos os produtos",
+                // O que apareceu, abrir ou fechar o caixa.
+                "encontrei", "achei", "apareceu", "apareceram", "abri o caixa", "abrir o caixa",
+                "fechei o caixa", "fechar o caixa",
+                // Uma venda ou compra nomeada sem dizer o que se vendeu ou comprou.
+                "fiz uma venda", "fizemos uma venda", "tive uma venda", "fiz uma compra",
+                "vendi nada", "nenhuma venda", "sem vendas",
+                // O que acabou não diz quanto sobra nem o que aconteceu.
+                "acabou", "acabaram", "esgotou", "esgotaram",
+            ),
+            negations = listOf("não", "nao", "nunca", "jamais", "nem", "ainda não", "ainda nao"),
+            percents = listOf("por cento", "porcento"),
+            notYet = listOf(
+                "amanhã", "depois de amanhã", "vou", "vamos", "vai", "vão", "tenho que",
+                "temos que", "tenho de", "tem que", "preciso comprar", "preciso pagar",
+                "preciso vender", "devo", "quero", "queremos", "semana que vem", "mês que vem",
+                "mais tarde", "ainda não", "ainda nao",
+            ),
+        ),
+        speech = SpeechForms(
+            demonstratives = listOf("este", "esta", "esse", "essa", "aquele", "aquela"),
+            lineCopulas = listOf(
+                "foram", "foi", "eram", "era", "são", "seriam", "seria", "deu", "deu tudo",
+                "ficou", "ficou tudo", "foi tudo",
+            ),
+            batches = listOf("fornada", "fornadas", "lote", "lotes"),
+            decimalWords = listOf("vírgula", "ponto"),
+            tenderedBefore = listOf(
+                "com uma nota de",
+                "com nota de",
+                "uma nota de",
+                "com uma nota",
+            ),
+            shares = listOf(
+                "metade",
+                "a metade",
+                "a outra metade",
+                "uma parte",
+                "outra parte",
+                "tudo",
+            ),
+            genericParties = listOf(
+                "pra um cliente", "para um cliente", "a um cliente", "pra uma cliente",
+                "para uma cliente", "um cliente", "uma cliente", "o cliente", "a cliente",
+                "um freguês", "uma freguesa", "pra um vizinho", "pra uma vizinha",
+            ),
+            recipeEach = listOf("a cada", "para cada", "pra cada", "cada"),
+            createLeads = listOf("novo", "nova"),
+            priceCopulas = listOf("são", "está", "estão"),
+            fromPrepositions = listOf("do", "da", "de"),
+            selfFixes = listOf(
+                "desculpa",
+                "desculpe",
+                "quer dizer",
+                "quero dizer",
+                "aliás",
+                "digo",
+                "errei",
+                "não",
+            ),
+            priceSetters = listOf("põe", "coloca", "deixa", "bota"),
+            setterMarkers = listOf("a", "por", "em"),
+        ),
     )
 }
 

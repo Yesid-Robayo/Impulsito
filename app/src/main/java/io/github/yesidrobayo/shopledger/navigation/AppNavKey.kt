@@ -132,6 +132,14 @@ sealed interface AppNavKey : NavKey {
         val recurringExpenseId: Long? = null,
     ) : AppNavKey
 
+    /**
+     * Gastos: raíz de su pestaña, con la lista del mes, su filtro por categoría y `Nuevo gasto`. Es
+     * la misma lista que el segmento `Gastos` de Registros y que [Expenses], que se abre encima
+     * como destino propio, con atrás.
+     */
+    @Serializable
+    data object ExpensesTab : AppNavKey
+
     /** Números: raíz de su pestaña. */
     @Serializable
     data object Statistics : AppNavKey

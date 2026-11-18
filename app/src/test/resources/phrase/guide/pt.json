@@ -1,0 +1,10601 @@
+[
+ {
+  "id": "pt-5000",
+  "text": "vendo 3 pães",
+  "tags": [
+   "sale",
+   "present"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5001",
+  "text": "foram vendidos 4 pastéis",
+  "tags": [
+   "sale",
+   "slang"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "4",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5002",
+  "text": "hoje saíram 10 pães integrais",
+  "tags": [
+   "sale",
+   "slang",
+   "hard"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "whole_bread",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5003",
+  "text": "me compraram dois bolos de chocolate",
+  "tags": [
+   "sale",
+   "slang",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "choco_cake",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5004",
+  "text": "levaram 3 sucos de amora",
+  "tags": [
+   "sale",
+   "slang"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "blackberry_juice",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5005",
+  "text": "vendemos 6 cafés na xícara",
+  "tags": [
+   "sale"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "coffee_cup",
+     "qty": "6",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5006",
+  "text": "despachei 10 sacolas de papel",
+  "tags": [
+   "sale",
+   "slang"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "paper_bag",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5007",
+  "text": "cobrei 2 manicures a 30",
+  "tags": [
+   "sale",
+   "price",
+   "slang"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "manicure",
+     "qty": "2",
+     "unit": null,
+     "unit_price": "30",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5008",
+  "text": "vemdi 3 pães",
+  "tags": [
+   "sale",
+   "typo"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5009",
+  "text": "VENDI 2 QUILOS DE BATATA",
+  "tags": [
+   "sale",
+   "unit",
+   "caps"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "potato",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5010",
+  "text": "vendi pro Carlos 2 quilos de arroz",
+  "tags": [
+   "sale",
+   "party",
+   "unit",
+   "order"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "rice",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": "carlos",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5011",
+  "text": "pra Dona Rosa eu vendi uma geleia de morango",
+  "tags": [
+   "sale",
+   "party",
+   "order",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "jam",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": "rosa",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5012",
+  "text": "2 pães e um café na xícara",
+  "tags": [
+   "sale",
+   "multi",
+   "no_verb"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "coffee_cup",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5013",
+  "text": "dois pães três pastéis um suco de amora",
+  "tags": [
+   "sale",
+   "multi",
+   "no_verb",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "empanada",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "blackberry_juice",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5014",
+  "text": "4 pastéis eu vendi",
+  "tags": [
+   "sale",
+   "order"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "4",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5015",
+  "text": "vendi cinquenta pães",
+  "tags": [
+   "sale",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "50",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5016",
+  "text": "vendi cento e vinte parafusos",
+  "tags": [
+   "sale",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "screw",
+     "qty": "120",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5017",
+  "text": "vendi mil e quinhentos parafusos",
+  "tags": [
+   "sale",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "screw",
+     "qty": "1500",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5018",
+  "text": "vendi 3 pães a cinquenta centavos",
+  "tags": [
+   "sale",
+   "price",
+   "words",
+   "hard"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": "0.5",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5019",
+  "text": "vendi 2 bolos de baunilha a 45 cada um",
+  "tags": [
+   "sale",
+   "price"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "vanilla_cake",
+     "qty": "2",
+     "unit": null,
+     "unit_price": "45",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5020",
+  "text": "vendi 2 bolos de baunilha por 90",
+  "tags": [
+   "sale",
+   "price"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "vanilla_cake",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": "90"
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5021",
+  "text": "vendi 4 pastéis, cada um a 5,50",
+  "tags": [
+   "sale",
+   "price",
+   "order",
+   "number"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "4",
+     "unit": null,
+     "unit_price": "5.5",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5022",
+  "text": "vendi 4 pastéis a $5,50",
+  "tags": [
+   "sale",
+   "price",
+   "number",
+   "currency"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "4",
+     "unit": null,
+     "unit_price": "5.5",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5023",
+  "text": "vendi trinta camisetas tamanho M por $1.050",
+  "tags": [
+   "sale",
+   "price",
+   "number",
+   "currency",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "tshirt_m",
+     "qty": "30",
+     "unit": null,
+     "unit_price": null,
+     "line_total": "1050"
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5024",
+  "text": "vendi 30 camisetas tamanho L por 1,050",
+  "tags": [
+   "sale",
+   "price",
+   "number"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "tshirt_l",
+     "qty": "30",
+     "unit": null,
+     "unit_price": null,
+     "line_total": "1050"
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5025",
+  "text": "vendi 40 galões de tinta branca por 3 400",
+  "tags": [
+   "sale",
+   "unit",
+   "price",
+   "number"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "paint",
+     "qty": "40",
+     "unit": "gallon",
+     "unit_price": null,
+     "line_total": "3400"
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5026",
+  "text": "vendi 3 camisetas tamanho M a 35,90 cada",
+  "tags": [
+   "sale",
+   "price",
+   "number"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "tshirt_m",
+     "qty": "3",
+     "unit": null,
+     "unit_price": "35.9",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5027",
+  "text": "vendi uma camiseta tamanho L por trinta e cinco e noventa",
+  "tags": [
+   "sale",
+   "price",
+   "words",
+   "hard"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "tshirt_l",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": "35.9"
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5028",
+  "text": "vendi 2 quilos de batata a 4 e 50 o quilo",
+  "tags": [
+   "sale",
+   "unit",
+   "price",
+   "number",
+   "hard"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "potato",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": "4.5",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5029",
+  "text": "vendi 4 águas minerais a 3 reais",
+  "tags": [
+   "sale",
+   "price",
+   "currency"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "water",
+     "qty": "4",
+     "unit": null,
+     "unit_price": "3",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5030",
+  "text": "vendi 3 velas aromáticas por 105",
+  "tags": [
+   "sale",
+   "price"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "candle",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": "105"
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5031",
+  "text": "vendi 3 pães 1,50",
+  "tags": [
+   "sale",
+   "price",
+   "hard"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": "1.5"
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5032",
+  "text": "vendi um quilo e meio de queijo fresco",
+  "tags": [
+   "sale",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "farmer_cheese",
+     "qty": "1.5",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5033",
+  "text": "vendi meio quilo de café moído",
+  "tags": [
+   "sale",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "ground_coffee",
+     "qty": "0.5",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5034",
+  "text": "vendi um quarto de quilo de queijo muçarela",
+  "tags": [
+   "sale",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "mozzarella",
+     "qty": "0.25",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5035",
+  "text": "vendi um quarto de queijo fresco",
+  "tags": [
+   "sale",
+   "words",
+   "hard"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "farmer_cheese",
+     "qty": "0.25",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5036",
+  "text": "vendi 3/4 de quilo de tomate",
+  "tags": [
+   "sale",
+   "unit",
+   "number"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "tomato",
+     "qty": "0.75",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5037",
+  "text": "vendi 1/2 libra de café moído",
+  "tags": [
+   "sale",
+   "unit",
+   "number"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "ground_coffee",
+     "qty": "0.5",
+     "unit": "pound",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5038",
+  "text": "vendi duas libras e meia de arroz",
+  "tags": [
+   "sale",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "rice",
+     "qty": "2.5",
+     "unit": "pound",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5039",
+  "text": "vendi 300 gr de café moído",
+  "tags": [
+   "sale",
+   "unit"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "ground_coffee",
+     "qty": "300",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5040",
+  "text": "vendi 1,5 kg de cebola",
+  "tags": [
+   "sale",
+   "unit",
+   "number"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "onion",
+     "qty": "1.5",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5041",
+  "text": "vendi 2.5 quilos de batata",
+  "tags": [
+   "sale",
+   "unit",
+   "number",
+   "hard"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "potato",
+     "qty": "2.5",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5042",
+  "text": "vendi um quilo e duzentos de tomate",
+  "tags": [
+   "sale",
+   "unit",
+   "words",
+   "hard"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "tomato",
+     "qty": "1.2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5043",
+  "text": "vendi um litro e meio de leite integral",
+  "tags": [
+   "sale",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "milk",
+     "qty": "1.5",
+     "unit": "liter",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5044",
+  "text": "vendi meio litro de óleo",
+  "tags": [
+   "sale",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "oil",
+     "qty": "0.5",
+     "unit": "liter",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5045",
+  "text": "vendi 2 lt de leite",
+  "tags": [
+   "sale",
+   "unit"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "milk",
+     "qty": "2",
+     "unit": "liter",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5046",
+  "text": "vendi 500 ml de óleo",
+  "tags": [
+   "sale",
+   "unit"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "oil",
+     "qty": "500",
+     "unit": "milliliter",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5047",
+  "text": "vendi 20 m de fio elétrico",
+  "tags": [
+   "sale",
+   "unit"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cable",
+     "qty": "20",
+     "unit": "meter",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5048",
+  "text": "vendi 3 metros e meio de fio",
+  "tags": [
+   "sale",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cable",
+     "qty": "3.5",
+     "unit": "meter",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5049",
+  "text": "vendi meio galão de tinta branca",
+  "tags": [
+   "sale",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "paint",
+     "qty": "0.5",
+     "unit": "gallon",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5050",
+  "text": "vendi uma caixa de refrigerantes pequenos",
+  "tags": [
+   "sale",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "soda_small",
+     "qty": "1",
+     "unit": "box",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5051",
+  "text": "vendi dois pacotes de água mineral",
+  "tags": [
+   "sale",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "water",
+     "qty": "2",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5052",
+  "text": "vendi um par de sabonetes",
+  "tags": [
+   "sale",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "soap",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5053",
+  "text": "vendi meia dúzia de ovos",
+  "tags": [
+   "sale",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "egg",
+     "qty": "6",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5054",
+  "text": "vendi duas dúzias de ovos a 12 a dúzia",
+  "tags": [
+   "sale",
+   "unit",
+   "price",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "egg",
+     "qty": "2",
+     "unit": "dozen",
+     "unit_price": "12",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5055",
+  "text": "vendi uma bandeja de ovos",
+  "tags": [
+   "sale",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "egg",
+     "qty": "1",
+     "unit": "tray",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5056",
+  "text": "vendi 2 litros de queijo fresco",
+  "tags": [
+   "sale",
+   "edge"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "farmer_cheese",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "UNIT_NOT_FOR_PRODUCT"
+   ]
+  }
+ },
+ {
+  "id": "pt-5057",
+  "text": "vendi 2 quilos de arroz, 1 de açúcar e meio de café moído",
+  "tags": [
+   "sale",
+   "multi",
+   "unit",
+   "inherit",
+   "hard"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "rice",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "sugar",
+     "qty": "1",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "ground_coffee",
+     "qty": "0.5",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5058",
+  "text": "vendi uns pães",
+  "tags": [
+   "sale",
+   "edge",
+   "vague"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": null,
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "UNREADABLE_QUANTITY"
+   ]
+  }
+ },
+ {
+  "id": "pt-5059",
+  "text": "vendi vários quilos de batata",
+  "tags": [
+   "sale",
+   "edge",
+   "unit",
+   "vague"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "potato",
+     "qty": null,
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "UNREADABLE_QUANTITY"
+   ]
+  }
+ },
+ {
+  "id": "pt-5060",
+  "text": "vendi uns 3 quilos de tomate",
+  "tags": [
+   "sale",
+   "unit",
+   "approx"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "tomato",
+     "qty": "3",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5061",
+  "text": "vendi 3 pães, quer dizer, 4 pães",
+  "tags": [
+   "sale",
+   "self_fix",
+   "hard"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "4",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5062",
+  "text": "vendi 3 pães no dinheiro",
+  "tags": [
+   "sale",
+   "payment"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "cash",
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5063",
+  "text": "vendi 3 pães à vista",
+  "tags": [
+   "sale",
+   "payment"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "cash",
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5064",
+  "text": "vendi 2 pastéis, pagaram no cartão",
+  "tags": [
+   "sale",
+   "payment"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "card",
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5065",
+  "text": "vendi 2 cortes de cabelo, me pagaram por transferência",
+  "tags": [
+   "sale",
+   "payment"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "haircut",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "transfer",
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5066",
+  "text": "vendi 3 velas aromáticas, me transferiram",
+  "tags": [
+   "sale",
+   "payment",
+   "hard"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "candle",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "transfer",
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5067",
+  "text": "vendi um combo café da manhã na carteira digital",
+  "tags": [
+   "sale",
+   "payment",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "breakfast",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "wallet",
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5068",
+  "text": "vendi 3 pães, ele me pagou com uma nota de 20",
+  "tags": [
+   "sale",
+   "payment",
+   "tendered",
+   "danger"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "cash",
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5069",
+  "text": "vendi 3 pães e 2 pastéis, tudo no dinheiro",
+  "tags": [
+   "sale",
+   "multi",
+   "payment",
+   "hard"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "empanada",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "cash",
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5070",
+  "text": "vendi 12 pacotes de biscoito, metade no dinheiro e metade por transferência",
+  "tags": [
+   "sale",
+   "payment",
+   "unit",
+   "split",
+   "hard"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cookies",
+     "qty": "12",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": {
+    "choose": [
+     "cash",
+     "transfer"
+    ]
+   },
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5071",
+  "text": "fiei 2 bolos de chocolate pro Carlos",
+  "tags": [
+   "sale",
+   "payment",
+   "credit",
+   "party",
+   "slang"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "choco_cake",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "on_account",
+   "party": "carlos",
+   "category": null,
+   "total": null,
+   "credit": true,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5072",
+  "text": "vendi 2 refrigerantes grandes a prazo pra Maria Souza",
+  "tags": [
+   "sale",
+   "payment",
+   "credit",
+   "party"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "soda_big",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "on_account",
+   "party": "maria",
+   "category": null,
+   "total": null,
+   "credit": true,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5073",
+  "text": "o Carlos levou 4 pastéis e tá me devendo",
+  "tags": [
+   "sale",
+   "payment",
+   "credit",
+   "party",
+   "slang",
+   "hard"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "4",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "on_account",
+   "party": "carlos",
+   "category": null,
+   "total": null,
+   "credit": true,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5074",
+  "text": "vendi um quilo de arroz pra Dona Rosa, ela paga depois",
+  "tags": [
+   "sale",
+   "payment",
+   "credit",
+   "party",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "rice",
+     "qty": "1",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "on_account",
+   "party": "rosa",
+   "category": null,
+   "total": null,
+   "credit": true,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5075",
+  "text": "vendi 5 pães pendurados",
+  "tags": [
+   "sale",
+   "payment",
+   "credit",
+   "slang"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "5",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "on_account",
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": true,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5076",
+  "text": "vendi 3 pães pra Maria",
+  "tags": [
+   "sale",
+   "party",
+   "ambiguous"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": {
+    "choose": [
+     "maria",
+     "maria_t"
+    ]
+   },
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5077",
+  "text": "vendi 3 pães pro João",
+  "tags": [
+   "sale",
+   "party",
+   "unknown"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": {
+    "new": "João"
+   },
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5078",
+  "text": "cobrei do Carlos um corte de cabelo",
+  "tags": [
+   "sale",
+   "party",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "haircut",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": "carlos",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5079",
+  "text": "é... vendi, tipo, 2 sucos de laranja",
+  "tags": [
+   "sale",
+   "filler"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "orange_juice",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5080",
+  "text": "bom, então, levaram 2 bolos de baunilha",
+  "tags": [
+   "sale",
+   "filler"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "vanilla_cake",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5081",
+  "text": "hmm deixa eu ver, vendi 4 águas minerais",
+  "tags": [
+   "sale",
+   "filler"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "water",
+     "qty": "4",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5082",
+  "text": "aí, olha, vendi esse pão integral",
+  "tags": [
+   "sale",
+   "filler",
+   "hard"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "whole_bread",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5083",
+  "text": "Vendi 3 pães. Me pagaram em dinheiro.",
+  "tags": [
+   "sale",
+   "payment",
+   "two_sentences"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "cash",
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5084",
+  "text": "Vendi pra Maria Teixeira. Foram 2 geleias de morango.",
+  "tags": [
+   "sale",
+   "party",
+   "two_sentences",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "jam",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": "maria_t",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5085",
+  "text": "Vendi 2 bolos de chocolate. A Dona Rosa me pagou por transferência.",
+  "tags": [
+   "sale",
+   "payment",
+   "party",
+   "two_sentences",
+   "hard"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "choco_cake",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "transfer",
+   "party": "rosa",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5086",
+  "text": "vendi 3 pães e 2 pastéis, tudo por 12,50, no dinheiro",
+  "tags": [
+   "sale",
+   "multi",
+   "payment",
+   "price",
+   "number"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "empanada",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "cash",
+   "party": null,
+   "category": null,
+   "total": "12.5",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5087",
+  "text": "vendi 2 cafés na xícara e 2 pães, deu 9 reais",
+  "tags": [
+   "sale",
+   "multi",
+   "price",
+   "hard"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "coffee_cup",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": "9",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5088",
+  "text": "vendi 3 pães integrais, 2 sucos de amora e um bolo de baunilha",
+  "tags": [
+   "sale",
+   "multi",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "whole_bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "blackberry_juice",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "vanilla_cake",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5089",
+  "text": "vendi 3 pães a 0,50 e 2 refrigerantes pequenos a 4",
+  "tags": [
+   "sale",
+   "multi",
+   "price"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": "0.5",
+     "line_total": null
+    },
+    {
+     "product": "soda_small",
+     "qty": "2",
+     "unit": null,
+     "unit_price": "4",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5090",
+  "text": "vendi 12 cafés na xícara a 3 cada um e 3 pães a 0,50",
+  "tags": [
+   "sale",
+   "multi",
+   "price"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "coffee_cup",
+     "qty": "12",
+     "unit": null,
+     "unit_price": "3",
+     "line_total": null
+    },
+    {
+     "product": "bread",
+     "qty": "3",
+     "unit": null,
+     "unit_price": "0.5",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5091",
+  "text": "vendi 10 metros de fio a 3,20 o metro por transferência pro Carlos Lima",
+  "tags": [
+   "sale",
+   "payment",
+   "party",
+   "unit",
+   "price",
+   "number"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cable",
+     "qty": "10",
+     "unit": "meter",
+     "unit_price": "3.2",
+     "line_total": null
+    }
+   ],
+   "payment": "transfer",
+   "party": "carlos",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5092",
+  "text": "um refrigerante de 400 e dois pães",
+  "tags": [
+   "sale",
+   "multi",
+   "no_verb",
+   "words"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "soda_small",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5093",
+  "text": "vendi o bolo de chocolate a 50",
+  "tags": [
+   "sale",
+   "price"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "choco_cake",
+     "qty": null,
+     "unit": null,
+     "unit_price": "50",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5094",
+  "text": "vendi 3 pasteis e 2 sucos de larangia",
+  "tags": [
+   "sale",
+   "multi",
+   "typo"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "orange_juice",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5095",
+  "text": "vendi 3 camisetas brancas",
+  "tags": [
+   "sale",
+   "ambiguous"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "choose": [
+       "tshirt_m",
+       "tshirt_l"
+      ]
+     },
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5096",
+  "text": "vendi 2 quilos de farinha de arroz",
+  "tags": [
+   "sale",
+   "unknown",
+   "unit"
+  ],
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Farinha de arroz"
+     },
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5097",
+  "text": "compro 2 sacos de farinha de trigo",
+  "tags": [
+   "purchase",
+   "unit",
+   "present"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "2",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5098",
+  "text": "compramos 3 bandejas de ovos",
+  "tags": [
+   "purchase",
+   "unit"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "egg",
+     "qty": "3",
+     "unit": "tray",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5099",
+  "text": "chegaram 4 caixas de refrigerante grande da distribuidora",
+  "tags": [
+   "purchase",
+   "party",
+   "unit",
+   "slang"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "soda_big",
+     "qty": "4",
+     "unit": "box",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": "central",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5100",
+  "text": "chegou o pedido da Distribuidora Central: 5 caixas de refrigerante pequeno",
+  "tags": [
+   "purchase",
+   "party",
+   "unit",
+   "slang"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "soda_small",
+     "qty": "5",
+     "unit": "box",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": "central",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5101",
+  "text": "me trouxeram 2 sacos de açúcar do Seu Ramiro",
+  "tags": [
+   "purchase",
+   "party",
+   "unit",
+   "slang"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "2",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": "ramiro",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5102",
+  "text": "repus 20 pacotes de biscoito",
+  "tags": [
+   "purchase",
+   "unit",
+   "slang"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cookies",
+     "qty": "20",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5103",
+  "text": "trouxe 10 quilos de batata e 5 de cebola",
+  "tags": [
+   "purchase",
+   "multi",
+   "unit",
+   "inherit",
+   "hard"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "potato",
+     "qty": "10",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "onion",
+     "qty": "5",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5104",
+  "text": "comprei 50 quilos de farinha de trigo a 3,80 o quilo",
+  "tags": [
+   "purchase",
+   "unit",
+   "price",
+   "number"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "50",
+     "unit": "kilogram",
+     "unit_price": "3.8",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5105",
+  "text": "comprei um saco de farinha de trigo por 190",
+  "tags": [
+   "purchase",
+   "unit",
+   "price",
+   "words"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "1",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": "190"
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5106",
+  "text": "comprei um saco de arroz por cento e vinte reais",
+  "tags": [
+   "purchase",
+   "unit",
+   "price",
+   "words",
+   "currency"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "rice",
+     "qty": "1",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": "120"
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5107",
+  "text": "comprei 3 galões de tinta branca a $85,00 cada",
+  "tags": [
+   "purchase",
+   "unit",
+   "price",
+   "number",
+   "currency"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "paint",
+     "qty": "3",
+     "unit": "gallon",
+     "unit_price": "85",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5108",
+  "text": "comprei 2 quilos de café moído, paguei 60",
+  "tags": [
+   "purchase",
+   "unit",
+   "price",
+   "hard"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "ground_coffee",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": "60"
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5109",
+  "text": "paguei 25 por uma caixa de refrigerantes pequenos",
+  "tags": [
+   "purchase",
+   "unit",
+   "price",
+   "slang"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "soda_small",
+     "qty": "1",
+     "unit": "box",
+     "unit_price": null,
+     "line_total": "25"
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5110",
+  "text": "gastei 45 em queijo fresco",
+  "tags": [
+   "purchase",
+   "price",
+   "slang"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "farmer_cheese",
+     "qty": null,
+     "unit": null,
+     "unit_price": null,
+     "line_total": "45"
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5111",
+  "text": "gastei 30 em sacolas de papel",
+  "tags": [
+   "purchase",
+   "price",
+   "slang",
+   "danger"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "paper_bag",
+     "qty": null,
+     "unit": null,
+     "unit_price": null,
+     "line_total": "30"
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5112",
+  "text": "investi 200 em açúcar",
+  "tags": [
+   "purchase",
+   "price",
+   "slang"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": null,
+     "unit": null,
+     "unit_price": null,
+     "line_total": "200"
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5113",
+  "text": "comprei 100 parafusos na ferragens",
+  "tags": [
+   "purchase",
+   "party"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "screw",
+     "qty": "100",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": "hardware",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5114",
+  "text": "comprei na Ferragens Moderna 50 metros de fio",
+  "tags": [
+   "purchase",
+   "party",
+   "unit",
+   "order"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "cable",
+     "qty": "50",
+     "unit": "meter",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": "hardware",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5115",
+  "text": "comprei da granja 3 bandejas de ovos e 10 litros de leite",
+  "tags": [
+   "purchase",
+   "multi",
+   "party",
+   "unit",
+   "order"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "egg",
+     "qty": "3",
+     "unit": "tray",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "milk",
+     "qty": "10",
+     "unit": "liter",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": "farm",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5116",
+  "text": "comprei 20 quilos de arroz do Seu Ramiro e fiquei devendo",
+  "tags": [
+   "purchase",
+   "payment",
+   "credit",
+   "party",
+   "unit",
+   "slang"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "rice",
+     "qty": "20",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "on_account",
+   "party": "ramiro",
+   "category": null,
+   "total": null,
+   "credit": true,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5117",
+  "text": "comprei 2 caixas de refrigerante grande fiado com a distribuidora",
+  "tags": [
+   "purchase",
+   "payment",
+   "credit",
+   "party",
+   "unit"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "soda_big",
+     "qty": "2",
+     "unit": "box",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "on_account",
+   "party": "central",
+   "category": null,
+   "total": null,
+   "credit": true,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5118",
+  "text": "comprei 1 saco de açúcar a prazo",
+  "tags": [
+   "purchase",
+   "payment",
+   "credit",
+   "unit"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "1",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "on_account",
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": true,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5119",
+  "text": "comprei 30 quilos de batata em dinheiro",
+  "tags": [
+   "purchase",
+   "payment",
+   "unit"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "potato",
+     "qty": "30",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "cash",
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5120",
+  "text": "comprei 10 camisetas tamanho M por transferência, 250",
+  "tags": [
+   "purchase",
+   "payment",
+   "price"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "tshirt_m",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "transfer",
+   "party": null,
+   "category": null,
+   "total": "250",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5121",
+  "text": "comprei 2 kg de cera de soja e 100 ml de essência de lavanda",
+  "tags": [
+   "purchase",
+   "multi",
+   "unit"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "soy_wax",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "lavender",
+     "qty": "100",
+     "unit": "milliliter",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5122",
+  "text": "comprei uma caixa de potes de vidro",
+  "tags": [
+   "purchase",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "jar",
+     "qty": "1",
+     "unit": "box",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5123",
+  "text": "comprei 24 potes de vidro a 2 cada um",
+  "tags": [
+   "purchase",
+   "price"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "jar",
+     "qty": "24",
+     "unit": null,
+     "unit_price": "2",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5124",
+  "text": "comprei 6 litros de óleo a 9,50 o litro",
+  "tags": [
+   "purchase",
+   "unit",
+   "price",
+   "number"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "oil",
+     "qty": "6",
+     "unit": "liter",
+     "unit_price": "9.5",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5125",
+  "text": "comprei um galão de óleo",
+  "tags": [
+   "purchase",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "oil",
+     "qty": "1",
+     "unit": "gallon",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5126",
+  "text": "comprei 5 libras de café moído",
+  "tags": [
+   "purchase",
+   "unit"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "ground_coffee",
+     "qty": "5",
+     "unit": "pound",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5127",
+  "text": "comprei 500 gramas de essência de lavanda",
+  "tags": [
+   "purchase",
+   "edge"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "lavender",
+     "qty": "500",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "UNIT_NOT_FOR_PRODUCT"
+   ]
+  }
+ },
+ {
+  "id": "pt-5128",
+  "text": "comprei 2 sacos de batata",
+  "tags": [
+   "purchase",
+   "edge"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "potato",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "UNIT_NOT_FOR_PRODUCT"
+   ]
+  }
+ },
+ {
+  "id": "pt-5129",
+  "text": "é, bom, comprei 3 sacos de farinha de trigo",
+  "tags": [
+   "purchase",
+   "unit",
+   "filler"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "3",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5130",
+  "text": "Comprei farinha de milho. Foram 10 quilos. Comprei do Seu Ramiro.",
+  "tags": [
+   "purchase",
+   "party",
+   "unit",
+   "two_sentences",
+   "hard"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "corn_flour",
+     "qty": "10",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": "ramiro",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5131",
+  "text": "comprei 2 sacos de arroz e 1 de açúcar por 380",
+  "tags": [
+   "purchase",
+   "multi",
+   "unit",
+   "price",
+   "inherit",
+   "hard"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "rice",
+     "qty": "2",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "sugar",
+     "qty": "1",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": "380",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5132",
+  "text": "comprei farinha",
+  "tags": [
+   "purchase",
+   "ambiguous"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "choose": [
+       "wheat_flour",
+       "corn_flour"
+      ]
+     },
+     "qty": null,
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5133",
+  "text": "comprei 2 quilos de carne moída",
+  "tags": [
+   "purchase",
+   "unknown",
+   "unit"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Carne moída"
+     },
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5134",
+  "text": "comprei 10 quilos de cenoura do Pedro",
+  "tags": [
+   "purchase",
+   "party",
+   "unknown",
+   "unit"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Cenoura"
+     },
+     "qty": "10",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": {
+    "new": "Pedro"
+   },
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5135",
+  "text": "comprei 3 caixas de parafusos a 25,00 a caixa, na Ferragens Moderna, no cartão",
+  "tags": [
+   "purchase",
+   "payment",
+   "party",
+   "unit",
+   "price",
+   "number"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "screw",
+     "qty": "3",
+     "unit": "box",
+     "unit_price": "25",
+     "line_total": null
+    }
+   ],
+   "payment": "card",
+   "party": "hardware",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5136",
+  "text": "comprei dois sacos de asúcar",
+  "tags": [
+   "purchase",
+   "unit",
+   "typo",
+   "words"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "2",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5137",
+  "text": "comprei 30 quilos de queijo muçarela por 1 050",
+  "tags": [
+   "purchase",
+   "unit",
+   "price",
+   "number"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "mozzarella",
+     "qty": "30",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": "1050"
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5138",
+  "text": "paguei 150 pro Seu Ramiro por 2 sacos de arroz",
+  "tags": [
+   "purchase",
+   "party",
+   "unit",
+   "price",
+   "hard"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "rice",
+     "qty": "2",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": "150"
+    }
+   ],
+   "payment": null,
+   "party": "ramiro",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5139",
+  "text": "comprei mercadoria na distribuidora por 900",
+  "tags": [
+   "purchase",
+   "party",
+   "price",
+   "hard"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "central",
+   "category": null,
+   "total": "900",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5140",
+  "text": "comprei 12 litros de leite, metade no dinheiro e metade no cartão",
+  "tags": [
+   "purchase",
+   "payment",
+   "unit",
+   "split",
+   "hard"
+  ],
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "milk",
+     "qty": "12",
+     "unit": "liter",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": {
+    "choose": [
+     "cash",
+     "card"
+    ]
+   },
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5141",
+  "text": "paguei o aluguel da loja, mil e duzentos",
+  "tags": [
+   "expense",
+   "words"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "rent",
+   "total": "1200",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5142",
+  "text": "o aluguel deste mês, 2.500",
+  "tags": [
+   "expense",
+   "no_verb",
+   "number"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "rent",
+   "total": "2500",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5143",
+  "text": "paguei a luz por transferência, 195",
+  "tags": [
+   "expense",
+   "payment"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": "transfer",
+   "party": null,
+   "category": "utilities",
+   "total": "195",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5144",
+  "text": "foi paga a conta de água, 85,50",
+  "tags": [
+   "expense",
+   "hard"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "utilities",
+   "total": "85.5",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5145",
+  "text": "paguei o gás, $120",
+  "tags": [
+   "expense",
+   "currency"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "utilities",
+   "total": "120",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5146",
+  "text": "conta de luz 220",
+  "tags": [
+   "expense",
+   "no_verb"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "utilities",
+   "total": "220",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5147",
+  "text": "paguei a internet do mês, 99,90",
+  "tags": [
+   "expense",
+   "number"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "internet_phone",
+   "total": "99.9",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5148",
+  "text": "coloquei 20 de crédito no celular",
+  "tags": [
+   "expense",
+   "slang",
+   "hard"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "internet_phone",
+   "total": "20",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5149",
+  "text": "paguei 35 de táxi",
+  "tags": [
+   "expense"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "transport",
+   "total": "35",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5150",
+  "text": "gastei 4,50 de ônibus",
+  "tags": [
+   "expense",
+   "number"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "transport",
+   "total": "4.5",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5151",
+  "text": "o frete da mercadoria me custou 60",
+  "tags": [
+   "expense",
+   "hard"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "transport",
+   "total": "60",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5152",
+  "text": "paguei a entrega, 8, em dinheiro",
+  "tags": [
+   "expense",
+   "payment"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": "cash",
+   "party": null,
+   "category": "transport",
+   "total": "8",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5153",
+  "text": "paguei 10 de estacionamento",
+  "tags": [
+   "expense"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "transport",
+   "total": "10",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5154",
+  "text": "gasolina 100",
+  "tags": [
+   "expense",
+   "no_verb",
+   "order"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "transport",
+   "total": "100",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5155",
+  "text": "paguei a diária do ajudante, 80",
+  "tags": [
+   "expense",
+   "slang"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "wages",
+   "total": "80",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5156",
+  "text": "paguei a folha de pagamento, 4,500",
+  "tags": [
+   "expense",
+   "number"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "wages",
+   "total": "4500",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5157",
+  "text": "gastei 18 em fita e etiquetas",
+  "tags": [
+   "expense"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "packaging_supplies",
+   "total": "18",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5158",
+  "text": "paguei anúncio nas redes, 50",
+  "tags": [
+   "expense"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "advertising",
+   "total": "50",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5159",
+  "text": "paguei 120 de impostos no cartão",
+  "tags": [
+   "expense",
+   "payment"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": "card",
+   "party": null,
+   "category": "taxes_fees",
+   "total": "120",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5160",
+  "text": "paguei o alvará de funcionamento, 300",
+  "tags": [
+   "expense"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "taxes_fees",
+   "total": "300",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5161",
+  "text": "gastei 90 no conserto da geladeira",
+  "tags": [
+   "expense",
+   "hard"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": "90",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5162",
+  "text": "é, paguei a luz, tipo, oitenta e cinco",
+  "tags": [
+   "expense",
+   "filler",
+   "words"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "utilities",
+   "total": "85",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5163",
+  "text": "Paguei o aluguel. Foram 1.800 por transferência.",
+  "tags": [
+   "expense",
+   "payment",
+   "two_sentences"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": "transfer",
+   "party": null,
+   "category": "rent",
+   "total": "1800",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5164",
+  "text": "paguei a água e a luz, 250",
+  "tags": [
+   "expense"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": "utilities",
+   "total": "250",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5165",
+  "text": "paguei a luz e a internet, 320",
+  "tags": [
+   "expense",
+   "hard"
+  ],
+  "expect": {
+   "intent": "EXPENSE",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": "320",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5166",
+  "text": "fizemos 40 pastéis",
+  "tags": [
+   "production"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "40",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5167",
+  "text": "assamos 60 pães e 20 pães integrais",
+  "tags": [
+   "production",
+   "multi"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "60",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "whole_bread",
+     "qty": "20",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5168",
+  "text": "preparei 15 sucos de amora",
+  "tags": [
+   "production"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "blackberry_juice",
+     "qty": "15",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5169",
+  "text": "produzi vinte e quatro velas aromáticas",
+  "tags": [
+   "production",
+   "words"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "candle",
+     "qty": "24",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5170",
+  "text": "fabricamos 10 geleias de morango",
+  "tags": [
+   "production"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "jam",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5171",
+  "text": "tirei do forno 3 bolos de baunilha",
+  "tags": [
+   "production",
+   "slang"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "vanilla_cake",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5172",
+  "text": "saíram do forno 50 pães",
+  "tags": [
+   "production",
+   "slang"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "50",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5173",
+  "text": "hoje fiz uma fornada de 30 pastéis",
+  "tags": [
+   "production",
+   "slang"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "30",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5174",
+  "text": "fiz 2 fornadas de 20 pães",
+  "tags": [
+   "production",
+   "hard"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "40",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5175",
+  "text": "fabriquei 12 velas",
+  "tags": [
+   "production"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "candle",
+     "qty": "12",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5176",
+  "text": "fritei 25 pastéis",
+  "tags": [
+   "production",
+   "slang"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "25",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5177",
+  "text": "preparamos 20 cafés na xícara",
+  "tags": [
+   "production"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "coffee_cup",
+     "qty": "20",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5178",
+  "text": "fiz 3 dúzias de pães",
+  "tags": [
+   "production",
+   "words"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "36",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5179",
+  "text": "fiz bolos",
+  "tags": [
+   "production",
+   "ambiguous"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "choose": [
+       "choco_cake",
+       "vanilla_cake"
+      ]
+     },
+     "qty": null,
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5180",
+  "text": "fiz 40 pães com 2 quilos de farinha de trigo",
+  "tags": [
+   "production",
+   "hard"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "40",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5181",
+  "text": "é, tipo, fiz 10 sucos de laranja",
+  "tags": [
+   "production",
+   "filler"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "orange_juice",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5182",
+  "text": "Fiz pastéis. Foram 30.",
+  "tags": [
+   "production",
+   "two_sentences",
+   "hard"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "30",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5183",
+  "text": "montei 6 combos de café da manhã",
+  "tags": [
+   "production",
+   "edge",
+   "slang"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "breakfast",
+     "qty": "6",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NO_RECIPE"
+   ]
+  }
+ },
+ {
+  "id": "pt-5184",
+  "text": "fiz 12 biscoitos de aveia",
+  "tags": [
+   "production",
+   "edge",
+   "unknown"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Biscoito de aveia"
+     },
+     "qty": "12",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NO_RECIPE"
+   ]
+  }
+ },
+ {
+  "id": "pt-5185",
+  "text": "produzi 8 geleias e 12 velas aromáticas",
+  "tags": [
+   "production",
+   "multi"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "jam",
+     "qty": "8",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "candle",
+     "qty": "12",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5186",
+  "text": "envasei 12 geleias de morango",
+  "tags": [
+   "production",
+   "slang",
+   "hard"
+  ],
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "jam",
+     "qty": "12",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5187",
+  "text": "queimaram 5 pães",
+  "tags": [
+   "stock_adjustment"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "DAMAGED",
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "5",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5188",
+  "text": "caíram 3 ovos",
+  "tags": [
+   "stock_adjustment"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "DAMAGED",
+   "lines": [
+    {
+     "product": "egg",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5189",
+  "text": "quebraram 2 potes de vidro",
+  "tags": [
+   "stock_adjustment"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "DAMAGED",
+   "lines": [
+    {
+     "product": "jar",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5190",
+  "text": "estragou um galão de tinta branca",
+  "tags": [
+   "stock_adjustment",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "DAMAGED",
+   "lines": [
+    {
+     "product": "paint",
+     "qty": "1",
+     "unit": "gallon",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5191",
+  "text": "azedou um litro de leite",
+  "tags": [
+   "stock_adjustment",
+   "unit",
+   "words",
+   "hard"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "DAMAGED",
+   "lines": [
+    {
+     "product": "milk",
+     "qty": "1",
+     "unit": "liter",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5192",
+  "text": "estragaram dois bolos de chocolate",
+  "tags": [
+   "stock_adjustment",
+   "words"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "DAMAGED",
+   "lines": [
+    {
+     "product": "choco_cake",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5193",
+  "text": "venceram 3 litros de leite",
+  "tags": [
+   "stock_adjustment",
+   "unit"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "EXPIRED",
+   "lines": [
+    {
+     "product": "milk",
+     "qty": "3",
+     "unit": "liter",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5194",
+  "text": "passaram da validade 2 pacotes de biscoito",
+  "tags": [
+   "stock_adjustment",
+   "unit"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "EXPIRED",
+   "lines": [
+    {
+     "product": "cookies",
+     "qty": "2",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5195",
+  "text": "venceu a geleia de morango, 2 potes",
+  "tags": [
+   "stock_adjustment",
+   "hard",
+   "danger"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "EXPIRED",
+   "lines": [
+    {
+     "product": "jam",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5196",
+  "text": "roubaram 3 camisetas tamanho M",
+  "tags": [
+   "stock_adjustment"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "LOST_OR_STOLEN",
+   "lines": [
+    {
+     "product": "tshirt_m",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5197",
+  "text": "sumiu um pacote de sacolas de papel",
+  "tags": [
+   "stock_adjustment",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "LOST_OR_STOLEN",
+   "lines": [
+    {
+     "product": "paper_bag",
+     "qty": "1",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5198",
+  "text": "extraviaram 10 parafusos",
+  "tags": [
+   "stock_adjustment"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "LOST_OR_STOLEN",
+   "lines": [
+    {
+     "product": "screw",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5199",
+  "text": "sumiram 2 velas aromáticas",
+  "tags": [
+   "stock_adjustment"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "LOST_OR_STOLEN",
+   "lines": [
+    {
+     "product": "candle",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5200",
+  "text": "comi um pão",
+  "tags": [
+   "stock_adjustment",
+   "words"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "OWN_USE",
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5201",
+  "text": "bebemos 2 refrigerantes pequenos",
+  "tags": [
+   "stock_adjustment"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "OWN_USE",
+   "lines": [
+    {
+     "product": "soda_small",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5202",
+  "text": "usei meio quilo de açúcar em casa",
+  "tags": [
+   "stock_adjustment",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "OWN_USE",
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "0.5",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5203",
+  "text": "consumo próprio 2 sucos de amora",
+  "tags": [
+   "stock_adjustment",
+   "no_verb"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "OWN_USE",
+   "lines": [
+    {
+     "product": "blackberry_juice",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5204",
+  "text": "levei um sabonete pra casa",
+  "tags": [
+   "stock_adjustment",
+   "words"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "OWN_USE",
+   "lines": [
+    {
+     "product": "soap",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5205",
+  "text": "dei 2 pães de presente",
+  "tags": [
+   "stock_adjustment"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "GIFT_OR_SAMPLE",
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5206",
+  "text": "dei um pastel de amostra pra um cliente",
+  "tags": [
+   "stock_adjustment",
+   "words"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "GIFT_OR_SAMPLE",
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5207",
+  "text": "dei 3 pacotes de biscoito de brinde",
+  "tags": [
+   "stock_adjustment",
+   "unit"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "GIFT_OR_SAMPLE",
+   "lines": [
+    {
+     "product": "cookies",
+     "qty": "3",
+     "unit": "pack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5208",
+  "text": "presenteei uma vela aromática",
+  "tags": [
+   "stock_adjustment",
+   "words"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "GIFT_OR_SAMPLE",
+   "lines": [
+    {
+     "product": "candle",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5209",
+  "text": "contei 25 pastéis",
+  "tags": [
+   "stock_adjustment"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "COUNT_CORRECTION",
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "25",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5210",
+  "text": "restam 2 sacos de farinha de trigo",
+  "tags": [
+   "stock_adjustment",
+   "unit"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "COUNT_CORRECTION",
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "2",
+     "unit": "sack",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5211",
+  "text": "tenho 15 camisetas tamanho L",
+  "tags": [
+   "stock_adjustment"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "COUNT_CORRECTION",
+   "lines": [
+    {
+     "product": "tshirt_l",
+     "qty": "15",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5212",
+  "text": "tem 8 litros de leite integral",
+  "tags": [
+   "stock_adjustment",
+   "unit"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "COUNT_CORRECTION",
+   "lines": [
+    {
+     "product": "milk",
+     "qty": "8",
+     "unit": "liter",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5213",
+  "text": "ajusta o estoque de arroz para 12 quilos",
+  "tags": [
+   "stock_adjustment",
+   "unit",
+   "hard"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "COUNT_CORRECTION",
+   "lines": [
+    {
+     "product": "rice",
+     "qty": "12",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5214",
+  "text": "é, bom, sobraram 6 bolos de baunilha",
+  "tags": [
+   "stock_adjustment",
+   "filler"
+  ],
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "COUNT_CORRECTION",
+   "lines": [
+    {
+     "product": "vanilla_cake",
+     "qty": "6",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5215",
+  "text": "o Carlos Lima me pagou 30",
+  "tags": [
+   "customer_payment",
+   "party"
+  ],
+  "expect": {
+   "intent": "CUSTOMER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "carlos",
+   "category": null,
+   "total": "30",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5216",
+  "text": "a Dona Rosa me pagou quinze",
+  "tags": [
+   "customer_payment",
+   "party",
+   "words"
+  ],
+  "expect": {
+   "intent": "CUSTOMER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "rosa",
+   "category": null,
+   "total": "15",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5217",
+  "text": "me pagou a Maria Souza 20,00 em dinheiro",
+  "tags": [
+   "customer_payment",
+   "payment",
+   "party",
+   "order"
+  ],
+  "expect": {
+   "intent": "CUSTOMER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": "cash",
+   "party": "maria",
+   "category": null,
+   "total": "20",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5218",
+  "text": "recebi 10 do Carlos",
+  "tags": [
+   "customer_payment",
+   "party"
+  ],
+  "expect": {
+   "intent": "CUSTOMER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "carlos",
+   "category": null,
+   "total": "10",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5219",
+  "text": "o Carlos quitou a dívida, 45",
+  "tags": [
+   "customer_payment",
+   "party",
+   "slang"
+  ],
+  "expect": {
+   "intent": "CUSTOMER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "carlos",
+   "category": null,
+   "total": "45",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5220",
+  "text": "a Maria Teixeira me transferiu 25",
+  "tags": [
+   "customer_payment",
+   "payment",
+   "party"
+  ],
+  "expect": {
+   "intent": "CUSTOMER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": "transfer",
+   "party": "maria_t",
+   "category": null,
+   "total": "25",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5221",
+  "text": "a senhora Rosa me deu 5 pra abater na conta",
+  "tags": [
+   "customer_payment",
+   "party",
+   "slang",
+   "hard",
+   "danger"
+  ],
+  "expect": {
+   "intent": "CUSTOMER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "rosa",
+   "category": null,
+   "total": "5",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5222",
+  "text": "a Maria me deu 12",
+  "tags": [
+   "customer_payment",
+   "party",
+   "ambiguous"
+  ],
+  "expect": {
+   "intent": "CUSTOMER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": {
+    "choose": [
+     "maria",
+     "maria_t"
+    ]
+   },
+   "category": null,
+   "total": "12",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5223",
+  "text": "o João me pagou 8 do que me devia",
+  "tags": [
+   "customer_payment",
+   "party",
+   "unknown"
+  ],
+  "expect": {
+   "intent": "CUSTOMER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": {
+    "new": "João"
+   },
+   "category": null,
+   "total": "8",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5224",
+  "text": "o Carlos me pagou tudo o que devia",
+  "tags": [
+   "customer_payment",
+   "party",
+   "hard"
+  ],
+  "expect": {
+   "intent": "CUSTOMER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "carlos",
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5225",
+  "text": "é, a Dona Rosa, tipo, me pagou 7",
+  "tags": [
+   "customer_payment",
+   "party",
+   "filler"
+  ],
+  "expect": {
+   "intent": "CUSTOMER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "rosa",
+   "category": null,
+   "total": "7",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5226",
+  "text": "O Carlos me pagou. Foram 20 por transferência.",
+  "tags": [
+   "customer_payment",
+   "payment",
+   "party",
+   "two_sentences"
+  ],
+  "expect": {
+   "intent": "CUSTOMER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": "transfer",
+   "party": "carlos",
+   "category": null,
+   "total": "20",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5227",
+  "text": "o Carlos me pagou $15,00 na conta",
+  "tags": [
+   "customer_payment",
+   "party",
+   "currency",
+   "danger"
+  ],
+  "expect": {
+   "intent": "CUSTOMER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "carlos",
+   "category": null,
+   "total": "15",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5228",
+  "text": "paguei pro Seu Ramiro 120",
+  "tags": [
+   "supplier_payment",
+   "party",
+   "order"
+  ],
+  "expect": {
+   "intent": "SUPPLIER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "ramiro",
+   "category": null,
+   "total": "120",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5229",
+  "text": "acertei 50 com a Distribuidora Central",
+  "tags": [
+   "supplier_payment",
+   "party"
+  ],
+  "expect": {
+   "intent": "SUPPLIER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "central",
+   "category": null,
+   "total": "50",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5230",
+  "text": "quitei com a granja 80,00",
+  "tags": [
+   "supplier_payment",
+   "party",
+   "slang"
+  ],
+  "expect": {
+   "intent": "SUPPLIER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "farm",
+   "category": null,
+   "total": "80",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5231",
+  "text": "paguei a Ferragens Moderna o que devia, 35",
+  "tags": [
+   "supplier_payment",
+   "party"
+  ],
+  "expect": {
+   "intent": "SUPPLIER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "hardware",
+   "category": null,
+   "total": "35",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5232",
+  "text": "transferi 200 pra distribuidora",
+  "tags": [
+   "supplier_payment",
+   "payment",
+   "party"
+  ],
+  "expect": {
+   "intent": "SUPPLIER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": "transfer",
+   "party": "central",
+   "category": null,
+   "total": "200",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5233",
+  "text": "dei 40 pro Seu Ramiro de abatimento",
+  "tags": [
+   "supplier_payment",
+   "party",
+   "slang"
+  ],
+  "expect": {
+   "intent": "SUPPLIER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "ramiro",
+   "category": null,
+   "total": "40",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5234",
+  "text": "paguei 60 em dinheiro pra Granja São José",
+  "tags": [
+   "supplier_payment",
+   "payment",
+   "party"
+  ],
+  "expect": {
+   "intent": "SUPPLIER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": "cash",
+   "party": "farm",
+   "category": null,
+   "total": "60",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5235",
+  "text": "paguei 30 pro Júlio, o fornecedor",
+  "tags": [
+   "supplier_payment",
+   "party",
+   "unknown"
+  ],
+  "expect": {
+   "intent": "SUPPLIER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": {
+    "new": "Júlio"
+   },
+   "category": null,
+   "total": "30",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5236",
+  "text": "Paguei o Seu Ramiro. Dei 100.",
+  "tags": [
+   "supplier_payment",
+   "party",
+   "two_sentences"
+  ],
+  "expect": {
+   "intent": "SUPPLIER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "ramiro",
+   "category": null,
+   "total": "100",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5237",
+  "text": "bom, paguei a Ferragens, tipo, vinte",
+  "tags": [
+   "supplier_payment",
+   "party",
+   "filler",
+   "words"
+  ],
+  "expect": {
+   "intent": "SUPPLIER_PAYMENT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": "hardware",
+   "category": null,
+   "total": "20",
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5238",
+  "text": "o bolo de chocolate leva 300 gramas de farinha de trigo, 4 ovos e 200 gramas de açúcar",
+  "tags": [
+   "recipe",
+   "multi",
+   "unit"
+  ],
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "300",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "egg",
+     "qty": "4",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "sugar",
+     "qty": "200",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "choco_cake",
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5239",
+  "text": "pra um bolo de baunilha eu preciso de 250 gramas de farinha de trigo e 3 ovos",
+  "tags": [
+   "recipe",
+   "multi",
+   "unit"
+  ],
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "250",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "egg",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "vanilla_cake",
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5240",
+  "text": "a cada 20 pães eu uso 1 quilo de farinha de trigo e 50 gramas de açúcar",
+  "tags": [
+   "recipe",
+   "multi",
+   "unit"
+  ],
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "1",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "sugar",
+     "qty": "50",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "bread",
+   "target_qty": "20",
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5241",
+  "text": "a receita do pão integral é 70 gramas de farinha de trigo e 5 gramas de açúcar",
+  "tags": [
+   "recipe",
+   "multi",
+   "unit"
+  ],
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "70",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "sugar",
+     "qty": "5",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "whole_bread",
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5242",
+  "text": "cada pastel leva 50 gramas de farinha de trigo e 20 gramas de batata",
+  "tags": [
+   "recipe",
+   "multi",
+   "unit"
+  ],
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "50",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "potato",
+     "qty": "20",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "empanada",
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5243",
+  "text": "o suco de amora é feito com 200 ml de leite integral e 30 gramas de açúcar",
+  "tags": [
+   "recipe",
+   "multi",
+   "unit",
+   "hard"
+  ],
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "milk",
+     "qty": "200",
+     "unit": "milliliter",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "sugar",
+     "qty": "30",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "blackberry_juice",
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5244",
+  "text": "com 2 quilos de açúcar rendem 10 geleias de morango",
+  "tags": [
+   "recipe",
+   "unit",
+   "slang"
+  ],
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "jam",
+   "target_qty": "10",
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5245",
+  "text": "receita da vela aromática: 150 gramas de cera de soja, 3 ml de essência de lavanda, um pote de vidro",
+  "tags": [
+   "recipe",
+   "multi",
+   "unit"
+  ],
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "soy_wax",
+     "qty": "150",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "lavender",
+     "qty": "3",
+     "unit": "milliliter",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "jar",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "candle",
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5246",
+  "text": "o café na xícara leva 12 gramas de café moído",
+  "tags": [
+   "recipe",
+   "unit"
+  ],
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "ground_coffee",
+     "qty": "12",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "coffee_cup",
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5247",
+  "text": "pra 30 pastéis eu uso 1 quilo e meio de farinha de trigo, meio quilo de batata e 6 ovos",
+  "tags": [
+   "recipe",
+   "multi",
+   "unit",
+   "words"
+  ],
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": "1.5",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "potato",
+     "qty": "0.5",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "egg",
+     "qty": "6",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "empanada",
+   "target_qty": "30",
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5248",
+  "text": "o pão leva farinha de trigo, açúcar e ovo",
+  "tags": [
+   "recipe",
+   "multi"
+  ],
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": null,
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "sugar",
+     "qty": null,
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "egg",
+     "qty": null,
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "bread",
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5249",
+  "text": "o bolo leva 3 ovos",
+  "tags": [
+   "recipe",
+   "ambiguous"
+  ],
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "egg",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "choose": [
+     "choco_cake",
+     "vanilla_cake"
+    ]
+   },
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5250",
+  "text": "o pão de queijo leva 100 gramas de queijo fresco e 50 gramas de farinha de milho",
+  "tags": [
+   "recipe",
+   "multi",
+   "unknown",
+   "unit",
+   "danger"
+  ],
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "farmer_cheese",
+     "qty": "100",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "corn_flour",
+     "qty": "50",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Pão de queijo"
+   },
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5251",
+  "text": "a receita do combo café da manhã: um café na xícara, um pão e um suco de laranja",
+  "tags": [
+   "recipe",
+   "multi",
+   "words"
+  ],
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "coffee_cup",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "bread",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "orange_juice",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "breakfast",
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5252",
+  "text": "é, a geleia de morango leva, tipo, 300 gramas de açúcar e um pote de vidro",
+  "tags": [
+   "recipe",
+   "multi",
+   "unit",
+   "filler"
+  ],
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "300",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "jar",
+     "qty": "1",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "jam",
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5253",
+  "text": "O bolo de chocolate. Leva 4 ovos e 250 gramas de farinha de trigo.",
+  "tags": [
+   "recipe",
+   "multi",
+   "unit",
+   "two_sentences"
+  ],
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "egg",
+     "qty": "4",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "wheat_flour",
+     "qty": "250",
+     "unit": "gram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "choco_cake",
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5254",
+  "text": "pra fazer 10 sucos de laranja eu uso 20 laranjas",
+  "tags": [
+   "recipe",
+   "unknown"
+  ],
+  "expect": {
+   "intent": "RECIPE",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "new": "Laranja"
+     },
+     "qty": "20",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "orange_juice",
+   "target_qty": "10",
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5255",
+  "text": "cria o produto farinha de arroz, é um insumo",
+  "tags": [
+   "new_product",
+   "unknown",
+   "describe",
+   "usage_input"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Farinha de arroz",
+    "usage": "INPUT"
+   },
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5256",
+  "text": "novo produto: essência de baunilha, é insumo, me custa 8",
+  "tags": [
+   "new_product",
+   "unknown",
+   "price",
+   "describe",
+   "usage_input"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Essência de baunilha",
+    "usage": "INPUT"
+   },
+   "target_qty": null,
+   "price": null,
+   "cost": "8",
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5257",
+  "text": "adiciona caixas de papelão, são pra embalar, não vendo",
+  "tags": [
+   "new_product",
+   "unknown",
+   "describe",
+   "usage_input",
+   "hard"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Caixa de papelão",
+    "usage": "INPUT"
+   },
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5258",
+  "text": "cria o produto brownie, é pra vender, a 6",
+  "tags": [
+   "new_product",
+   "unknown",
+   "price",
+   "describe",
+   "usage_sale"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Brownie",
+    "usage": "SALE"
+   },
+   "target_qty": null,
+   "price": "6",
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5259",
+  "text": "novo produto pulseira de prata pra venda, preço 70, custo 30",
+  "tags": [
+   "new_product",
+   "unknown",
+   "price",
+   "describe",
+   "usage_sale"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Pulseira de prata",
+    "usage": "SALE"
+   },
+   "target_qty": null,
+   "price": "70",
+   "cost": "30",
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5260",
+  "text": "adiciona leite sem lactose, eu vendo e também uso nas receitas, a 7,50 o litro",
+  "tags": [
+   "new_product",
+   "unknown",
+   "unit",
+   "price",
+   "describe",
+   "usage_both",
+   "danger"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Leite sem lactose",
+    "usage": "BOTH"
+   },
+   "target_qty": null,
+   "price": "7.5",
+   "cost": null,
+   "unit": "liter",
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5261",
+  "text": "cria queijo coalho na categoria laticínios, a 40 o quilo",
+  "tags": [
+   "new_product",
+   "unknown",
+   "unit",
+   "price",
+   "describe",
+   "product_category"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Queijo coalho",
+    "new_category": "Laticínios"
+   },
+   "target_qty": null,
+   "price": "40",
+   "cost": null,
+   "unit": "kilogram",
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5262",
+  "text": "novo produto chocolate em pó, categoria matérias-primas, é um insumo",
+  "tags": [
+   "new_product",
+   "unknown",
+   "describe",
+   "product_category",
+   "usage_input"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Chocolate em pó",
+    "usage": "INPUT",
+    "category": "raw_materials"
+   },
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5263",
+  "text": "adiciona o serviço de pedicure a 35",
+  "tags": [
+   "new_product",
+   "unknown",
+   "price",
+   "describe",
+   "service",
+   "hard"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Pedicure",
+    "usage": "SALE",
+    "stock_mode": "UNTRACKED"
+   },
+   "target_qty": null,
+   "price": "35",
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5264",
+  "text": "novo produto brincos, preço 25",
+  "tags": [
+   "new_product",
+   "unknown",
+   "price"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Brinco"
+   },
+   "target_qty": null,
+   "price": "25",
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5265",
+  "text": "quero vender pastel de frango a 7",
+  "tags": [
+   "new_product",
+   "unknown",
+   "price",
+   "slang",
+   "danger"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Pastel de frango"
+   },
+   "target_qty": null,
+   "price": "7",
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5266",
+  "text": "comecei a vender geladinho a 2",
+  "tags": [
+   "new_product",
+   "unknown",
+   "price",
+   "slang"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Geladinho"
+   },
+   "target_qty": null,
+   "price": "2",
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5267",
+  "text": "cadastra o produto tinta de cabelo, me custa 25 e vendo a 40",
+  "tags": [
+   "new_product",
+   "unknown",
+   "price",
+   "danger"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Tinta de cabelo"
+   },
+   "target_qty": null,
+   "price": "40",
+   "cost": "25",
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5268",
+  "text": "cria o produto rapadura, é vendido por quilo, a 12",
+  "tags": [
+   "new_product",
+   "unknown",
+   "unit",
+   "price",
+   "describe"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Rapadura"
+   },
+   "target_qty": null,
+   "price": "12",
+   "cost": null,
+   "unit": "kilogram",
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5269",
+  "text": "novo produto: vela de coco, preço quarenta, custo quinze e cinquenta",
+  "tags": [
+   "new_product",
+   "unknown",
+   "price",
+   "words"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Vela de coco"
+   },
+   "target_qty": null,
+   "price": "40",
+   "cost": "15.5",
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5270",
+  "text": "adiciona o produto tapioca a 5 a unidade",
+  "tags": [
+   "new_product",
+   "unknown",
+   "unit",
+   "price"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Tapioca"
+   },
+   "target_qty": null,
+   "price": "5",
+   "cost": null,
+   "unit": "unit",
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5271",
+  "text": "cria o produto ovo",
+  "tags": [
+   "new_product",
+   "edge",
+   "exists"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "egg",
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "ALREADY_EXISTS"
+   ]
+  }
+ },
+ {
+  "id": "pt-5272",
+  "text": "adiciona açúcar mascavo a 9 o quilo",
+  "tags": [
+   "new_product",
+   "unknown",
+   "unit",
+   "price",
+   "danger"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Açúcar mascavo"
+   },
+   "target_qty": null,
+   "price": "9",
+   "cost": null,
+   "unit": "kilogram",
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5273",
+  "text": "novo produto biscoitos",
+  "tags": [
+   "new_product",
+   "edge",
+   "exists"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": "cookies",
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "ALREADY_EXISTS"
+   ]
+  }
+ },
+ {
+  "id": "pt-5274",
+  "text": "é, cria um produto, tipo, molho de tomate, a 8",
+  "tags": [
+   "new_product",
+   "unknown",
+   "price",
+   "filler",
+   "danger"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Molho de tomate"
+   },
+   "target_qty": null,
+   "price": "8",
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5275",
+  "text": "Cria um produto novo. O nome é suco de manga. Vendo a 8.",
+  "tags": [
+   "new_product",
+   "unknown",
+   "price",
+   "two_sentences"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Suco de manga"
+   },
+   "target_qty": null,
+   "price": "8",
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5276",
+  "text": "cria o produto sacola de presente, é pra vender e pra embalar, custo 1,50",
+  "tags": [
+   "new_product",
+   "unknown",
+   "price",
+   "describe",
+   "usage_both"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Sacola de presente",
+    "usage": "BOTH"
+   },
+   "target_qty": null,
+   "price": null,
+   "cost": "1.5",
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5277",
+  "text": "cria pão de queijo recheado, custo 1,20, preço 3,50, na categoria padaria",
+  "tags": [
+   "new_product",
+   "unknown",
+   "price",
+   "describe",
+   "product_category"
+  ],
+  "expect": {
+   "intent": "NEW_PRODUCT",
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": {
+    "new": "Pão de queijo recheado",
+    "new_category": "Padaria"
+   },
+   "target_qty": null,
+   "price": "3.5",
+   "cost": "1.2",
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5278",
+  "text": "o pão me custa 0,35",
+  "tags": [
+   "cost_correction",
+   "price"
+  ],
+  "expect": {
+   "intent": "COST_CORRECTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": null,
+     "unit": null,
+     "unit_price": "0.35",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5279",
+  "text": "o custo da farinha de trigo é 3,90 o quilo",
+  "tags": [
+   "cost_correction",
+   "unit",
+   "price"
+  ],
+  "expect": {
+   "intent": "COST_CORRECTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "wheat_flour",
+     "qty": null,
+     "unit": "kilogram",
+     "unit_price": "3.9",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5280",
+  "text": "corrige o custo do açúcar para 150 o saco",
+  "tags": [
+   "cost_correction",
+   "unit",
+   "price"
+  ],
+  "expect": {
+   "intent": "COST_CORRECTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": null,
+     "unit": "sack",
+     "unit_price": "150",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5281",
+  "text": "a dúzia de ovos me sai a 9,50",
+  "tags": [
+   "cost_correction",
+   "unit",
+   "price",
+   "slang"
+  ],
+  "expect": {
+   "intent": "COST_CORRECTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "egg",
+     "qty": null,
+     "unit": "dozen",
+     "unit_price": "9.5",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5282",
+  "text": "o custo real do bolo de chocolate é 22",
+  "tags": [
+   "cost_correction",
+   "price",
+   "hard"
+  ],
+  "expect": {
+   "intent": "COST_CORRECTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "choco_cake",
+     "qty": null,
+     "unit": null,
+     "unit_price": "22",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5283",
+  "text": "a vela aromática me sai por 14",
+  "tags": [
+   "cost_correction",
+   "price",
+   "slang"
+  ],
+  "expect": {
+   "intent": "COST_CORRECTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "candle",
+     "qty": null,
+     "unit": null,
+     "unit_price": "14",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5284",
+  "text": "agora o arroz me custa 5,80 o quilo",
+  "tags": [
+   "cost_correction",
+   "unit",
+   "price"
+  ],
+  "expect": {
+   "intent": "COST_CORRECTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "rice",
+     "qty": null,
+     "unit": "kilogram",
+     "unit_price": "5.8",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5285",
+  "text": "o custo da manicure é 8",
+  "tags": [
+   "cost_correction",
+   "edge",
+   "price"
+  ],
+  "expect": {
+   "intent": "COST_CORRECTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "manicure",
+     "qty": null,
+     "unit": null,
+     "unit_price": "8",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NO_STOCK"
+   ]
+  }
+ },
+ {
+  "id": "pt-5286",
+  "text": "cada pastel tá me custando um e vinte",
+  "tags": [
+   "cost_correction",
+   "price",
+   "words"
+  ],
+  "expect": {
+   "intent": "COST_CORRECTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": null,
+     "unit": null,
+     "unit_price": "1.2",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5287",
+  "text": "o refrigerante me custa 3,40",
+  "tags": [
+   "cost_correction",
+   "ambiguous",
+   "price"
+  ],
+  "expect": {
+   "intent": "COST_CORRECTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": {
+      "choose": [
+       "soda_small",
+       "soda_big"
+      ]
+     },
+     "qty": null,
+     "unit": null,
+     "unit_price": "3.4",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5288",
+  "text": "é, o queijo muçarela me sai a 32,50 o quilo",
+  "tags": [
+   "cost_correction",
+   "unit",
+   "price",
+   "filler"
+  ],
+  "expect": {
+   "intent": "COST_CORRECTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "mozzarella",
+     "qty": null,
+     "unit": "kilogram",
+     "unit_price": "32.5",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5289",
+  "text": "O café moído subiu. Agora me custa 30 a libra.",
+  "tags": [
+   "cost_correction",
+   "unit",
+   "price",
+   "two_sentences",
+   "danger"
+  ],
+  "expect": {
+   "intent": "COST_CORRECTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "ground_coffee",
+     "qty": null,
+     "unit": "pound",
+     "unit_price": "30",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5290",
+  "text": "a caixa de parafusos me custa 18",
+  "tags": [
+   "cost_correction",
+   "unit",
+   "price"
+  ],
+  "expect": {
+   "intent": "COST_CORRECTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "screw",
+     "qty": null,
+     "unit": "box",
+     "unit_price": "18",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5291",
+  "text": "o pão agora custa 0,70",
+  "tags": [
+   "price_change",
+   "price",
+   "danger"
+  ],
+  "expect": {
+   "intent": "PRICE_CHANGE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": null,
+     "unit": null,
+     "unit_price": "0.7",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5292",
+  "text": "o pão integral vale 0,90",
+  "tags": [
+   "price_change",
+   "price"
+  ],
+  "expect": {
+   "intent": "PRICE_CHANGE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "whole_bread",
+     "qty": null,
+     "unit": null,
+     "unit_price": "0.9",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5293",
+  "text": "aumenta o bolo de baunilha para 55",
+  "tags": [
+   "price_change",
+   "price"
+  ],
+  "expect": {
+   "intent": "PRICE_CHANGE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "vanilla_cake",
+     "qty": null,
+     "unit": null,
+     "unit_price": "55",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5294",
+  "text": "baixa o corte de cabelo para 30",
+  "tags": [
+   "price_change",
+   "price"
+  ],
+  "expect": {
+   "intent": "PRICE_CHANGE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "haircut",
+     "qty": null,
+     "unit": null,
+     "unit_price": "30",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5295",
+  "text": "a partir de hoje o pastel vale 6,50",
+  "tags": [
+   "price_change",
+   "price",
+   "order"
+  ],
+  "expect": {
+   "intent": "PRICE_CHANGE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": null,
+     "unit": null,
+     "unit_price": "6.5",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5296",
+  "text": "põe o quilo de batata a 5,90",
+  "tags": [
+   "price_change",
+   "unit",
+   "price"
+  ],
+  "expect": {
+   "intent": "PRICE_CHANGE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "potato",
+     "qty": null,
+     "unit": "kilogram",
+     "unit_price": "5.9",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5297",
+  "text": "muda o preço do refrigerante grande para 9,50",
+  "tags": [
+   "price_change",
+   "price"
+  ],
+  "expect": {
+   "intent": "PRICE_CHANGE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "soda_big",
+     "qty": null,
+     "unit": null,
+     "unit_price": "9.5",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5298",
+  "text": "a libra de café moído agora eu vendo a 28",
+  "tags": [
+   "price_change",
+   "unit",
+   "price"
+  ],
+  "expect": {
+   "intent": "PRICE_CHANGE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "ground_coffee",
+     "qty": null,
+     "unit": "pound",
+     "unit_price": "28",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5299",
+  "text": "o suco de laranja está a 7",
+  "tags": [
+   "price_change",
+   "price",
+   "slang"
+  ],
+  "expect": {
+   "intent": "PRICE_CHANGE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "orange_juice",
+     "qty": null,
+     "unit": null,
+     "unit_price": "7",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5300",
+  "text": "novo preço do combo café da manhã, 18,90",
+  "tags": [
+   "price_change",
+   "price"
+  ],
+  "expect": {
+   "intent": "PRICE_CHANGE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "breakfast",
+     "qty": null,
+     "unit": null,
+     "unit_price": "18.9",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5301",
+  "text": "a caixa de refrigerante pequeno agora vale 45",
+  "tags": [
+   "price_change",
+   "unit",
+   "price"
+  ],
+  "expect": {
+   "intent": "PRICE_CHANGE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "soda_small",
+     "qty": null,
+     "unit": "box",
+     "unit_price": "45",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5302",
+  "text": "é, o pão, tipo, agora a 0,65",
+  "tags": [
+   "price_change",
+   "price",
+   "filler"
+  ],
+  "expect": {
+   "intent": "PRICE_CHANGE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": null,
+     "unit": null,
+     "unit_price": "0.65",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5303",
+  "text": "Aumentei os preços. O bolo de chocolate fica em 58.",
+  "tags": [
+   "price_change",
+   "price",
+   "two_sentences",
+   "hard"
+  ],
+  "expect": {
+   "intent": "PRICE_CHANGE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "choco_cake",
+     "qty": null,
+     "unit": null,
+     "unit_price": "58",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5304",
+  "text": "o pão eu vendo a 0,60",
+  "tags": [
+   "price_change",
+   "price",
+   "present",
+   "hard"
+  ],
+  "expect": {
+   "intent": "PRICE_CHANGE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": null,
+     "unit": null,
+     "unit_price": "0.6",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5305",
+  "text": "a água mineral vale 3,50",
+  "tags": [
+   "price_change",
+   "price",
+   "danger"
+  ],
+  "expect": {
+   "intent": "PRICE_CHANGE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "water",
+     "qty": null,
+     "unit": null,
+     "unit_price": "3.5",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "pt-5306",
+  "text": "vendi 3 pães e paguei a luz",
+  "tags": [
+   "edge"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "MIXED_OPERATIONS"
+   ]
+  }
+ },
+ {
+  "id": "pt-5307",
+  "text": "comprei farinha de trigo e assei 40 pães",
+  "tags": [
+   "edge"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "MIXED_OPERATIONS"
+   ]
+  }
+ },
+ {
+  "id": "pt-5308",
+  "text": "estragaram 2 pães e vendi 5",
+  "tags": [
+   "edge"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "MIXED_OPERATIONS"
+   ]
+  }
+ },
+ {
+  "id": "pt-5309",
+  "text": "Vendi 3 pães. Também comprei 2 sacos de açúcar.",
+  "tags": [
+   "edge",
+   "two_sentences"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "MIXED_OPERATIONS"
+   ]
+  }
+ },
+ {
+  "id": "pt-5310",
+  "text": "me devolveram 2 pães",
+  "tags": [
+   "edge",
+   "unsupported",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5311",
+  "text": "devolvi 3 caixas de refrigerante grande pra distribuidora",
+  "tags": [
+   "edge",
+   "unsupported",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5312",
+  "text": "cancela a última venda",
+  "tags": [
+   "edge",
+   "unsupported",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5313",
+  "text": "apaga a compra de ontem",
+  "tags": [
+   "edge",
+   "unsupported",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5314",
+  "text": "tirei 50 do caixa pra mim",
+  "tags": [
+   "edge",
+   "unsupported",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5315",
+  "text": "passei 100 do caixa pro banco",
+  "tags": [
+   "edge",
+   "unsupported",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5316",
+  "text": "me emprestaram 500",
+  "tags": [
+   "edge",
+   "unsupported",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5317",
+  "text": "o Carlos me deve 20",
+  "tags": [
+   "edge",
+   "unsupported",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5318",
+  "text": "não vendi nada hoje",
+  "tags": [
+   "edge",
+   "negation",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5319",
+  "text": "a Dona Rosa ainda não me pagou",
+  "tags": [
+   "edge",
+   "negation",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5320",
+  "text": "amanhã eu compro 3 sacos de farinha de trigo",
+  "tags": [
+   "edge",
+   "future",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5321",
+  "text": "tenho que pagar o aluguel",
+  "tags": [
+   "edge",
+   "future",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5322",
+  "text": "quanto tá o pão?",
+  "tags": [
+   "edge",
+   "question"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5323",
+  "text": "quantos pastéis ainda tem",
+  "tags": [
+   "edge",
+   "question",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5324",
+  "text": "aumenta todos os preços em 10 %",
+  "tags": [
+   "edge",
+   "unsupported",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5325",
+  "text": "na tabela de atacado o pão vale 0,50",
+  "tags": [
+   "edge",
+   "unsupported",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5326",
+  "text": "faz um orçamento de 20 pastéis pra Maria Souza",
+  "tags": [
+   "edge",
+   "unsupported",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5327",
+  "text": "achei 2 camisetas tamanho M que não estavam",
+  "tags": [
+   "edge",
+   "unsupported",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5328",
+  "text": "fiz uma venda grande hoje",
+  "tags": [
+   "edge",
+   "danger"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5329",
+  "text": "é, tipo, bom",
+  "tags": [
+   "edge",
+   "filler"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ },
+ {
+  "id": "pt-5330",
+  "text": "obrigado",
+  "tags": [
+   "edge"
+  ],
+  "expect": {
+   "intent": null,
+   "reason": null,
+   "lines": [],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": [
+    "NOTHING_UNDERSTOOD"
+   ]
+  }
+ }
+]

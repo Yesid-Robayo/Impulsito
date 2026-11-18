@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseReading
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseUnit
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleLineRequest
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
+import io.github.yesidrobayo.shopledger.domain.port.CategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.CustomerRepository
 import io.github.yesidrobayo.shopledger.domain.port.ExpenseCategoryRepository
 import io.github.yesidrobayo.shopledger.domain.port.PaymentMethodRepository
@@ -37,14 +38,16 @@ import kotlinx.coroutines.flow.first
 /**
  * Lo que dejó leer una frase: [reading], lo que entendió el intérprete; [catalog], el catálogo con
  * que se leyó, que la tarjeta usa para nombrar lo leído y para que una corrección busque en el
- * mismo; [draft], la tarjeta que propone, o `null` si no se entendió ninguna operación; y
- * [prices], los precios con que la tarjeta muestra sus cifras.
+ * mismo; [draft], la tarjeta que propone, o `null` si no se entendió ninguna operación;
+ * [prices], los precios con que la tarjeta muestra sus cifras; y [statesOperation], si la frase
+ * dice con un verbo qué operación es: con una tarjeta a la vista, solo una frase así la reemplaza.
  */
 data class PhraseReadResult(
     val reading: PhraseReading,
     val catalog: PhraseCatalog,
     val draft: PhraseDraft?,
     val prices: PhrasePrices = PhrasePrices(),
+    val statesOperation: Boolean = false,
 )
 
 /**
@@ -53,9 +56,10 @@ data class PhraseReadResult(
  *
  * Arma el catálogo en el momento, con lo vigente: los productos con su unidad base, sus
  * conversiones y si tienen receta; todas las unidades, porque un producto puede seguir en una que
- * se archivó; los métodos de pago, los proveedores, los clientes que se pueden elegir y las
- * categorías de gasto. Cada cosa lleva el nombre que la persona ve, y una fila inicial sin nombre
- * propio lleva el de su clave en el idioma de la interfaz.
+ * se archivó; los métodos de pago, los proveedores, los clientes que se pueden elegir, las
+ * categorías de gasto y las de producto, para la que se diga de un producto nuevo. Cada cosa
+ * lleva el nombre que la persona ve, y una fila inicial sin nombre propio lleva el de su clave en
+ * el idioma de la interfaz.
  *
  * - Lo que se vende es lo que no es un insumo, salvo el principal de unas variantes, que no se
  *   vende: así "una camiseta" deja elegir entre sus variantes. Lo que se compra es lo que lleva
@@ -80,18 +84,26 @@ class ReadPhraseUseCase(
     private val suppliers: SupplierRepository,
     private val customers: CustomerRepository,
     private val expenseCategories: ExpenseCategoryRepository,
+    private val productCategories: CategoryRepository,
 ) {
     suspend operator fun invoke(text: String): PhraseReadResult {
         val active = products.observe(ArchiveFilter.ACTIVE).first()
         val conversions = productUnits.observeAll().first().groupBy { it.productId }
         val catalog = catalog(active, conversions)
         val decimals = settings.get().regional.currency.decimals
+        val language = texts.language()
         val reading = if (decimals in 0..PhraseInterpreter.MAX_MONEY_DECIMALS) {
-            PhraseInterpreter.read(text, texts.language(), texts.numberStyle(), decimals, catalog)
+            PhraseInterpreter.read(text, language, texts.numberStyle(), decimals, catalog)
         } else {
             NOT_UNDERSTOOD
         }
-        return PhraseReadResult(reading, catalog, reading.toDraft(), prices(active, conversions))
+        return PhraseReadResult(
+            reading = reading,
+            catalog = catalog,
+            draft = reading.toDraft(),
+            prices = prices(active, conversions),
+            statesOperation = PhraseInterpreter.statesOperation(text, language),
+        )
     }
 
     private fun prices(
@@ -154,6 +166,9 @@ class ReadPhraseUseCase(
                     systemKey = it.systemKey?.lowercase(),
                     name = it.details.name ?: seedName(SeedTable.EXPENSE_CATEGORIES, it.systemKey),
                 )
+            },
+            productCategories = productCategories.observeAll().first().map {
+                PhraseName(it.id, systemKey = null, name = it.details.name)
             },
         )
     }

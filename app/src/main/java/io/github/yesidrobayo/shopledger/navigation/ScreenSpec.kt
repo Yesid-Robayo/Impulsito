@@ -20,6 +20,7 @@ data class ScreenSpec(
 
 private val home = R.drawable.ic_home
 private val records = R.drawable.ic_receipt_long
+private val expenses = R.drawable.ic_payments
 private val products = R.drawable.ic_inventory_2
 private val numbers = R.drawable.ic_bar_chart
 private val sell = R.drawable.ic_sell
@@ -44,6 +45,8 @@ fun screenSpecOf(key: AppNavKey): ScreenSpec = when (key) {
     AppNavKey.SaleHistory -> root(R.string.nav_records, records)
 
     AppNavKey.ProductList -> root(R.string.nav_products, products)
+
+    AppNavKey.ExpensesTab -> root(R.string.nav_expenses, expenses)
 
     AppNavKey.Statistics -> root(R.string.nav_numbers, numbers)
 

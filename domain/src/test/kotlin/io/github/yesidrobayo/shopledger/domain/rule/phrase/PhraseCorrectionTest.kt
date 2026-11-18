@@ -478,7 +478,8 @@ class PhraseCorrectionTest {
             sale(
                 bread,
                 line(item(EGG), units(2), unitPrice = money(800)),
-                line(null, units(1), lineTotal = money(3000)),
+                line(null, units(1), lineTotal = money(3000))
+                    .copy(candidates = listOf(SODA_SMALL, SODA_BIG)),
             ),
             sale(bread).fix("agrega 2 huevos a 800 y una gaseosa por 3000"),
         )
@@ -642,8 +643,13 @@ class PhraseCorrectionTest {
 
     @Test
     fun `a total for the whole sale`() {
-        assertEquals(sale(bread).copy(total = money(30000)), sale(bread).fix("todo por 30000"))
-        assertEquals(sale(bread).copy(total = money(12000)), sale(bread).fix("12000 en total"))
+        // Con una sola línea sin monto, el total también es el de la línea, como al leer la frase.
+        val one = line(item(BREAD), units(2), lineTotal = money(30000))
+        assertEquals(sale(one).copy(total = money(30000)), sale(bread).fix("todo por 30000"))
+        val priced = line(item(BREAD), units(2), unitPrice = money(500))
+        assertEquals(sale(priced).copy(total = money(12000)), sale(priced).fix("12000 en total"))
+        val two = sale(bread, line(item(EGG), units(1)))
+        assertEquals(two.copy(total = money(7000)), two.fix("todo por 7000"))
     }
 
     // Lo que no es una corrección.

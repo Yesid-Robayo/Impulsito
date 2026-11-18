@@ -8,7 +8,7 @@ import org.junit.Test
 
 /**
  * Las reglas de la pila: Inicio siempre al fondo, atrás desde una pestaña vuelve a Inicio, atrás en
- * Inicio le toca al sistema, y la barra solo se ve en las cuatro raíces.
+ * Inicio le toca al sistema, y la barra solo se ve en las raíces.
  */
 class AppNavigatorTest {
     private val stack = mutableListOf<NavKey>(AppNavKey.Home)
@@ -28,6 +28,37 @@ class AppNavigatorTest {
     @Test(expected = IllegalArgumentException::class)
     fun aStackThatDoesNotStartAtHomeIsRejected() {
         AppNavigator(mutableListOf(AppNavKey.ProductList))
+    }
+
+    @Test
+    fun theExpensesTabSitsOnTopOfHomeWithTheBar() {
+        navigator.selectTab(TopLevelDestination.EXPENSES)
+
+        assertEquals(listOf(AppNavKey.Home, AppNavKey.ExpensesTab), stack)
+        assertEquals(TopLevelDestination.EXPENSES, navigator.currentTab)
+        assertTrue(navigator.showsBottomBar)
+    }
+
+    @Test
+    fun aNewExpenseFromTheExpensesTabOpensOnTopWithoutTheBar() {
+        navigator.open(AppNavKey.ExpensesTab)
+        navigator.open(AppNavKey.Expenses(startNew = true))
+
+        assertEquals(
+            listOf(AppNavKey.Home, AppNavKey.ExpensesTab, AppNavKey.Expenses(startNew = true)),
+            stack,
+        )
+        assertEquals(TopLevelDestination.EXPENSES, navigator.currentTab)
+        assertFalse(navigator.showsBottomBar)
+    }
+
+    @Test
+    fun theBarMarksHomeWhileRecordsIsOpenAndEachOtherTabItself() {
+        assertEquals(TopLevelDestination.HOME, barTabOf(TopLevelDestination.RECORDS))
+        assertEquals(TopLevelDestination.HOME, barTabOf(TopLevelDestination.HOME))
+        assertEquals(TopLevelDestination.EXPENSES, barTabOf(TopLevelDestination.EXPENSES))
+        assertEquals(TopLevelDestination.PRODUCTS, barTabOf(TopLevelDestination.PRODUCTS))
+        assertEquals(TopLevelDestination.NUMBERS, barTabOf(TopLevelDestination.NUMBERS))
     }
 
     @Test

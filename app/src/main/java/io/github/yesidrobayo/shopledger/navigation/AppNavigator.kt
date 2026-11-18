@@ -6,8 +6,10 @@ import androidx.navigation3.runtime.NavKey
 import io.github.yesidrobayo.shopledger.R
 
 /**
- * Las cuatro pestañas de la barra inferior. No crecen: ninguna función nueva agrega una pestaña, y
- * lo demás vive en Negocio o en Ajustes, a dos toques.
+ * Las pestañas de la app: `Inicio`, `Gastos`, `Productos` y `Números` van en la barra inferior, con
+ * `Vender` entre las dos primeras. `Registros` es una pestaña por dentro, con su pila, pero se abre
+ * desde Inicio: mientras se ve, la barra marca Inicio. No crecen: ninguna función nueva agrega una
+ * pestaña, y lo demás vive en Negocio o en Ajustes, a dos toques.
  */
 enum class TopLevelDestination(
     val root: AppNavKey,
@@ -21,6 +23,12 @@ enum class TopLevelDestination(
         R.string.nav_records,
         R.drawable.ic_receipt_long,
         R.drawable.ic_receipt_long_filled,
+    ),
+    EXPENSES(
+        AppNavKey.ExpensesTab,
+        R.string.nav_expenses,
+        R.drawable.ic_payments,
+        R.drawable.ic_payments,
     ),
     PRODUCTS(
         AppNavKey.ProductList,
@@ -72,7 +80,7 @@ class AppNavigator(private val backStack: MutableList<NavKey>) {
         get() = (backStack.getOrNull(1) as? AppNavKey)?.let(TopLevelDestination::ofRoot)
             ?: TopLevelDestination.HOME
 
-    /** La barra inferior solo se ve en las cuatro raíces: en detalles y formularios da espacio y foco. */
+    /** La barra inferior solo se ve en las raíces: en detalles y formularios da espacio y foco. */
     val showsBottomBar: Boolean get() = TopLevelDestination.ofRoot(current) != null
 
     /**

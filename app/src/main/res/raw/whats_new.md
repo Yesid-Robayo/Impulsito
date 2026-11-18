@@ -1,5 +1,13 @@
 What each version of {app} brought, newest first.
 
+## 1.0.6
+
+- **Say listens:** on phones where **Say** closed right away, it now listens. {app} asks the phone's voice service for the language it has downloaded, and tries each voice service on the phone until one works.
+- **Expenses in the bar:** the bottom bar shows **Home**, **Sell**, **Expenses**, **Products** and **Numbers**. **Expenses** opens the month's expenses, with **By category** above the list.
+- **Say, bottom right:** **Say** is now the round microphone button at the bottom right, on **Home**, **Expenses**, **Products** and **Numbers**. It does the same as before.
+- **Understands more:** many more ways of saying each operation, numbers such as "2 thousand 500" or "50 000", the type and category of a new product ("it is an ingredient, in the raw materials category"), and a new category is created with the product. Questions, plans such as "tomorrow I buy" and denials record nothing.
+- **Correcting keeps the rest:** with the card open, a sentence such as "no, the wheat flour" or "remove the bread" changes only what it names.
+
 ## 1.0.5
 
 - **Say, in the center:** the button at the bottom center is **Say**. Tap it and speak: {app} listens with its own screen, shows the sentence as you say it and then the card. The first time it asks for the microphone. The bar shows **Home**, **Sell**, **Say**, **Products** and **Numbers**; **Records** opens from **Home**.

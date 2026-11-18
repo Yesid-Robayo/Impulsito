@@ -23,6 +23,11 @@ internal class PhraseVocabulary(
     val unitPriceBefore: List<String>,
     /** Antes del total de una línea: "por 1500". */
     val lineTotalBefore: List<String>,
+    /**
+     * Antes de lo que costó lo de la línea, dicho después del producto: "que me costaron 4 mil".
+     * Es el total de la línea, o el costo de una unidad si se dice "cada uno" o "el kilo".
+     */
+    val costClauses: List<String>,
     /** Dicen que el monto es por unidad: "cada uno", "c/u". */
     val eachAfter: List<String>,
     /** Seguidas de una unidad, dicen que el monto es por esa unidad: "el kilo", "por kilo". */
@@ -83,10 +88,117 @@ internal class PhraseVocabulary(
     val costKeywords: List<String>,
     /** Relleno de un cambio de precio o de costo: "ahora", "es". */
     val changeFillers: List<String>,
+    /** Lo que se dice de un producto nuevo: su uso, su categoría. Ver [TraitVocabulary]. */
+    val traits: TraitVocabulary,
+    /**
+     * Si en los nombres del idioma lo que importa va al final, como en inglés: "Orange juice" es
+     * un jugo. Así "oranges" no se toma con confianza por el jugo de naranja.
+     */
+    val headLast: Boolean = false,
     /** Reglas de singular para comparar. */
     val singularRules: List<Pair<String, String>>,
     /** Reglas de singular para proponer un nombre nuevo, legibles. */
     val displayRules: List<Pair<String, String>>,
+    /** Lo que nunca se registra desde una frase. Ver [Refusals]. */
+    val refusals: Refusals,
+    /** Formas del habla que cambian cómo se lee una línea o un monto. Ver [SpeechForms]. */
+    val speech: SpeechForms,
+)
+
+/**
+ * Lo que dice que la frase no es una operación que se registra así, aunque nombre productos o
+ * montos. Es lo más importante que el intérprete reconoce: leerlas como una venta o un gasto
+ * registraría algo que no pasó.
+ */
+internal class Refusals(
+    /**
+     * Frases de lo que se hace en otra pantalla o no se hace: devoluciones, anular o borrar,
+     * retiros y préstamos, deudas dichas como hecho, cotizaciones, listas de precios, cambios de
+     * todos los precios, lo que apareció, y una venta nombrada sin decir qué se vendió.
+     */
+    val phrases: List<String>,
+    /** Niegan el verbo que sigue: "no vendí", "não paguei". Solo cuentan pegadas a un verbo. */
+    val negations: List<String>,
+    /** Dicen que todavía no pasó: "mañana", "voy a", "tengo que". */
+    val notYet: List<String>,
+    /** Después de una cifra, un porcentaje: "un 10 por ciento". */
+    val percents: List<String> = emptyList(),
+)
+
+/**
+ * Formas del habla que el intérprete reconoce para no leerlas mal:
+ *
+ * - [softFillers] son relleno salvo antes del nombre de un producto: "este" en "eh, este, vendí"
+ *   se salta, y en "vendí este pan" dice uno.
+ * - [demonstratives] dicen una unidad delante de un producto: "este pan", "this bread".
+ * - [lineCopulas] abren una línea que solo dice la cantidad o el monto: "fueron 10 kilos", "son
+ *   6 mil".
+ * - [batches] cuentan tandas: "2 tandas de 20 panes" son 40.
+ * - [decimalWords] separan decimales dichos en palabras: "uno coma cinco", "one point two".
+ * - [tenderedBefore] y [tenderedAfter] rodean con cuánto pagó, que no es el precio: "con un
+ *   billete de 20 mil", "with a 20 bill". Si hay palabras de después, son obligatorias.
+ * - [shares] reparten el pago entre dos métodos: "la mitad en efectivo".
+ * - [genericParties] nombran a alguien sin decir quién: "un cliente", "a customer". No son un
+ *   producto ni una persona del catálogo, pero sí dicen que alguien se llevó algo.
+ * - [recipeEach] abren una receta por unidad: "cada empanada lleva", "por cada 20 panes uso".
+ * - [priceSetters] y [setterMarkers] fijan un precio con un verbo que solo no lo dice: "pon el
+ *   kilo de papa a 2.900", "set potatoes to 1.30".
+ * - [creditWraps] rodean a una persona en una forma de crédito: "on Charles's tab".
+ * - [fromPrepositions] nombran a quien vendió algo que no está en el catálogo, al final de la
+ *   frase: "comprei 10 quilos de cenoura do Pedro".
+ * - [selfFixes] corrigen lo último que se dijo dentro de la misma frase: "vendí 3 panes, perdón,
+ *   4". Vale lo que se dice después.
+ * - [createLeads] crean un producto si abren la frase sin otro verbo: "nuevo: galletas a 2 mil".
+ * - [priceCopulas] dicen un precio entre el producto y el monto, sin otro verbo: "el pan es 600",
+ *   "rolls are 0.70".
+ */
+internal class SpeechForms(
+    val softFillers: List<String> = emptyList(),
+    val demonstratives: List<String> = emptyList(),
+    val lineCopulas: List<String> = emptyList(),
+    val batches: List<String> = emptyList(),
+    val decimalWords: List<String> = emptyList(),
+    val tenderedBefore: List<String> = emptyList(),
+    val tenderedAfter: List<String> = emptyList(),
+    val shares: List<String> = emptyList(),
+    val genericParties: List<String> = emptyList(),
+    val recipeEach: List<String> = emptyList(),
+    val priceSetters: List<String> = emptyList(),
+    val setterMarkers: List<String> = emptyList(),
+    val creditWraps: List<Pair<String, String>> = emptyList(),
+    val fromPrepositions: List<String> = emptyList(),
+    val selfFixes: List<String> = emptyList(),
+    val createLeads: List<String> = emptyList(),
+    val priceCopulas: List<String> = emptyList(),
+)
+
+/**
+ * Cómo se describe un producto que no existe, para crearlo ya con su uso y su categoría: "esto es
+ * un insumo", "es para vender", "en la categoría bebidas". Esas palabras nunca son una línea.
+ */
+internal class TraitVocabulary(
+    /** Abren una descripción: "esto es", "es", "son", "como". Solas no dicen nada. */
+    val leads: List<String>,
+    /** Artículos entre la apertura y el tipo: "un", "una". */
+    val articles: List<String>,
+    /**
+     * Tipos que solo cuentan después de una apertura o de un artículo: "es un **insumo**", "es un
+     * **servicio**". Solos podrían ser el nombre de un producto.
+     */
+    val kinds: Map<String, SpokenKind>,
+    /** Tipos que se entienden solos, sin apertura: "para vender", "materia prima". */
+    val plainKinds: Map<String, SpokenKind>,
+    /** Antes del nombre de una categoría: "en la categoría", "categoría". */
+    val categoryBefore: List<String>,
+    /** Después del nombre de una categoría, en inglés: "in the drinks **category**". */
+    val categoryAfter: List<String>,
+    /** Abren el nombre de una categoría que se cierra con [categoryAfter]: "**in the** drinks". */
+    val categoryAfterLeads: List<String>,
+    /**
+     * Palabras que nunca son de un producto y terminan su nombre: "esto", "es". Lo que queda
+     * después no se propone como un producto nuevo.
+     */
+    val descriptionWords: List<String>,
 )
 
 /** Palabras de número con su valor en unidades enteras, pasadas a milésimas. */
@@ -110,8 +222,37 @@ internal object CommonVocabulary {
         "pila", "pilas", "pratas", "r", "us", "usd", "eur",
     )
 
+    /**
+     * Abreviaturas que se escriben con punto sin terminar la oración: tratamientos y unidades,
+     * en los tres idiomas. Ya normalizadas.
+     */
+    val abbreviations: Set<String> = setOf(
+        "sr", "sra", "srta", "dr", "dra", "don", "mr", "mrs", "ms", "st", "kg", "kgs", "gr", "grs",
+        "g", "lb", "lbs", "lt", "lts", "l", "ml", "cc", "oz", "gal", "mt", "mts", "m", "und",
+        "uni", "paq", "pkg", "doz", "etc", "nro", "num", "av", "cra",
+    )
+
     /** Jerga de dinero que multiplica: un número dicho con ella es un monto, no una cantidad. */
     val moneyMagnitudes: List<String> = listOf("luca", "lucas", "palo", "palos", "grand", "k")
+
+    /**
+     * Centésimas de la unidad de la moneda, en cualquier moneda que las tenga: "cincuenta
+     * centavos" es medio.
+     */
+    val cents: List<String> = listOf(
+        "cent",
+        "cents",
+        "centavo",
+        "centavos",
+        "céntimo",
+        "céntimos",
+    )
+
+    /**
+     * Cuántas unidades trae una unidad inicial que cuenta, por su clave: una docena son doce en
+     * todas partes. Las demás, como la caja, no tienen tamaño fijo.
+     */
+    val countFactors: Map<String, Long> = mapOf("dozen" to 12L)
 
     /** Sinónimos de las unidades iniciales, por su clave, en los tres idiomas a la vez. */
     val unitSynonyms: Map<String, List<String>> = mapOf(

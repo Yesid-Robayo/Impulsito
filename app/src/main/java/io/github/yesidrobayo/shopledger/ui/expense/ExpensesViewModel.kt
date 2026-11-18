@@ -14,6 +14,9 @@ import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseInputError
 import io.github.yesidrobayo.shopledger.domain.model.expense.ExpenseRequest
 import io.github.yesidrobayo.shopledger.domain.model.money.MoneyAccount
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
+import io.github.yesidrobayo.shopledger.domain.model.report.ExpenseCategoryTotal
+import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseCategoryShares
+import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseCategorySummary
 import io.github.yesidrobayo.shopledger.domain.rule.expense.ExpenseCorrection
 import io.github.yesidrobayo.shopledger.domain.rule.expense.RecurringRegistration
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
@@ -34,11 +37,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.YearMonth
@@ -65,6 +70,9 @@ import kotlinx.datetime.yearMonth
  * @param loadRecurring lee lo que trae registrar un gasto recurrente, o `null` si ya no se
  *   propone.
  * @param dueRecurring cuántos gastos recurrentes esperan confirmación.
+ * @param categoryTotals lo gastado por categoría en un mes, la misma suma de las estadísticas:
+ *   solo gastos activos con fecha en el mes. De ahí sale el resumen por categoría, que no cambia
+ *   con el filtro: marca la categoría elegida.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExpensesViewModel(
@@ -81,6 +89,9 @@ class ExpensesViewModel(
     payingAccounts: Flow<List<MoneyAccount>> = flowOf(emptyList()),
     private val loadRecurring: suspend (Long) -> RecurringRegistration? = { null },
     dueRecurring: Flow<Int> = flowOf(0),
+    private val categoryTotals: (YearMonth) -> Flow<List<ExpenseCategoryTotal>> = {
+        flowOf(emptyList())
+    },
 ) : ViewModel() {
     private val state = MutableStateFlow(ExpensesUiState())
     val uiState: StateFlow<ExpensesUiState> = state.asStateFlow()
@@ -119,6 +130,18 @@ class ExpensesViewModel(
             dueRecurring.catch { emit(0) }.collect { count ->
                 state.update { it.copy(dueRecurring = count) }
             }
+        }
+        viewModelScope.launch {
+            // El resumen por categoría del mes elegido. Al cambiar de mes se quita el del anterior
+            // mientras se lee; si no se puede leer, no aparece y la lista sigue.
+            query.filterNotNull().map { it.month to it.attempt }.distinctUntilChanged()
+                .flatMapLatest { (month, _) ->
+                    categoryTotals(month)
+                        .map<List<ExpenseCategoryTotal>, ExpenseCategorySummary?> {
+                            ExpenseCategoryShares.of(it)
+                        }.onStart { emit(null) }
+                        .catch { emit(null) }
+                }.collect { summary -> state.update { it.copy(categorySummary = summary) } }
         }
         viewModelScope.launch {
             query.filterNotNull().flatMapLatest { current ->

@@ -14,9 +14,9 @@ import io.github.yesidrobayo.shopledger.ui.theme.ThemePreviews
 val LocalSayOpener = staticCompositionLocalOf<(() -> Unit)?> { null }
 
 /**
- * El micrófono de `Decir o escribir` en la barra de arriba de las pestañas y de la venta: así se
- * registra diciendo una frase desde cualquier parte, sin volver a Inicio. Va justo antes del
- * engranaje, que sigue último.
+ * El micrófono de `Decir o escribir` en la barra de arriba de la venta a mano, donde la barra
+ * inferior y su botón redondo `Decir` no se ven: así se registra diciendo una frase sin salir de la
+ * venta. En las pestañas, `Decir` es el botón redondo [SayFloatingButton].
  */
 @Composable
 fun SayButton() {

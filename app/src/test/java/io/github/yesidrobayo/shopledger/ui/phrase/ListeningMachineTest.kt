@@ -4,13 +4,23 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Las reglas de la pantalla de escuchar, sin micrófono ni Android: empezar, lo que se va
- * entendiendo, terminar, cada fallo con su reintento por la red y cancelar. Los textos son frases
- * inventadas.
+ * Las reglas de la pantalla de escuchar, sin micrófono ni Android: los intentos por servicio,
+ * empezar, lo que se va entendiendo, terminar, el recorrido por varios servicios cuando fallan y
+ * cancelar. Los textos y los paquetes son inventados, salvo los que se prueban primero.
  */
 class ListeningMachineTest {
-    private val withOnDevice = ListeningMachine(ListenPlan.plansFor(onDevice = true))
-    private val withoutOnDevice = ListeningMachine(ListenPlan.plansFor(onDevice = false))
+    private val noServices = ListeningMachine(ListenPlan.plansFor(onDevice = false, services = 0))
+    private val oneService = ListeningMachine(ListenPlan.plansFor(onDevice = false, services = 1))
+    private val threeServices =
+        ListeningMachine(ListenPlan.plansFor(onDevice = false, services = 3))
+    private val onDeviceAndOne =
+        ListeningMachine(ListenPlan.plansFor(onDevice = true, services = 1))
+
+    private fun offline(service: Int?) = ListenPlan(ListenMode.OFFLINE_FIRST, service)
+
+    private fun online(service: Int?) = ListenPlan(ListenMode.ONLINE, service)
+
+    private fun listen(plan: ListenPlan) = ListenCommand.Listen(plan)
 
     /** Pasa [events] por [machine] desde el comienzo y devuelve cada paso. */
     private fun run(machine: ListeningMachine, vararg events: ListenEvent): List<ListenStep> {
@@ -21,32 +31,53 @@ class ListeningMachineTest {
     }
 
     @Test
-    fun thePlansPutTheOnDeviceEngineFirstOnlyWhenThePhoneHasIt() {
+    fun thePlansTryTheOnDeviceEngineAndThenEachServiceOfflineAndOnline() {
         assertEquals(
-            listOf(ListenPlan.ON_DEVICE, ListenPlan.OFFLINE_FIRST, ListenPlan.ONLINE),
-            ListenPlan.plansFor(onDevice = true),
-        )
-        assertEquals(
-            listOf(ListenPlan.OFFLINE_FIRST, ListenPlan.ONLINE),
-            ListenPlan.plansFor(onDevice = false),
+            listOf(
+                ListenPlan(ListenMode.ON_DEVICE),
+                offline(0),
+                online(0),
+                offline(1),
+                online(1),
+            ),
+            ListenPlan.plansFor(onDevice = true, services = 2),
         )
     }
 
     @Test
-    fun startingListensWithTheFirstPlanAndWaitsForTheEngine() {
-        val step = run(withoutOnDevice, ListenEvent.Start).single()
-
+    fun withoutListedServicesTheSystemDefaultIsTriedBothWays() {
         assertEquals(
-            ListenStep(ListeningState.Starting(0), ListenCommand.Listen(ListenPlan.OFFLINE_FIRST)),
-            step,
+            listOf(offline(null), online(null)),
+            ListenPlan.plansFor(onDevice = false, services = 0),
         )
+    }
+
+    @Test
+    fun theUsualServicesGoFirstAndTheRestKeepTheSystemOrder() {
+        val packages =
+            listOf(
+                "com.example.vendor.voice",
+                "com.google.android.tts",
+                "com.example.other.voice",
+                "com.google.android.as",
+                "com.google.android.googlequicksearchbox",
+            )
+
+        assertEquals(listOf(4, 3, 1, 0, 2), ListenPlan.serviceOrder(packages))
+    }
+
+    @Test
+    fun startingListensWithTheFirstPlanAndWaitsForTheEngine() {
+        val step = run(oneService, ListenEvent.Start).single()
+
+        assertEquals(ListenStep(ListeningState.Starting(0), listen(offline(0))), step)
     }
 
     @Test
     fun whatIsUnderstoodSoFarIsShownAndTheFinalTextIsHeard() {
         val steps =
             run(
-                withoutOnDevice,
+                oneService,
                 ListenEvent.Start,
                 ListenEvent.Ready,
                 ListenEvent.Partial("vendí 3"),
@@ -67,7 +98,7 @@ class ListeningMachineTest {
     fun anEmptyPartialDoesNotEraseWhatWasUnderstood() {
         val steps =
             run(
-                withoutOnDevice,
+                oneService,
                 ListenEvent.Start,
                 ListenEvent.Partial("pagué la luz"),
                 ListenEvent.Partial(" "),
@@ -80,7 +111,7 @@ class ListeningMachineTest {
     fun doneStopsTheEngineAndKeepsWhatWasSaid() {
         val steps =
             run(
-                withoutOnDevice,
+                oneService,
                 ListenEvent.Start,
                 ListenEvent.Ready,
                 ListenEvent.Partial("se dañaron 2 panes"),
@@ -96,104 +127,148 @@ class ListeningMachineTest {
     }
 
     @Test
-    fun aNetworkErrorWhilePreferringOfflineRetriesOnceOnline() {
-        val steps =
-            run(
-                withoutOnDevice,
-                ListenEvent.Start,
-                ListenEvent.Ready,
-                ListenEvent.Error(ListenError.NETWORK),
-                ListenEvent.Ready,
-                ListenEvent.Final("compré 10 kilos de harina"),
+    fun anyFailureButSilenceMovesToTheNextTry() {
+        val errors =
+            listOf(
+                ListenError.NETWORK,
+                ListenError.SERVER,
+                ListenError.LANGUAGE,
+                ListenError.PERMISSION,
+                ListenError.BUSY,
+                ListenError.OTHER,
             )
+        for (error in errors) {
+            val step = run(oneService, ListenEvent.Start, ListenEvent.Error(error)).last()
 
-        assertEquals(
-            ListenStep(ListeningState.Starting(1), ListenCommand.Listen(ListenPlan.ONLINE)),
-            steps[2],
-        )
-        assertEquals(ListeningState.Heard("compré 10 kilos de harina"), steps[4].state)
-    }
-
-    @Test
-    fun languageAndServerErrorsAlsoRetryOnline() {
-        for (error in listOf(ListenError.LANGUAGE, ListenError.SERVER)) {
-            val step = run(withoutOnDevice, ListenEvent.Start, ListenEvent.Error(error)).last()
-
-            assertEquals(error.name, ListenCommand.Listen(ListenPlan.ONLINE), step.command)
+            assertEquals(
+                error.name,
+                ListenStep(
+                    ListeningState.Starting(1, micDenied = error == ListenError.PERMISSION),
+                    listen(online(0)),
+                ),
+                step,
+            )
         }
     }
 
     @Test
-    fun whenTheOnlineTryAlsoFailsItEndsOnTheKeyboard() {
+    fun theOnDeviceEngineGoesFirstAndFallsToTheService() {
+        val commands =
+            run(
+                onDeviceAndOne,
+                ListenEvent.Start,
+                ListenEvent.Error(ListenError.LANGUAGE),
+                ListenEvent.Error(ListenError.LANGUAGE),
+            ).map { it.command }
+
+        assertEquals(
+            listOf(listen(ListenPlan(ListenMode.ON_DEVICE)), listen(offline(0)), listen(online(0))),
+            commands,
+        )
+    }
+
+    @Test
+    fun withoutListedServicesTheDefaultGoesOnline() {
+        val step =
+            run(noServices, ListenEvent.Start, ListenEvent.Error(ListenError.LANGUAGE)).last()
+
+        assertEquals(listen(online(null)), step.command)
+    }
+
+    @Test
+    fun theFirstServiceWithoutMicrophoneAndTheSecondBrokenLeaveTheThirdToUnderstand() {
+        val steps =
+            run(
+                threeServices,
+                ListenEvent.Start,
+                ListenEvent.Error(ListenError.PERMISSION),
+                ListenEvent.Error(ListenError.PERMISSION),
+                ListenEvent.Error(ListenError.OTHER),
+                ListenEvent.Error(ListenError.OTHER),
+                ListenEvent.Ready,
+                ListenEvent.Final("vendí 3 panes"),
+            )
+
+        assertEquals(
+            listOf(
+                listen(offline(0)),
+                listen(online(0)),
+                listen(offline(1)),
+                listen(online(1)),
+                listen(offline(2)),
+            ),
+            steps.take(5).map { it.command },
+        )
+        assertEquals(ListeningState.Listening(4, "", micDenied = true), steps[5].state)
+        assertEquals(
+            ListenStep(ListeningState.Heard("vendí 3 panes"), ListenCommand.Release),
+            steps[6],
+        )
+    }
+
+    @Test
+    fun whenEveryTryFailsItEndsWithTheLastError() {
         val step =
             run(
-                withoutOnDevice,
+                oneService,
                 ListenEvent.Start,
                 ListenEvent.Error(ListenError.NETWORK),
-                ListenEvent.Error(ListenError.NETWORK),
+                ListenEvent.Error(ListenError.OTHER),
             ).last()
 
         assertEquals(
-            ListenStep(ListeningState.Failed(ListenError.NETWORK), ListenCommand.Release),
+            ListenStep(ListeningState.Failed(ListenError.OTHER), ListenCommand.Release),
             step,
         )
     }
 
     @Test
-    fun otherErrorsWhilePreferringOfflineDoNotRetry() {
-        for (error in listOf(ListenError.BUSY, ListenError.OTHER)) {
-            val step = run(withoutOnDevice, ListenEvent.Start, ListenEvent.Error(error)).last()
+    fun whenEveryTryFailsAndOneHadNoMicrophoneTheEndSaysSo() {
+        val step =
+            run(
+                threeServices,
+                ListenEvent.Start,
+                ListenEvent.Error(ListenError.OTHER),
+                ListenEvent.Error(ListenError.OTHER),
+                ListenEvent.Error(ListenError.PERMISSION),
+                ListenEvent.Error(ListenError.PERMISSION),
+                ListenEvent.Error(ListenError.LANGUAGE),
+                ListenEvent.Error(ListenError.NETWORK),
+            ).last()
 
-            assertEquals(error.name, ListeningState.Failed(error), step.state)
-        }
-    }
-
-    @Test
-    fun theOnDeviceEngineFallsBackToTheUsualOneOnAnyFailure() {
-        for (error in listOf(ListenError.LANGUAGE, ListenError.BUSY, ListenError.OTHER)) {
-            val steps =
-                run(
-                    withOnDevice,
-                    ListenEvent.Start,
-                    ListenEvent.Error(error),
-                    ListenEvent.Error(ListenError.NETWORK),
-                )
-
-            val commands = steps.map { it.command }
-
-            assertEquals(
-                error.name,
-                listOf(
-                    ListenCommand.Listen(ListenPlan.ON_DEVICE),
-                    ListenCommand.Listen(ListenPlan.OFFLINE_FIRST),
-                    ListenCommand.Listen(ListenPlan.ONLINE),
-                ),
-                commands,
-            )
-        }
+        assertEquals(
+            ListenStep(
+                ListeningState.Failed(ListenError.NETWORK, micDenied = true),
+                ListenCommand.Release,
+            ),
+            step,
+        )
     }
 
     @Test
     fun silenceOffersToListenAgainWithTheSameTry() {
         val steps =
             run(
-                withOnDevice,
+                oneService,
                 ListenEvent.Start,
-                ListenEvent.Error(ListenError.LANGUAGE),
+                ListenEvent.Error(ListenError.PERMISSION),
                 ListenEvent.Error(ListenError.NO_SPEECH),
                 ListenEvent.Start,
             )
 
-        assertEquals(ListenStep(ListeningState.Silent(1), ListenCommand.Release), steps[2])
         assertEquals(
-            ListenStep(ListeningState.Starting(1), ListenCommand.Listen(ListenPlan.OFFLINE_FIRST)),
+            ListenStep(ListeningState.Silent(1, micDenied = true), ListenCommand.Release),
+            steps[2],
+        )
+        assertEquals(
+            ListenStep(ListeningState.Starting(1, micDenied = true), listen(online(0))),
             steps[3],
         )
     }
 
     @Test
     fun anEmptyFinalTextIsSilenceNotAPhrase() {
-        val step = run(withoutOnDevice, ListenEvent.Start, ListenEvent.Final("   ")).last()
+        val step = run(oneService, ListenEvent.Start, ListenEvent.Final("   ")).last()
 
         assertEquals(ListeningState.Silent(0), step.state)
     }
@@ -202,7 +277,7 @@ class ListeningMachineTest {
     fun aFailureAfterSomethingWasUnderstoodKeepsIt() {
         val step =
             run(
-                withoutOnDevice,
+                oneService,
                 ListenEvent.Start,
                 ListenEvent.Partial("vendí 2 jugos"),
                 ListenEvent.Error(ListenError.SERVER),
@@ -215,21 +290,10 @@ class ListeningMachineTest {
     }
 
     @Test
-    fun withoutPermissionItNeverRetries() {
-        val step =
-            run(withOnDevice, ListenEvent.Start, ListenEvent.Error(ListenError.PERMISSION)).last()
-
-        assertEquals(
-            ListenStep(ListeningState.Failed(ListenError.PERMISSION), ListenCommand.Release),
-            step,
-        )
-    }
-
-    @Test
     fun cancellingReleasesTheEngineAndLateNoticesChangeNothing() {
         val steps =
             run(
-                withoutOnDevice,
+                oneService,
                 ListenEvent.Start,
                 ListenEvent.Partial("vendí"),
                 ListenEvent.Cancel,
@@ -244,16 +308,14 @@ class ListeningMachineTest {
 
     @Test
     fun aSecondStartWhileListeningDoesNotOpenAnotherTry() {
-        val step =
-            run(withoutOnDevice, ListenEvent.Start, ListenEvent.Ready, ListenEvent.Start).last()
+        val step = run(oneService, ListenEvent.Start, ListenEvent.Ready, ListenEvent.Start).last()
 
         assertEquals(ListenStep(ListeningState.Listening(0, "")), step)
     }
 
     @Test
     fun aVeryLongTextIsCut() {
-        val step =
-            run(withoutOnDevice, ListenEvent.Start, ListenEvent.Final("a".repeat(600))).last()
+        val step = run(oneService, ListenEvent.Start, ListenEvent.Final("a".repeat(600))).last()
 
         assertEquals(ListeningState.Heard("a".repeat(500)), step.state)
     }

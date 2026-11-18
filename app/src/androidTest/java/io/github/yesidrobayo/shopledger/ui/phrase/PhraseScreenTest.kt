@@ -18,10 +18,12 @@ import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftTarget
 import io.github.yesidrobayo.shopledger.domain.model.phrase.NameMatch
+import io.github.yesidrobayo.shopledger.domain.model.phrase.NewProductTraits
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseCatalog
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIntent
@@ -212,6 +214,8 @@ class PhraseScreenTest {
 
         compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
 
+        // El aviso llega con la recomposición que sigue al toque: se espera a que aparezca.
+        compose.waitUntil(TIMEOUT_MS) { has(text(R.string.phrase_field_empty)) }
         compose.onNodeWithText(text(R.string.phrase_field_empty)).assertIsDisplayed()
         assertEquals(emptyList<String>(), reads)
     }
@@ -442,6 +446,114 @@ class PhraseScreenTest {
         compose.onNodeWithText("Gaseosa grande").assertIsDisplayed()
     }
 
+    @Test
+    fun aPhraseWithoutAVerbKeepsTheCard() {
+        val reads = mutableListOf<String>()
+        val model =
+            viewModel(read = {
+                reads += it
+                if (reads.size == 1) chosenResult() else purchaseResult()
+            })
+        show(model)
+
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput(SALE_PHRASE)
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+        compose.waitUntil(TIMEOUT_MS) { has("Gaseosa grande") }
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput("2 gaseosas")
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+
+        // Sin verbo no dice qué pasó: la tarjeta sigue como estaba y avisa que no se entendió.
+        compose.waitUntil(TIMEOUT_MS) {
+            (model.uiState.value.stage as? PhraseStage.Card)?.failure == PhraseFailure.NotUnderstood
+        }
+        assertEquals(PhraseIntent.SALE, card(model).intent)
+        assertEquals(2, reads.size)
+    }
+
+    @Test
+    fun aStatedOperationReplacesTheCard() {
+        val reads = mutableListOf<String>()
+        val model =
+            viewModel(read = {
+                reads += it
+                val purchase = purchaseResult().copy(statesOperation = true)
+                if (reads.size == 1) chosenResult() else purchase
+            })
+        show(model)
+
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput(SALE_PHRASE)
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+        compose.waitUntil(TIMEOUT_MS) { has("Gaseosa grande") }
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput(PURCHASE_PHRASE)
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+
+        compose.waitUntil(TIMEOUT_MS) {
+            (model.uiState.value.stage as? PhraseStage.Card)?.card?.intent == PhraseIntent.PURCHASE
+        }
+    }
+
+    @Test
+    fun aNewProductShowsWhatWasSaidAndIsCreatedWithIt() {
+        val registered = mutableListOf<PhraseDraft>()
+        val model =
+            viewModel(
+                read = { newProductResult(NEW_TRAITS) },
+                register = {
+                    registered += it
+                    PhraseOutcome.Registered(it.intent, documentId = NEW_ID)
+                },
+            )
+        show(model)
+
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput(NEW_PHRASE)
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+        compose.waitUntil(TIMEOUT_MS) { has("Harina") }
+
+        compose.onNodeWithText(text(R.string.product_usage_input)).assertIsDisplayed()
+        val category = text(R.string.phrase_category_to_create, "Materias primas")
+        compose.onNodeWithText(category).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.selection_create, "Harina")).performClick()
+        compose.waitUntil(TIMEOUT_MS) { registered.isNotEmpty() }
+
+        // Se crea con el uso y la categoría que se dijeron, en la unidad de la línea.
+        assertEquals(
+            PhraseDraft(
+                intent = PhraseIntent.NEW_PRODUCT,
+                target = DraftTarget.New("Harina", NEW_TRAITS),
+                unitId = KILO,
+            ),
+            registered.single(),
+        )
+        compose.waitUntil(TIMEOUT_MS) {
+            card(model).lines.single().product == CardProduct.Chosen(NEW_ID, "Harina")
+        }
+    }
+
+    @Test
+    fun aCategoryIsChosenByHand() {
+        val model = viewModel(read = { newProductResult(NewProductTraits(ProductUsage.INPUT)) })
+        show(model)
+
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput(NEW_PHRASE)
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+        compose.waitUntil(TIMEOUT_MS) { has("Harina") }
+        compose.onNodeWithText(text(R.string.phrase_pick_category)).performClick()
+        compose.waitUntil(TIMEOUT_MS) { has(MATERIALS_NAME) }
+        compose.clickWhenStill(compose.onNodeWithText(MATERIALS_NAME))
+
+        compose.waitUntil(TIMEOUT_MS) {
+            card(model).lines.single().product ==
+                CardProduct.New(
+                    "Harina",
+                    needsCreating = true,
+                    usage = ProductUsage.INPUT,
+                    category = MATERIALS_NAME,
+                )
+        }
+        val chosen = text(R.string.phrase_new_category, MATERIALS_NAME)
+        compose.onNodeWithText(chosen).assertIsDisplayed()
+    }
+
     /** Si algo en pantalla dice exactamente [value]. */
     private fun has(value: String): Boolean = compose
         .onAllNodes(hasText(value), useUnmergedTree = true)
@@ -664,6 +776,53 @@ class PhraseScreenTest {
                         ),
                 )
             return PhraseReadResult(reading, catalog(), draft, PRICES)
+        }
+
+        const val NEW_PHRASE = "compré 2 kilos de harina, es un insumo"
+        const val NEW_ID = 30L
+        const val KILO = 2L
+        const val MATERIALS = 70L
+        const val MATERIALS_NAME = "Materia prima"
+
+        val NEW_TRAITS =
+            NewProductTraits(usage = ProductUsage.INPUT, newCategory = "Materias primas")
+
+        /** Dos kilos de harina, que no existe, con lo que se dijo de ella. */
+        fun newProductResult(traits: NewProductTraits): PhraseReadResult {
+            val base = catalog()
+            val kilo = PhraseUnit(KILO, "kilogram", "Kilogramo", "kg", UnitKind.MASS, 1_000_000L)
+            val catalog =
+                base.copy(
+                    units = base.units + kilo,
+                    productCategories = listOf(PhraseName(MATERIALS, null, MATERIALS_NAME)),
+                )
+            val reading =
+                PhraseReading(
+                    intent = PhraseIntent.PURCHASE,
+                    lines =
+                        listOf(
+                            PhraseLine(
+                                product = ProductMatch.Unknown("Harina", traits),
+                                quantity = QuantityMilli.ofUnits(2),
+                                unitId = KILO,
+                                unitPrice = null,
+                                lineTotal = null,
+                            ),
+                        ),
+                )
+            val draft =
+                PhraseDraft(
+                    intent = PhraseIntent.PURCHASE,
+                    lines =
+                        listOf(
+                            DraftLine(
+                                product = DraftTarget.New("Harina", traits),
+                                quantity = QuantityMilli.ofUnits(2),
+                                unitId = KILO,
+                            ),
+                        ),
+                )
+            return PhraseReadResult(reading, catalog, draft)
         }
 
         fun mixedReading() =
