@@ -49,6 +49,8 @@ import io.github.yesidrobayo.shopledger.ui.backup.NoDestinationNoticeStore
 import io.github.yesidrobayo.shopledger.ui.components.PhotoState
 import io.github.yesidrobayo.shopledger.ui.media.PhotoCache
 import io.github.yesidrobayo.shopledger.ui.phrase.VoiceInputPreference
+import io.github.yesidrobayo.shopledger.update.UpdateCheckDelivery
+import io.github.yesidrobayo.shopledger.update.UpdateCheckScheduler
 import io.github.yesidrobayo.shopledger.widget.QuickSaleWidgetUpdater
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
@@ -175,6 +177,19 @@ class AppContainer(application: Application) {
      */
     val dailySummaryDelivery: DailySummaryDelivery by lazy {
         DailySummaryDelivery(applicationScope, DailySummaryScheduler(application), clock, log)
+    }
+
+    /**
+     * La búsqueda automática de versión: la actividad principal sigue el interruptor de la búsqueda
+     * al abrir la base y programa, o cancela, el trabajo diario del teléfono.
+     */
+    val updateCheckDelivery: UpdateCheckDelivery by lazy {
+        UpdateCheckDelivery(
+            scope = applicationScope,
+            scheduler = UpdateCheckScheduler(application),
+            automaticEnabled = { data.automaticUpdateCheckEnabled() },
+            log = log,
+        )
     }
 
     /**

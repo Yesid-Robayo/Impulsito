@@ -223,4 +223,26 @@ class HomeScreenTest {
         compose.onNodeWithText(text(R.string.backup_state_not_connected), useUnmergedTree = true)
             .assertExists()
     }
+
+    @Test
+    fun aNewVersionShowsItsNoticeThatOpensUpdates() {
+        compose.setContent {
+            PreviewTheme { HomeScreen(previewHomeContent(), { actions += it }, update = "1.0.8") }
+        }
+
+        compose
+            .onNodeWithText(resources.getString(R.string.home_update_available, "1.0.8"))
+            .assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.action_view)).performClick()
+
+        assertEquals(listOf<HomeAction>(HomeAction.OpenUpdates), actions)
+    }
+
+    @Test
+    fun withoutANewVersionThereIsNoNotice() {
+        show(previewHomeContent())
+
+        val notice = resources.getString(R.string.home_update_available, "1.0.8")
+        assertTrue(compose.onAllNodesWithText(notice).fetchSemanticsNodes().isEmpty())
+    }
 }

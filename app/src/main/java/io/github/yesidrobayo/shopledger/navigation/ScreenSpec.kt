@@ -204,7 +204,7 @@ fun screenSpecOf(key: AppNavKey): ScreenSpec = when (key) {
 
     AppNavKey.DataTransparency -> detail(R.string.transparency_title, settings)
 
-    AppNavKey.UpdatesAndApkCheck -> detail(R.string.update_title, settings)
+    is AppNavKey.UpdatesAndApkCheck -> detail(R.string.update_title, settings)
 
     AppNavKey.AuditLog -> detail(R.string.audit_title, settings)
 

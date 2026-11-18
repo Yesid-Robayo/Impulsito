@@ -105,6 +105,9 @@ sealed interface HomeAction {
 
     /** La tarjeta de la meta del mes: abre `Metas y límites`. */
     data object OpenGoals : HomeAction
+
+    /** El aviso de una versión nueva: abre `Actualizaciones y verificación de APK` y busca. */
+    data object OpenUpdates : HomeAction
 }
 
 /**

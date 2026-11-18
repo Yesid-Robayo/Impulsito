@@ -28,7 +28,10 @@ import kotlinx.coroutines.launch
  * Nada de esto bloquea la app ni los datos, y nada se instala sin que Android pida confirmarlo.
  *
  * - **La búsqueda** solo corre con `Permitir buscar actualizaciones` encendido, una a la vez. Sin
- *   red o con un aviso que no se pudo leer o comprobar, lo dice y se puede reintentar.
+ *   red o con un aviso que no se pudo leer o comprobar, lo dice y se puede reintentar. Con
+ *   [searchOnOpen], desde el aviso de una versión nueva, busca sola al saber que está permitida.
+ * - **`Buscar actualizaciones automáticamente`** enciende o apaga la búsqueda de una vez al día, que
+ *   solo corre con la búsqueda permitida.
  * - **Un archivo a la vez:** mientras se comprueba uno, elegir otro no hace nada. Si la búsqueda
  *   de esta visita leyó un aviso, dice también si el SHA-256 del archivo coincide con el suyo.
  * - Una falla inesperada en cualquiera de las dos dice que no se pudo leer, sin cerrar la
@@ -48,6 +51,10 @@ import kotlinx.coroutines.launch
  * @param verifyApk compara el archivo de una dirección del selector con la app instalada.
  * @param searchEnabled si la búsqueda está permitida, de nuevo cada vez que cambia.
  * @param setSearchEnabled guarda el interruptor; `false` si no quedó guardado.
+ * @param automatic si la búsqueda automática está encendida.
+ * @param setAutomatic guarda el interruptor de la automática y la programa o la cancela; `false` si
+ *   no quedó guardado.
+ * @param searchOnOpen si se abrió desde el aviso de una versión nueva: busca sola una vez.
  * @param checkForUpdate lee el aviso de versión y lo compara con la app instalada.
  * @param lastSearchAt la última búsqueda en este teléfono, o nula si nunca.
  * @param zone la zona del negocio, o nula si todavía no se eligió: entonces las fechas van en UTC.
@@ -65,6 +72,9 @@ class UpdatesViewModel(
     private val verifyApk: suspend (String) -> ApkCheckResult,
     searchEnabled: Flow<Boolean>,
     private val setSearchEnabled: suspend (Boolean) -> Boolean,
+    private val automatic: suspend () -> Boolean = { true },
+    private val setAutomatic: suspend (Boolean) -> Boolean = { true },
+    private var searchOnOpen: Boolean = false,
     private val checkForUpdate: suspend () -> UpdateCheckOutcome,
     private val lastSearchAt: suspend () -> Instant?,
     zone: Flow<BusinessTimeZone?>,
@@ -107,7 +117,18 @@ class UpdatesViewModel(
             searchEnabled
                 .map<Boolean, Boolean?> { it }
                 .catch { emit(null) }
-                .collect { enabled -> state.update { it.copy(searchEnabled = enabled) } }
+                .collect { enabled ->
+                    state.update { it.copy(searchEnabled = enabled) }
+                    // Desde el aviso, tocarlo es pedir la búsqueda: corre una sola vez.
+                    if (enabled == true && searchOnOpen) {
+                        searchOnOpen = false
+                        search()
+                    }
+                }
+        }
+        viewModelScope.launch {
+            val read = attempt<Boolean?>(null) { automatic() }
+            state.update { it.copy(automatic = read) }
         }
         viewModelScope.launch {
             zone
@@ -123,6 +144,8 @@ class UpdatesViewModel(
             UpdatesAction.Search -> search()
 
             is UpdatesAction.SetSearchEnabled -> saveSearchEnabled(action.enabled)
+
+            is UpdatesAction.SetAutomatic -> saveAutomatic(action.enabled)
 
             UpdatesAction.MessageShown -> state.update { it.copy(saveFailed = false) }
 
@@ -200,6 +223,16 @@ class UpdatesViewModel(
                     else -> it
                 }
             }
+        }
+    }
+
+    private fun saveAutomatic(enabled: Boolean) {
+        val before = state.value.automatic
+        state.update { it.copy(automatic = enabled) }
+        viewModelScope.launch {
+            val saved = attempt(false) { setAutomatic(enabled) }
+            // Si no se guardó, el interruptor vuelve a lo de antes y la pantalla lo dice.
+            if (!saved) state.update { it.copy(automatic = before, saveFailed = true) }
         }
     }
 

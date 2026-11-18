@@ -66,6 +66,14 @@ class AppOpenRequestTest {
     }
 
     @Test
+    fun theNewVersionNoticeOpensUpdatesAndSearches() {
+        assertEquals(
+            AppNavKey.UpdatesAndApkCheck(searchNow = true),
+            readBack(AppOpenRequest.Updates)?.key,
+        )
+    }
+
+    @Test
     fun theWidgetActionsIgnoreTheirExtras() {
         // Otra app puede lanzar la actividad con la acción y algo más: solo cuenta la acción.
         val intent =

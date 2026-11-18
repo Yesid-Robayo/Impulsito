@@ -345,8 +345,12 @@ sealed interface AppNavKey : NavKey {
     @Serializable
     data object DataTransparency : AppNavKey
 
+    /**
+     * `Actualizaciones y verificación de APK`. Con [searchNow], desde un aviso de versión nueva,
+     * busca al abrir, como si se tocara `Buscar actualización`.
+     */
     @Serializable
-    data object UpdatesAndApkCheck : AppNavKey
+    data class UpdatesAndApkCheck(val searchNow: Boolean = false) : AppNavKey
 
     @Serializable
     data object AuditLog : AppNavKey

@@ -40,7 +40,7 @@
     <string name="transparency_dest_slots_purpose">Para qué: escribir tres archivos de copia</string>
     <string name="transparency_dest_slots_sends">Qué envía: nada. Esos archivos los sube la app de esa nube</string>
     <string name="transparency_dest_manifest_title">Archivo público de versión en %1$s</string>
-    <string name="transparency_dest_manifest_purpose">Para qué: saber si hay versión nueva</string>
+    <string name="transparency_dest_manifest_purpose">Para qué: saber si hay versión nueva, una vez al día y al tocar Buscar actualización</string>
     <string name="transparency_dest_manifest_sends">Qué envía: ningún dato</string>
     <string name="transparency_dest_manifest_ip">%1$s ve la dirección IP al consultar ese archivo.</string>
     <string name="transparency_dest_manifest_off">Cómo se apaga: en Actualizaciones</string>

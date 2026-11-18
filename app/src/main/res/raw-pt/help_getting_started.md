@@ -7,6 +7,8 @@
 3. As boas-vindas: escolher onde salvar as cópias, trazer os dados de outro telefone ou seguir com **Agora não**.
 4. A proteção: o bloqueio com digital ou PIN, e a criptografia das cópias, que vem desligada.
 
+Ao terminar, no Android 13 ou superior, uma folha curta explica para que servem as notificações: as cópias que precisam de atenção, os lembretes e as novas versões. Depois o Android pede a permissão. Se for recusada, o {app} não volta a pedir sozinho: as notificações são ativadas em **Configurações**, **Avisos**, com **Abrir configurações**.
+
 ## Depois
 
 - Criar os produtos com o preço e, se for conhecido, o custo: com o custo, aparece o lucro de cada venda.

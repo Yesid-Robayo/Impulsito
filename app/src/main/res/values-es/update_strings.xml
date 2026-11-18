@@ -27,7 +27,7 @@
     <string name="update_search_action">Buscar actualización</string>
     <string name="update_last_search">Última búsqueda: %1$s</string>
     <string name="update_allow_search">Permitir buscar actualizaciones</string>
-    <string name="update_allow_search_help">Solo se consulta al tocar el botón. No se envía ningún dato.</string>
+    <string name="update_allow_search_help">Al tocar el botón o una vez al día. No se envía ningún dato.</string>
     <string name="update_latest">Esta es la versión más reciente</string>
     <string name="update_new">Hay una versión nueva: %1$s</string>
     <string name="update_new_date">Publicada el %1$s</string>
@@ -60,4 +60,10 @@
     <string name="update_error_installer">No se pudo abrir el instalador de Android. El archivo se borró.</string>
     <string name="update_whats_new_title">Novedades</string>
     <string name="update_whats_new_error">No se pudieron leer las novedades.</string>
+    <string name="update_automatic">Buscar actualizaciones automáticamente</string>
+    <string name="update_automatic_help">Una vez al día, con internet, y avisa si hay una versión nueva. No se envía ningún dato.</string>
+    <string name="notif_channel_updates">Actualizaciones</string>
+    <string name="notif_update_new_title">Hay una versión nueva</string>
+    <string name="notif_update_new_body">Ya salió la versión %1$s de %2$s. Nada se descarga hasta tocar Actualizar.</string>
+    <string name="home_update_available">Hay una versión nueva: %1$s</string>
 </resources>

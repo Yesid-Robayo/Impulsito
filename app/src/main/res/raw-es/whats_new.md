@@ -1,5 +1,10 @@
 Lo que trajo cada versión de {app}, de la más nueva a la más antigua.
 
+## 1.0.7
+
+- **Avisa las versiones nuevas:** una vez al día, con internet, {app} consulta si hay una versión nueva, sin enviar ningún dato. Si la hay, llega una notificación, una sola vez por versión, e **Inicio** lo dice hasta instalarla. Nada se descarga sin tocar **Actualizar**. Se apaga con **Buscar actualizaciones automáticamente**, en **Actualizaciones y verificación de APK**.
+- **Notificaciones al empezar:** al terminar la configuración inicial, una hoja corta explica para qué sirven las notificaciones, y después Android pide el permiso. A quien ya usaba {app} se le pregunta una sola vez. Si se rechaza, no se vuelve a pedir: se encienden en **Ajustes**, **Avisos**.
+
 ## 1.0.6
 
 - **Decir escucha:** en los teléfonos donde **Decir** se cerraba de una vez, ahora escucha. {app} le pide al servicio de voz del teléfono el idioma que tiene descargado y prueba cada servicio de voz del teléfono hasta que uno funcione.

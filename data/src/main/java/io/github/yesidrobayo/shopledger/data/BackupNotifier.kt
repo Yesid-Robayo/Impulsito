@@ -39,8 +39,8 @@ sealed interface BackupNotification {
     data object RecoveryCheckDue : BackupNotification
 
     /**
-     * Pasaron 60 días sin buscar una versión nueva, con la búsqueda encendida. Sale sin red: solo
-     * pide abrir la pantalla de actualizaciones, y no dice si hay una.
+     * Pasaron 60 días sin buscar una versión nueva, con la búsqueda permitida y la automática
+     * apagada. Sale sin red: solo pide abrir la pantalla de actualizaciones, y no dice si hay una.
      */
     data object UpdateCheckDue : BackupNotification
 

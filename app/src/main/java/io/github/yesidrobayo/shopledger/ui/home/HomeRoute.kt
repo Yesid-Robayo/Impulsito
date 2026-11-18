@@ -95,6 +95,14 @@ fun HomeRoute(navigator: AppNavigator) {
                     )(checks)
                 },
                 requestBackup = { container.data.backupScheduler.backupNow() },
+                // Con la búsqueda apagada, no se avisa una versión que se encontró antes.
+                availableUpdate = {
+                    if (ports.settings.get().preferences.updateCheckEnabled) {
+                        container.data.availableUpdate()
+                    } else {
+                        null
+                    }
+                },
             )
         }
     when (model) {
@@ -111,6 +119,7 @@ fun HomeRoute(navigator: AppNavigator) {
             val noDestinationNotice by viewModel.noDestinationNotice.collectAsStateWithLifecycle()
             val photosPending by viewModel.photosPending.collectAsStateWithLifecycle()
             val goal by viewModel.goal.collectAsStateWithLifecycle()
+            val update by viewModel.update.collectAsStateWithLifecycle()
             val policy = LocalPolicyPrompt.current
             LifecycleResumeEffect(viewModel) {
                 viewModel.onReturnToForeground()
@@ -129,6 +138,7 @@ fun HomeRoute(navigator: AppNavigator) {
                 noDestinationNotice = noDestinationNotice,
                 photosPending = photosPending,
                 goal = goal,
+                update = update?.versionName,
                 uiState = uiState,
                 onAction = { action ->
                     when (action) {
@@ -173,6 +183,9 @@ fun HomeRoute(navigator: AppNavigator) {
                             navigator.open(AppNavKey.ProductDetail(action.productId))
 
                         HomeAction.OpenGoals -> navigator.open(AppNavKey.GoalsAndLimits)
+
+                        HomeAction.OpenUpdates ->
+                            navigator.open(AppNavKey.UpdatesAndApkCheck(searchNow = true))
 
                         HomeAction.Retry,
                         HomeAction.AcknowledgeNoDestination,

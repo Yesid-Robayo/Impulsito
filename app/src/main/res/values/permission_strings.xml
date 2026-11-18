@@ -3,7 +3,7 @@
     <!-- Inglés, el respaldo: lo ven también los teléfonos en un idioma sin carpeta propia. -->
 
     <!-- La hoja que explica el permiso de avisos antes del diálogo del sistema. Nombra sus dos usos. -->
-    <string name="permission_notifications_rationale">It is used to alert when a product reaches its minimum and when backups need attention.</string>
+    <string name="permission_notifications_rationale">It is used to alert when backups need attention, to give reminders, such as a product at its minimum, and to tell when there is a new version.</string>
     <string name="permission_notifications_action">Turn on alerts</string>
 
     <!-- En la lista de lo que se está acabando, si los avisos no pueden salir. -->

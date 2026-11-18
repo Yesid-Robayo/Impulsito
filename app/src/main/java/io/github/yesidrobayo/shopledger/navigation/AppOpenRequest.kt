@@ -141,6 +141,19 @@ sealed interface AppOpenRequest {
     }
 
     /**
+     * `Actualizaciones y verificación de APK`, desde el aviso de una versión nueva: abre y busca de
+     * nuevo, porque tocar el aviso es pedirlo. Descargar sigue siendo solo al tocar `Actualizar`.
+     */
+    data object Updates : AppOpenRequest {
+        override val key: AppNavKey get() = AppNavKey.UpdatesAndApkCheck(searchNow = true)
+        override val requestCode: Int get() = 0
+
+        override fun writeTo(intent: Intent) {
+            intent.action = ACTION_OPEN_UPDATES
+        }
+    }
+
+    /**
      * `Almacenamiento y borrado`, desde el botón de borrar datos de los ajustes de Android: la app
      * muestra antes qué hay y si tiene copia.
      */
@@ -187,6 +200,9 @@ sealed interface AppOpenRequest {
         /** Abre el respaldo. */
         const val ACTION_OPEN_BACKUP = "io.github.yesidrobayo.shopledger.action.OPEN_BACKUP"
 
+        /** Abre `Actualizaciones y verificación de APK` y busca una versión nueva. */
+        const val ACTION_OPEN_UPDATES = "io.github.yesidrobayo.shopledger.action.OPEN_UPDATES"
+
         /** Abre `Almacenamiento y borrado`, desde los ajustes de Android. */
         const val ACTION_OPEN_STORAGE = "io.github.yesidrobayo.shopledger.action.OPEN_STORAGE"
 
@@ -228,6 +244,8 @@ sealed interface AppOpenRequest {
                     ACTION_OPEN_BACKUP -> Backup
 
                     ACTION_OPEN_STORAGE -> ManageSpace
+
+                    ACTION_OPEN_UPDATES -> Updates
 
                     else -> null
                 }

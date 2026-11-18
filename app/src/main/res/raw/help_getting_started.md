@@ -7,6 +7,8 @@
 3. Welcome: choose where to save backups, bring the data from another phone, or continue with **Not now**.
 4. Protection: the fingerprint or PIN lock, and backup encryption, which is off by default.
 
+At the end, on Android 13 or later, a short sheet explains what notifications are for: backups that need attention, reminders and new versions. Then Android asks for the permission. If it is declined, {app} does not ask again on its own: notifications are turned on in **Settings**, **Alerts**, with **Open settings**.
+
 ## Next
 
 - Create the products with their price and, if known, their cost: with the cost, the profit of each sale is shown.

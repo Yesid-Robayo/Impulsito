@@ -47,7 +47,8 @@ import kotlinx.coroutines.withContext
  * 6. **Pide la prueba del código** con el cifrado activo, cuando toca: a los 7 y 30 días de activar
  *    o cambiar el código, y luego cada 90 desde la última prueba correcta. Sale una vez en cada
  *    mantenimiento mientras toque, sin anotar nada, y nunca bloquea.
- * 7. **Recuerda buscar una versión nueva** cada 60 días, sin red y solo con la búsqueda encendida.
+ * 7. **Recuerda buscar una versión nueva** cada 60 días, sin red, solo con la búsqueda permitida y
+ *    la automática apagada, que ya busca sola.
  *    Solo cuenta el que salió: si el sistema no lo deja salir, se intenta al día siguiente.
  *
  * Los dos primeros pasos van bajo el cerrojo del respaldo, sin esperarlo: con una copia en curso,

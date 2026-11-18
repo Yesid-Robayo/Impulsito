@@ -64,6 +64,9 @@ class NotificationChannels(
         /** El canal del aviso del límite de ingresos que escribió la persona. */
         const val LIMITS_CHANNEL_ID = "limits"
 
+        /** El canal del aviso de una versión nueva, de la búsqueda automática. */
+        const val UPDATES_CHANNEL_ID = "updates"
+
         /**
          * Los canales de la app. Cada aviso suma aquí su canal cuando llega, con un ID que no cambia
          * nunca.
@@ -105,6 +108,13 @@ class NotificationChannels(
                     name = R.string.notif_channel_limits,
                     description = null,
                     importance = ChannelImportance.DEFAULT,
+                ),
+                // Sin sonido: una versión nueva nunca es urgente, y nada se bloquea sin ella.
+                NotificationChannelSpec(
+                    id = UPDATES_CHANNEL_ID,
+                    name = R.string.notif_channel_updates,
+                    description = null,
+                    importance = ChannelImportance.LOW,
                 ),
             )
     }

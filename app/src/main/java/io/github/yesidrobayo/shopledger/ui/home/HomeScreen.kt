@@ -120,6 +120,9 @@ import io.github.yesidrobayo.shopledger.ui.theme.AppTheme
  *
  * - Bajo los atajos, la meta de ventas del mes, solo si el mes tiene una, según [goal].
  *
+ * - Bajo el respaldo, el aviso de una versión nueva, [update], mientras no esté instalada. `Ver`
+ *   abre Actualizaciones; solo informa y nunca bloquea nada.
+ *
  * Es pura: recibe el estado y avisa cada acción.
  */
 @Composable
@@ -133,6 +136,7 @@ fun HomeScreen(
     noDestinationNotice: NoDestinationNotice? = NoDestinationNotice.FULL,
     photosPending: Int = 0,
     goal: GoalAdvance? = null,
+    update: String? = null,
 ) {
     Surface(
         modifier.fillMaxSize(),
@@ -202,6 +206,7 @@ fun HomeScreen(
                                 bottom,
                                 Modifier.weight(1f),
                                 goal = goal,
+                                update = update,
                             )
                         } else {
                             OnePane(
@@ -213,6 +218,7 @@ fun HomeScreen(
                                 bottom,
                                 Modifier.weight(1f),
                                 goal = goal,
+                                update = update,
                             )
                         }
                 }
@@ -242,6 +248,7 @@ private fun OnePane(
     bottom: Dp,
     modifier: Modifier,
     goal: GoalAdvance? = null,
+    update: String? = null,
 ) {
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
@@ -253,7 +260,15 @@ private fun OnePane(
                     Modifier.padding(horizontal = AppTheme.spacing.s16),
                     verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s16),
                 ) {
-                    Overview(content, backup, lowStock, profit, onAction, goal = goal)
+                    Overview(
+                        content,
+                        backup,
+                        lowStock,
+                        profit,
+                        onAction,
+                        goal = goal,
+                        update = update,
+                    )
                 }
             }
             recentSales(content, onAction)
@@ -272,6 +287,7 @@ private fun TwoPanes(
     bottom: Dp,
     modifier: Modifier,
     goal: GoalAdvance? = null,
+    update: String? = null,
 ) {
     Row(
         modifier.fillMaxWidth().padding(horizontal = AppTheme.spacing.s8),
@@ -285,7 +301,7 @@ private fun TwoPanes(
                 .padding(start = AppTheme.spacing.s8, bottom = bottom),
             verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s16),
         ) {
-            Overview(content, backup, lowStock, profit, onAction, goal = goal)
+            Overview(content, backup, lowStock, profit, onAction, goal = goal, update = update)
         }
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -308,8 +324,18 @@ private fun ColumnScope.Overview(
     profit: HomeProfit?,
     onAction: (HomeAction) -> Unit,
     goal: GoalAdvance? = null,
+    update: String? = null,
 ) {
     backup.wording?.let { BackupSummary(it, backup.notice, backup.photosPending, onAction) }
+    // Una versión nueva solo informa: `Ver` abre Actualizaciones, y nada se descarga sin tocar.
+    update?.let { name ->
+        NoticeCard(
+            text = stringResource(R.string.home_update_available, name),
+            variant = NoticeVariant.INFO,
+            actionLabel = stringResource(R.string.action_view),
+            onAction = { onAction(HomeAction.OpenUpdates) },
+        )
+    }
     TodayHeroBlock(content.hero, Modifier.padding(top = AppTheme.spacing.s8))
     profit?.let { ProfitTiles(it) }
     if (content.firstUse) {

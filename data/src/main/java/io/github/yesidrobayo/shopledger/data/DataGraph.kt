@@ -164,6 +164,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.StoredImage
 import io.github.yesidrobayo.shopledger.domain.model.erase.ErasePhase
 import io.github.yesidrobayo.shopledger.domain.model.safety.PolicyVersions
 import io.github.yesidrobayo.shopledger.domain.model.update.ApkDownloadResult
+import io.github.yesidrobayo.shopledger.domain.model.update.KnownUpdate
 import io.github.yesidrobayo.shopledger.domain.model.update.UpdateCheckOutcome
 import io.github.yesidrobayo.shopledger.domain.port.AppSettingsRepository
 import io.github.yesidrobayo.shopledger.domain.port.AuditRecorder
@@ -203,6 +204,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.backup.HeadProbeRule
 import io.github.yesidrobayo.shopledger.domain.rule.backup.UploadUsageRule
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendar
 import io.github.yesidrobayo.shopledger.domain.rule.region.BusinessCalendarResult
+import io.github.yesidrobayo.shopledger.domain.rule.update.AutomaticUpdateRule
 import io.github.yesidrobayo.shopledger.domain.rule.update.UpdateCheckRule
 import io.github.yesidrobayo.shopledger.domain.rule.update.UpdateReminderRule
 import java.io.File
@@ -472,11 +474,12 @@ class DataGraph internal constructor(
     }
 
     /**
-     * `Buscar actualización`: lee el aviso de versión de [manifestUrl], comprueba su firma con
+     * Busca una versión nueva: lee el aviso de versión de [manifestUrl], comprueba su firma con
      * [publicKey] y lo compara con la app instalada, compilada en [builtAt]. Es la única consulta
-     * de red que no va al servicio WebDAV, y solo corre cuando la persona toca el botón. Sin la
-     * dirección o sin la clave, dice que no se pudo comprobar. Nunca bloquea nada, y anota cuándo
-     * se buscó, para el recordatorio.
+     * de red que no va al servicio WebDAV, y corre al tocar `Buscar actualización` o una vez al
+     * día, en la búsqueda automática: el mismo `GET` sin datos. Sin la dirección o sin la clave,
+     * dice que no se pudo comprobar. Nunca bloquea nada. Anota cuándo se buscó, para el
+     * recordatorio, y la versión más nueva que dio un aviso firmado, para el aviso de `Inicio`.
      */
     suspend fun checkForUpdate(
         manifestUrl: String,
@@ -487,7 +490,35 @@ class DataGraph internal constructor(
         val read = VersionManifestClient(http).read(source)
         updateCheckMarks.markCheck(clock.now())
         val installed = withContext(ioContext) { InstalledPackage.of(context) }
-        return UpdateCheckRule.evaluate(read, installed?.versionCode ?: 0L, builtAt)
+        val outcome = UpdateCheckRule.evaluate(read, installed?.versionCode ?: 0L, builtAt)
+        val known = updateCheckMarks.read().known
+        val next = AutomaticUpdateRule.known(outcome, known)
+        if (next != known) updateCheckMarks.setKnown(next)
+        return outcome
+    }
+
+    /** Si la búsqueda automática, una vez al día, está encendida en este teléfono. Sin red. */
+    suspend fun automaticUpdateCheckEnabled(): Boolean = updateCheckMarks.read().automatic
+
+    /** Enciende o apaga la búsqueda automática. `false` si no quedó guardado. */
+    suspend fun setAutomaticUpdateCheck(enabled: Boolean): Boolean =
+        updateCheckMarks.setAutomatic(enabled)
+
+    /** La última versión que salió en una notificación, o nula si ninguna. Sin red. */
+    suspend fun lastNotifiedUpdate(): Long? = updateCheckMarks.read().lastNotifiedVersionCode
+
+    /** Anota que la versión [versionCode] ya salió en una notificación. */
+    suspend fun markUpdateNotified(versionCode: Long): Boolean =
+        updateCheckMarks.markNotified(versionCode)
+
+    /**
+     * La versión nueva que `Inicio` avisa: la más nueva que dio la última búsqueda, mientras no
+     * esté instalada. Nula si no hay ninguna. Sin red.
+     */
+    suspend fun availableUpdate(): KnownUpdate? {
+        val known = updateCheckMarks.read().known ?: return null
+        val installed = withContext(ioContext) { InstalledPackage.of(context) } ?: return null
+        return AutomaticUpdateRule.homeNotice(known, installed.versionCode)
     }
 
     /** Cuándo se buscó una versión nueva por última vez, o nulo si nunca. Sin red. */
@@ -516,14 +547,15 @@ class DataGraph internal constructor(
     }
 
     /**
-     * Si en [now] toca recordar la búsqueda de versión: con la búsqueda encendida en los ajustes,
-     * 60 días después de instalar, buscar o recordar. Sin la base, no toca.
+     * Si en [now] toca recordar la búsqueda de versión: con la búsqueda encendida en los ajustes y
+     * la automática apagada, 60 días después de instalar, buscar o recordar. Con la automática
+     * encendida no hace falta recordar nada. Sin la base, no toca.
      */
     private suspend fun updateReminderDue(now: Instant): Boolean {
         val ports = (openForWork() as? DataAccess.Ready)?.ports ?: return false
-        val enabled = ports.settings.get().preferences.updateCheckEnabled
-        val installed = withContext(ioContext) { InstalledPackage.of(context) } ?: return false
         val marks = updateCheckMarks.read()
+        val enabled = ports.settings.get().preferences.updateCheckEnabled && !marks.automatic
+        val installed = withContext(ioContext) { InstalledPackage.of(context) } ?: return false
         return UpdateReminderRule.isDue(
             enabled = enabled,
             installedAt = installed.updatedAt,

@@ -1,7 +1,9 @@
 package io.github.yesidrobayo.shopledger.ui.permission
 
 import android.Manifest.permission.POST_NOTIFICATIONS
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -16,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.res.stringResource
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import io.github.yesidrobayo.shopledger.R
@@ -27,36 +30,59 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /**
- * El permiso de avisos, pedido en contexto: nunca al abrir la app, sino cuando se entiende para qué
- * sirve. Primero una hoja explica sus dos usos, el stock y las copias, y solo si la persona sigue
- * se abre el diálogo del sistema. Cerrar la hoja o negar el permiso no cambia nada más: la lista de
- * lo que se está acabando y el estado del respaldo se ven igual en la app, y no se insiste.
+ * El permiso de avisos, con una sola forma de pedirlo: primero una hoja corta explica para qué
+ * sirve, los avisos de copias, los recordatorios y las versiones nuevas, y solo si la persona sigue
+ * se abre el diálogo del sistema. Solo desde Android 13: antes no hay permiso que pedir.
  *
- * Se ofrece al guardar el primer producto y al encender los avisos de stock en Ajustes. La otra
- * entrada, terminar una restauración, llama a [offer] cuando exista.
+ * - **Sola, una vez en la vida:** [offerOnce] lo ofrece al terminar la configuración inicial o, a
+ *   quien ya usaba la app y nunca respondió, la primera vez que la abre con esta versión. Queda
+ *   anotado que se preguntó, aunque la persona cierre la hoja, y nunca se vuelve a ofrecer solo.
+ *   Si ya lo negó antes, el sistema lo recuerda y tampoco se ofrece.
+ * - **A pedido:** [offer], al encender los avisos de stock en `Ajustes`. Con el permiso negado,
+ *   `Ajustes` dice que los avisos están apagados y abre los ajustes de avisos del sistema.
+ *
+ * Cerrar la hoja o negar el permiso no cambia nada más: la lista de lo que se está acabando, el
+ * estado del respaldo y la versión nueva se ven igual en la app.
  *
  * @param needsAsking si hace falta pedirlo: Android 13 o superior y el permiso sin dar.
- * @param isFirstProduct si el producto recién guardado es el único del catálogo.
+ * @param answeredBefore si la persona ya lo negó una vez: el sistema dice que conviene explicar.
+ * @param wasAsked si la app ya lo ofreció sola en este teléfono.
+ * @param markAsked anota que la app lo ofreció sola.
  * @param scope donde corren las lecturas que deciden si ofrecerlo.
  */
 class NotificationPermissionPrompt(
     private val needsAsking: () -> Boolean,
-    private val isFirstProduct: suspend () -> Boolean,
+    private val answeredBefore: () -> Boolean = { false },
+    private val wasAsked: suspend () -> Boolean = { true },
+    private val markAsked: suspend () -> Boolean = { true },
     private val scope: CoroutineScope,
 ) {
     /** Si la hoja que explica el permiso está a la vista. */
     var offered: Boolean by mutableStateOf(false)
         private set
 
-    /** Ofrece el permiso si hace falta pedirlo. */
+    /** Si [offerOnce] ya decidió en este proceso: no vuelve a leer el disco. */
+    private var decided = false
+
+    /** Ofrece el permiso si hace falta pedirlo, porque la persona lo pidió. */
     fun offer() {
         if (needsAsking()) offered = true
     }
 
-    /** Se guardó un producto nuevo: si es el primero, ofrece el permiso. */
-    fun offerAfterNewProduct() {
-        if (!needsAsking()) return
-        scope.launch { if (isFirstProduct()) offer() }
+    /**
+     * La app terminó la configuración inicial, o se abrió ya configurada: si nunca se ofreció
+     * solo y hace falta, lo ofrece una vez y lo anota.
+     */
+    fun offerOnce() {
+        if (decided) return
+        decided = true
+        scope.launch {
+            if (wasAsked()) return@launch
+            // Se anota siempre: con el permiso dado, sin permiso que pedir o ya negado, tampoco
+            // hay que preguntar nunca más.
+            markAsked()
+            if (needsAsking() && !answeredBefore()) offered = true
+        }
     }
 
     /** La persona cerró la hoja, o el sistema ya respondió. */
@@ -73,6 +99,20 @@ class NotificationPermissionPrompt(
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 ContextCompat.checkSelfPermission(context, POST_NOTIFICATIONS) !=
                 PackageManager.PERMISSION_GRANTED
+
+        /**
+         * Si la persona ya negó el permiso una vez: Android dice que conviene explicarlo. Así se
+         * sabe que ya respondió, aunque el permiso siga sin dar.
+         */
+        fun answeredBefore(context: Context): Boolean {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return false
+            val activity = context.findActivity() ?: return false
+            return ActivityCompat.shouldShowRequestPermissionRationale(activity, POST_NOTIFICATIONS)
+        }
+
+        /** Si los avisos de la app están apagados en el teléfono, sin el permiso o a mano. */
+        fun appNotificationsBlocked(context: Context): Boolean =
+            !NotificationManagerCompat.from(context).areNotificationsEnabled()
 
         /**
          * Si los avisos de stock no pueden salir: sin el permiso, con los avisos de la app apagados
@@ -96,12 +136,19 @@ class NotificationPermissionPrompt(
     }
 }
 
+/** La actividad detrás de [this], o nula fuera de una, como en un trabajo. */
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+
 /** El permiso de avisos de la navegación, o `null` fuera de ella, como en las vistas previas. */
 val LocalNotificationPermission = staticCompositionLocalOf<NotificationPermissionPrompt?> { null }
 
 /**
  * La hoja que explica el permiso y, al seguir, el diálogo del sistema. Lo que responda la persona
- * no se guarda aparte: el sistema ya lo recuerda.
+ * no se guarda aparte: el sistema ya lo recuerda. Solo se anota que la app lo ofreció sola.
  */
 @Composable
 fun NotificationPermissionHost(prompt: NotificationPermissionPrompt) {

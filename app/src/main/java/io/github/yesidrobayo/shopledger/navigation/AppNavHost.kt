@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleStartEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
@@ -41,8 +42,6 @@ import androidx.navigation3.scene.Scene
 import androidx.navigation3.ui.NavDisplay
 import io.github.yesidrobayo.shopledger.R
 import io.github.yesidrobayo.shopledger.ShopLedgerApp
-import io.github.yesidrobayo.shopledger.data.DataAccess
-import io.github.yesidrobayo.shopledger.domain.model.ArchiveFilter
 import io.github.yesidrobayo.shopledger.domain.usecase.safety.PolicyConsentUseCase
 import io.github.yesidrobayo.shopledger.ui.audit.AuditLogRoute
 import io.github.yesidrobayo.shopledger.ui.backup.BackupRoute
@@ -95,6 +94,7 @@ import io.github.yesidrobayo.shopledger.ui.payable.PayablesRoute
 import io.github.yesidrobayo.shopledger.ui.payment.PaymentMethodFormRoute
 import io.github.yesidrobayo.shopledger.ui.payment.PaymentMethodsRoute
 import io.github.yesidrobayo.shopledger.ui.permission.LocalNotificationPermission
+import io.github.yesidrobayo.shopledger.ui.permission.NotificationPermissionAsked
 import io.github.yesidrobayo.shopledger.ui.permission.NotificationPermissionHost
 import io.github.yesidrobayo.shopledger.ui.permission.NotificationPermissionPrompt
 import io.github.yesidrobayo.shopledger.ui.phrase.PhraseRoute
@@ -154,7 +154,6 @@ import io.github.yesidrobayo.shopledger.ui.unit.UnitsRoute
 import io.github.yesidrobayo.shopledger.ui.update.UpdatesRoute
 import io.github.yesidrobayo.shopledger.ui.variant.VariantsRoute
 import io.github.yesidrobayo.shopledger.ui.webdav.WebDavConnectRoute
-import kotlinx.coroutines.flow.first
 
 /**
  * La navegación de la app: la pila de Navigation 3 y, encima de las raíces, la barra inferior con
@@ -218,12 +217,25 @@ fun AppNavHost(
     val context = LocalContext.current
     val notificationPermission =
         remember(messageScope) {
+            val asked =
+                NotificationPermissionAsked(
+                    { context.applicationContext.noBackupFilesDir },
+                    container.dispatchers.io,
+                )
             NotificationPermissionPrompt(
                 needsAsking = { NotificationPermissionPrompt.needsAsking(context) },
-                isFirstProduct = { hasOnlyOneProduct(container.data.open()) },
+                answeredBefore = { NotificationPermissionPrompt.answeredBefore(context) },
+                wasAsked = asked::wasAsked,
+                markAsked = asked::markAsked,
                 scope = messageScope,
             )
         }
+    // Al terminar el primer uso, o al abrir ya configurada sin haber preguntado nunca: la hoja del
+    // permiso sale una sola vez, y nunca encima de la pregunta de la política.
+    val policyQuestion = policy.state.collectAsStateWithLifecycle().value.question
+    LaunchedEffect(onboardingPending, policyQuestion) {
+        if (!onboardingPending && policyQuestion == null) notificationPermission.offerOnce()
+    }
     // Tras restaurar una copia cifrada, su código quedó guardado aquí: se dice una sola vez.
     val codeSaved = stringResource(R.string.recovery_restore_saved)
     LaunchedEffect(Unit) {
@@ -534,7 +546,7 @@ private fun ScreenRoute(key: AppNavKey, navigator: AppNavigator) {
 
         is AppNavKey.StorageAndDeletion -> StorageRoute(key, navigator)
 
-        AppNavKey.UpdatesAndApkCheck -> UpdatesRoute(navigator)
+        is AppNavKey.UpdatesAndApkCheck -> UpdatesRoute(navigator, key.searchNow)
 
         else -> PlaceholderRoute(key, navigator)
     }
@@ -692,14 +704,3 @@ private fun emptyOf(key: AppNavKey, title: String): Pair<EmptyContent, AppNavKey
 
         null -> EmptyContent(title = title) to null
     }
-
-/** Si el catálogo tiene un solo producto, contando los archivados: el que se acaba de guardar. */
-private suspend fun hasOnlyOneProduct(access: DataAccess): Boolean = when (access) {
-    is DataAccess.Ready -> {
-        val products = access.ports.products
-        products.observe(ArchiveFilter.ACTIVE).first().size +
-            products.observe(ArchiveFilter.ARCHIVED).first().size == 1
-    }
-
-    is DataAccess.Rescue -> false
-}

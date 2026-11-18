@@ -14,6 +14,8 @@ import kotlin.time.Instant
  * @property installed la versión y la huella, o nula si el sistema no las dio.
  * @property searchEnabled si `Buscar actualización` está permitido, o nulo mientras se lee o si
  *   los ajustes no se pudieron leer: entonces no se ofrece nada de la búsqueda.
+ * @property automatic si la búsqueda automática, una vez al día, está encendida, o nulo mientras se
+ *   lee.
  * @property lastSearchAt la última búsqueda en este teléfono, o nula si nunca se buscó.
  * @property search lo que pasa con la búsqueda de esta visita.
  * @property zone la zona con que se leen las fechas.
@@ -28,6 +30,7 @@ data class UpdatesUiState(
     val installedLoading: Boolean = true,
     val installed: InstalledApp? = null,
     val searchEnabled: Boolean? = null,
+    val automatic: Boolean? = null,
     val lastSearchAt: Instant? = null,
     val search: SearchUi = SearchUi.Idle,
     val zone: BusinessTimeZone = UTC,
@@ -155,6 +158,9 @@ sealed interface UpdatesAction {
 
     /** El interruptor `Permitir buscar actualizaciones`. */
     data class SetSearchEnabled(val enabled: Boolean) : UpdatesAction
+
+    /** El interruptor `Buscar actualizaciones automáticamente`. */
+    data class SetAutomatic(val enabled: Boolean) : UpdatesAction
 
     /** La pantalla ya dijo que el interruptor no se guardó. */
     data object MessageShown : UpdatesAction

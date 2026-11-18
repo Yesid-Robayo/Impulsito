@@ -99,6 +99,7 @@ enum class AboutSheet { LICENSES, DELETE_GUIDE, SUPPORT }
  * @param costStaleDays los días para costo viejo, en `Avisos`, o `null` mientras se leen.
  * @param notificationsBlocked los avisos no pueden salir del teléfono: sin permiso, apagados o con
  *   el canal silenciado.
+ * @param appNotificationsBlocked los avisos de la app están apagados en el teléfono.
  * @param onChoosePalette aplica y guarda una paleta; la hoja de colores sigue abierta.
  * @param paletteFailed la última paleta elegida no se guardó, y volvió la anterior.
  * @param onRetryPalette vuelve a elegir la paleta que no se guardó.
@@ -130,6 +131,7 @@ fun SettingsEntryScreen(
     usage: UsageSettingsUiState? = null,
     costStaleDays: Int? = null,
     notificationsBlocked: Boolean = false,
+    appNotificationsBlocked: Boolean = false,
     onUsageAction: (UsageAction) -> Unit = {},
     onChoosePalette: (ColorPalette) -> Unit = {},
     paletteFailed: Boolean = false,
@@ -206,7 +208,12 @@ fun SettingsEntryScreen(
                     }
                 overview?.backup?.let { BackupGroup(it, overview.destination, links) }
                 usage?.let {
-                    AlertsGroup(it, notificationsBlocked, onUsageAction) {
+                    AlertsGroup(
+                        it,
+                        notificationsBlocked,
+                        onUsageAction,
+                        appBlocked = appNotificationsBlocked,
+                    ) {
                         costStaleDays?.let { days -> CostStaleDaysRow(days, onProfileAction) }
                         dailySummary()
                     }
@@ -525,7 +532,7 @@ private fun AboutGroup(
     // confirmación de Android.
     SettingsRow(
         title = stringResource(R.string.update_title),
-        action = SettingsRowAction.Navigation { links.onOpen(AppNavKey.UpdatesAndApkCheck) },
+        action = SettingsRowAction.Navigation { links.onOpen(AppNavKey.UpdatesAndApkCheck()) },
     )
     // El aviso de alcance legal: no reemplaza la contabilidad, un comprobante no es factura, y no
     // emite documentos fiscales ni está certificada por nadie.

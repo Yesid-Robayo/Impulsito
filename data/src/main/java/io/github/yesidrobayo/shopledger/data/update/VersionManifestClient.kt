@@ -23,8 +23,8 @@ import org.json.JSONException
 import org.json.JSONObject
 
 /**
- * Lee el aviso de versión firmado, solo cuando la persona toca `Buscar actualización`. Nunca en
- * segundo plano, y nunca bloquea nada: cada falla es un resultado.
+ * Lee el aviso de versión firmado, al tocar `Buscar actualización` o una vez al día en la búsqueda
+ * automática, que la persona puede apagar. Nunca bloquea nada: cada falla es un resultado.
  *
  * - **No envía nada de la persona.** Un `GET` sin `Authorization`, sin cookies, sin parámetros y
  *   con un `User-Agent` fijo, que no lleva el modelo del teléfono ni la versión de la app. El host
