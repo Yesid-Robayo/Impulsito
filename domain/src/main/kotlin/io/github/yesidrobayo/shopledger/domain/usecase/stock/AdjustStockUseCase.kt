@@ -73,6 +73,40 @@ class AdjustStockUseCase(
             transactions.write { adjust(request) }
         }
 
+    /**
+     * Varios ajustes juntos, como un conteo dicho de varios productos, en una sola transacción:
+     * cada uno agrega su propia fila al libro, con las mismas reglas que uno solo, y lo ve el
+     * siguiente. Si uno se rechaza, no queda ninguno. Un conteo igual al libro no escribe nada y no
+     * detiene a los demás; si todos son iguales, no hay nada que corregir.
+     */
+    suspend fun all(requests: List<StockAdjustmentRequest>): StockAdjustmentsResult {
+        require(requests.isNotEmpty()) { "Hace falta al menos un ajuste" }
+        return storageSafe(StockAdjustmentsResult::StorageFailed) {
+            transactions.write { adjustAll(requests) }
+        }
+    }
+
+    private suspend fun adjustAll(
+        requests: List<StockAdjustmentRequest>,
+    ): TxResult<StockAdjustmentsResult> {
+        val movements = mutableListOf<Long>()
+        for ((index, request) in requests.withIndex()) {
+            // Un ajuste solo confirma lo que agregó: aquí se junta todo en la misma transacción.
+            val result = when (val step = adjust(request)) {
+                is TxResult.Commit -> step.value
+                is TxResult.CommitUncounted -> step.value
+                is TxResult.Rollback -> step.value
+            }
+            when (result) {
+                is StockAdjustmentResult.Adjusted -> movements += result.movementId
+                StockAdjustmentResult.NoDifference -> Unit
+                else -> return TxResult.Rollback(StockAdjustmentsResult.Rejected(index, result))
+            }
+        }
+        if (movements.isEmpty()) return TxResult.Rollback(StockAdjustmentsResult.NoDifference)
+        return TxResult.Commit(StockAdjustmentsResult.Adjusted(movements))
+    }
+
     private suspend fun adjust(request: StockAdjustmentRequest): TxResult<StockAdjustmentResult> {
         val note = request.note?.trim()?.takeIf { it.isNotEmpty() }
         if (note == null && request.reason.requiresNote) {

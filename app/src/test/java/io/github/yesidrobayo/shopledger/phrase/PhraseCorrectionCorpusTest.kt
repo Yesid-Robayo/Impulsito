@@ -1,12 +1,15 @@
 package io.github.yesidrobayo.shopledger.phrase
 
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
+import io.github.yesidrobayo.shopledger.domain.model.phrase.CardFollowUp
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftTarget
 import io.github.yesidrobayo.shopledger.domain.model.phrase.NewProductTraits
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLanguage
+import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseInterpreter
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.correctedBy
+import io.github.yesidrobayo.shopledger.domain.rule.phrase.followedBy
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.toDraft
 import java.io.File
 import org.junit.Test
@@ -21,6 +24,10 @@ import org.junit.Test
  * aunque el intérprete lea mal la primera frase. Lo esperado pasa por la misma conversión a
  * tarjeta, y `extra` (el uso o la categoría del producto nuevo) se pone en el producto nuevo de la
  * tarjeta esperada, que ahora los lleva.
+ *
+ * Un caso con `screen` se mide como lo hace la pantalla entera: si la frase no corrige la tarjeta, se
+ * lee con el intérprete y se suma a ella, o la deja como estaba. Ahí `applies: false` espera que la
+ * tarjeta quede como estaba, y `expect`, cuando se aplica, es la tarjeta que queda.
  *
  * Es una medición, no una puerta: solo falla si no puede leer los archivos. Cada caso queda en una
  * clase:
@@ -58,19 +65,23 @@ class PhraseCorrectionCorpusTest {
         val initial = requireNotNull(catalog.reading(case.initial).toDraft()) {
             "La tarjeta inicial de ${case.id} no tiene operación"
         }
-        val got = initial.correctedBy(
+        val corrected = initial.correctedBy(
             case.correction,
             language,
             catalog.style,
             catalog.moneyDecimals,
             catalog.catalog,
         )
+        val got = corrected ?: followed(initial, case, language, catalog).takeIf { case.screen }
         val expected = case.expected?.let { expected ->
             requireNotNull(catalog.reading(expected).toDraft()) {
                 "La tarjeta esperada de ${case.id} no tiene operación"
             }.withExtra(case.extra, catalog)
-        }
+        } ?: initial.takeIf { case.screen }
+        // En la pantalla entera, una tarjeta que quedó igual cuando debía cambiar no se aplicó.
+        val unchanged = case.screen && got?.loose() == initial.loose()
         val verdict = when {
+            unchanged && expected?.loose() != initial.loose() -> CorrectionVerdict.NOT_APPLIED
             got == null && expected == null -> CorrectionVerdict.RIGHT
             got == null -> CorrectionVerdict.NOT_APPLIED
             expected != null && got.loose() == expected.loose() -> CorrectionVerdict.RIGHT
@@ -85,6 +96,44 @@ class PhraseCorrectionCorpusTest {
         )
     }
 
+    /**
+     * La tarjeta que deja la pantalla cuando la frase no la corrige: la lee entera y la suma, o la
+     * deja como estaba si pregunta, avisa o no la entiende. Solo "no" con otra operación la
+     * reemplaza.
+     */
+    private fun followed(
+        initial: PhraseDraft,
+        case: Correction,
+        language: PhraseLanguage,
+        catalog: FixtureCatalog,
+    ): PhraseDraft {
+        val reading = PhraseInterpreter.read(
+            case.correction,
+            language,
+            catalog.style,
+            catalog.moneyDecimals,
+            catalog.catalog,
+        )
+        val next = initial.followedBy(
+            case.correction,
+            reading,
+            language,
+            catalog.style,
+            catalog.moneyDecimals,
+            catalog.catalog,
+        )
+        return when (next) {
+            is CardFollowUp.Joined -> next.draft
+
+            is CardFollowUp.Replaced -> next.draft
+
+            is CardFollowUp.KnownProduct,
+            is CardFollowUp.OtherOperation,
+            CardFollowUp.NotUnderstood,
+            -> initial
+        }
+    }
+
     private companion object {
         const val FIXTURE = "src/test/resources/phrase/fixture.json"
         const val GUIDE_DIR = "src/test/resources/phrase/guide"
@@ -97,7 +146,10 @@ class PhraseCorrectionCorpusTest {
     }
 }
 
-/** Un caso de corrección de la guía. [expected] es `null` si no debe aplicarse. */
+/**
+ * Un caso de corrección de la guía. [expected] es `null` si no debe aplicarse. Con [screen], se mide
+ * como la pantalla entera: ver la prueba.
+ */
 private data class Correction(
     val id: String,
     val initialText: String,
@@ -106,6 +158,7 @@ private data class Correction(
     val tags: List<String>,
     val expected: Expectation?,
     val extra: Map<String, Json>,
+    val screen: Boolean,
 ) {
     val isOdd: Boolean get() = (id.takeLastWhile(Char::isDigit).toIntOrNull() ?: 0) % 2 == 1
 
@@ -120,6 +173,7 @@ private data class Correction(
                 tags = obj["tags"]?.arrOrNull()?.mapNotNull { it.strOrNull() }.orEmpty(),
                 expected = obj["expect"]?.objOrNull()?.takeIf { applies }?.let(Expectation::of),
                 extra = obj["extra"]?.objOrNull().orEmpty(),
+                screen = (obj["screen"] as? Json.Bool)?.value ?: false,
             )
         }
     }

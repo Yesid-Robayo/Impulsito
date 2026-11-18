@@ -71,6 +71,7 @@ fun PhraseRoute(key: AppNavKey.Phrase, navigator: AppNavigator) {
             PhraseViewModel(
                 read = useCases.read,
                 correct = useCases.correct,
+                follow = useCases.follow,
                 register = useCases.register,
                 savedState = savedState,
                 numbers = numbers,
@@ -185,6 +186,10 @@ fun PhraseRoute(key: AppNavKey.Phrase, navigator: AppNavigator) {
                         PhraseAction.MicHelp -> navigator.open(MIC_HELP)
 
                         PhraseAction.OpenMicSettings -> context.openMicrophoneSettings()
+
+                        // El producto se abre encima: al volver, la tarjeta sigue como estaba.
+                        is PhraseAction.OpenProduct ->
+                            navigator.open(AppNavKey.ProductEdit(productId = action.productId))
 
                         else -> viewModel.onAction(action)
                     }

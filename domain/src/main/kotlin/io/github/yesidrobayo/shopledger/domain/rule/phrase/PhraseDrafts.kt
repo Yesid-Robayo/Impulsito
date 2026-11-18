@@ -31,8 +31,13 @@ import io.github.yesidrobayo.shopledger.domain.model.sumOrNull
  * - Lo que se dijo de un producto nuevo (su uso, su categoría) viaja con él. En una compra no
  *   viaja que sea un servicio: lo que se compra lleva stock, y un servicio no lo lleva.
  */
-fun PhraseReading.toDraft(): PhraseDraft? {
-    val intent = intent ?: return null
+fun PhraseReading.toDraft(): PhraseDraft? = intent?.let(::draftAs)
+
+/**
+ * La tarjeta que propone esta lectura como [intent], aunque la frase dijera otra o ninguna: así lo
+ * dicho sin verbo con una tarjeta abierta se lee como de su operación. Ver [toDraft].
+ */
+internal fun PhraseReading.draftAs(intent: PhraseIntent): PhraseDraft {
     val unreadable = PhraseIssue.UNREADABLE_QUANTITY in issues
     val fallback = if (!unreadable && assumesOne(intent, reason)) ONE else null
     val creatable = intent in CREATABLE_LINES

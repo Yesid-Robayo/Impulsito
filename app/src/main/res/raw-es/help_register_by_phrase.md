@@ -28,7 +28,12 @@ Se pueden nombrar varios productos en una frase, con números en cifras o en pal
 - Si un producto se parece a varios, la tarjeta los muestra para elegir. Si no existe, ofrece crearlo, o **Elegir otro**.
 - Tocar una línea abre **Corregir**: se cambia la cantidad o el precio, **Cambiar producto** o **Quitar de la tarjeta**.
 - También se corrige con una frase corta, sin repetir todo: «no, eran 3», «la harina era de maíz», «la harina es insumo», «quita las gaseosas», «agrega 2 huevos», «en efectivo», «no, fue una compra».
-- Con la tarjeta a la vista, lo dicho cambia solo lo que nombra, y lo demás queda. Una frase con su verbo, como «vendí 2 panes», arma otra tarjeta.
+- Con la tarjeta a la vista, lo dicho se suma o corrige, y nunca borra lo que ya está. Lo dicho sin verbo, como «un kilo de harina» o «y 2 de azúcar a 3 mil», se suma a la operación de la tarjeta. Una frase de la misma operación, como «tengo un kilo de harina» sobre un conteo, también suma sus productos.
+- Un producto que ya está en la tarjeta se corrige con la cantidad nueva. En una venta o una compra se suma con «y» u «otros»: «y otros 2 panes». En un conteo, lo dicho es lo que hay.
+- Si se dice otra operación, como «vendí 2 panes» con una compra a la vista, la tarjeta pregunta si empezar otra: **Empezar otra** descarta la tarjeta actual, y **Seguir con esta** descarta la frase nueva. «no, fue una venta» cambia la operación sin preguntar.
+- Arriba de la tarjeta, **Operación** pasa de venta a compra, conteo o producción con un toque, y las líneas quedan.
+- Si se dice el tipo o la categoría de un producto que ya existe, como «la harina es un insumo», la tarjeta no cambia: eso se cambia en el producto, con **Abrir producto**.
+- Una línea solo sale con «quita…» o con **Quitar de la tarjeta**.
 - **Empezar de nuevo** borra la tarjeta.
 
 Lo que falta se marca en su lugar, y **Registrar** no guarda hasta completarlo. Lo registrado queda igual que si se hubiera hecho en su pantalla, y se anula como siempre.

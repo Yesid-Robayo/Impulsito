@@ -58,6 +58,24 @@ sealed interface StockAdjustmentResult {
     data class StorageFailed(val failure: StorageFailure) : StockAdjustmentResult
 }
 
+/**
+ * Cómo terminan varios ajustes pedidos juntos, en una sola transacción. Salvo [Adjusted], no se
+ * escribió nada: si una línea se rechaza, ninguna queda.
+ */
+sealed interface StockAdjustmentsResult {
+    /** Quedaron en el libro como las filas [movementIds], en el orden pedido. */
+    data class Adjusted(val movementIds: List<Long>) : StockAdjustmentsResult
+
+    /** Todo lo contado es lo que dice el libro: no hay nada que corregir. */
+    data object NoDifference : StockAdjustmentsResult
+
+    /** La línea [index] se rechazó por [result], y nada se escribió. */
+    data class Rejected(val index: Int, val result: StockAdjustmentResult) :
+        StockAdjustmentsResult
+
+    data class StorageFailed(val failure: StorageFailure) : StockAdjustmentsResult
+}
+
 /** Cómo termina anular un ajuste o un inventario inicial. Salvo [Voided], no se escribió nada. */
 sealed interface VoidAdjustmentResult {
     /** El compensatorio quedó en el libro como la fila [movementId]. */

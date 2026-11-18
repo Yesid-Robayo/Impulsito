@@ -64,14 +64,44 @@ sealed interface PhraseStage {
      *
      * @param registering se está registrando: el botón trabaja y no atiende otro toque.
      * @param failure por qué no se registró el último intento, o `null`.
+     * @param notice lo que la última frase dejó por decidir o por saber sobre la tarjeta, o `null`.
      */
     @Immutable
     data class Card(
         val card: PhraseCard,
         val registering: Boolean = false,
         val failure: PhraseFailure? = null,
+        val notice: CardNotice? = null,
     ) : PhraseStage
 }
+
+/**
+ * Lo que la última frase dejó sobre la tarjeta sin cambiarla. La tarjeta sigue entera debajo:
+ * ninguna frase la borra en silencio.
+ */
+sealed interface CardNotice {
+    /**
+     * La frase es otra operación, [intent] con su [reason] si es un ajuste: se pregunta si empezar
+     * otra tarjeta, que descarta esta, o seguir con esta, que descarta la frase.
+     */
+    @Immutable
+    data class OtherOperation(val intent: PhraseIntent, val reason: StockAdjustmentReason?) :
+        CardNotice
+
+    /**
+     * La frase dice el tipo o la categoría de [name], un producto que ya existe: eso se cambia en
+     * el producto, que se abre con su botón.
+     */
+    @Immutable
+    data class KnownProduct(val productId: Long, val name: String) : CardNotice
+}
+
+/**
+ * Una operación que se elige a mano arriba de la tarjeta: [intent], con su [reason] si es un
+ * ajuste. Solo las que tienen líneas, que se conservan al cambiar.
+ */
+@Immutable
+data class CardOperation(val intent: PhraseIntent, val reason: StockAdjustmentReason? = null)
 
 /** Por qué no se registró la tarjeta. Nada quedó a medias en ningún caso. */
 sealed interface PhraseFailure {
@@ -108,6 +138,8 @@ sealed interface PhraseFailure {
  * @param sensitive las cifras son costos: van ocultas con el modo discreto.
  * @param gaps lo que falta para poder registrar.
  * @param notices lo que la frase dejó dudoso y conviene revisar.
+ * @param operations las operaciones que se eligen con un toque arriba de la tarjeta, vacía si esta
+ *   operación no se cambia a mano. La elegida es la de [intent] y [reason].
  */
 @Immutable
 data class PhraseCard(
@@ -127,6 +159,7 @@ data class PhraseCard(
     val sensitive: Boolean = false,
     val gaps: Set<DraftGap> = emptySet(),
     val notices: List<PhraseIssue> = emptyList(),
+    val operations: List<CardOperation> = emptyList(),
 )
 
 /**

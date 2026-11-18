@@ -40,7 +40,8 @@ import kotlinx.coroutines.flow.first
  * que se leyó, que la tarjeta usa para nombrar lo leído y para que una corrección busque en el
  * mismo; [draft], la tarjeta que propone, o `null` si no se entendió ninguna operación;
  * [prices], los precios con que la tarjeta muestra sus cifras; y [statesOperation], si la frase
- * dice con un verbo qué operación es: con una tarjeta a la vista, solo una frase así la reemplaza.
+ * dice con un verbo qué operación es: con una tarjeta a la vista, una frase sin verbo nunca es otra
+ * operación y se suma a la tarjeta.
  */
 data class PhraseReadResult(
     val reading: PhraseReading,

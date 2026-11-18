@@ -28,7 +28,12 @@ Na primeira vez, o {app} explica para que usa o microfone e o Android pede a per
 - Se um produto parece com vários, o cartão mostra as opções para escolher. Se não existe, oferece criá-lo, ou **Escolher outro**.
 - Tocar em uma linha abre **Corrigir**: muda a quantidade ou o preço, **Trocar produto** ou **Remover do cartão**.
 - Também se corrige com uma frase curta, sem repetir tudo: «não, eram 3», «a farinha era de milho», «a farinha é insumo», «tira os refrigerantes», «mais 2 ovos», «em dinheiro», «não, foi uma compra».
-- Com o cartão aberto, o que se diz muda só o que nomeia, e o resto fica. Uma frase com o verbo, como «vendi 2 pães», monta outro cartão.
+- Com o cartão aberto, o que se diz soma ou corrige, e nunca apaga o que já está. O que se diz sem verbo, como «um quilo de farinha» ou «e 2 de açúcar a 3 mil», soma à operação do cartão. Uma frase da mesma operação, como «tenho um quilo de farinha» sobre uma contagem, também soma os produtos.
+- Um produto que já está no cartão é corrigido com a quantidade nova. Em uma venda ou uma compra, soma com «e» ou «outros»: «e outros 2 pães». Em uma contagem, o que se diz é o que há.
+- Se for dita outra operação, como «vendi 2 pães» com uma compra aberta, o cartão pergunta se começa outro: **Começar outro** descarta o cartão atual, e **Continuar com este** descarta a frase nova. «não, foi uma venda» muda a operação sem perguntar.
+- No alto do cartão, **Operação** passa de venda para compra, contagem ou produção com um toque, e as linhas ficam.
+- Se for dito o tipo ou a categoria de um produto que já existe, como «a farinha é insumo», o cartão não muda: isso se altera no produto, com **Abrir produto**.
+- Uma linha só sai com «tira…» ou com **Remover do cartão**.
 - **Começar de novo** apaga o cartão.
 
 O que falta fica marcado no lugar, e **Registrar** não salva até completar. O que se registra fica igual a se tivesse sido feito na sua tela, e se anula como sempre.

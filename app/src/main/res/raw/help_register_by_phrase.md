@@ -28,7 +28,12 @@ You can name several products in one sentence, with numbers in digits or in word
 - If a product matches several, the card shows them so you can choose. If it does not exist, the card offers to create it, or **Choose another**.
 - Tap a line to open **Edit**: change the quantity or the price, **Change product** or **Remove from the card**.
 - You can also correct it with a short sentence, without repeating everything: "no, it was 3", "the flour was corn", "the flour is a supply", "remove the sodas", "add 2 eggs", "cash", "no, it was a purchase".
-- While the card is open, what you say changes only what it names, and the rest stays. A sentence with its verb, like "sold 2 bread rolls", starts another card.
+- While the card is open, what you say adds to it or corrects it, and never clears what is already there. What you say without a verb, like "a kilo of flour" or "and 2 of sugar at 3 thousand", adds to the card's operation. A sentence of the same operation, like "I have a kilo of flour" on a count, also adds its products.
+- A product already on the card is corrected with the new quantity. In a sale or a purchase, "and" or "another" adds to it: "and another 2 bread rolls". In a count, what you say is what there is.
+- If you say another operation, like "sold 2 bread rolls" with a purchase open, the card asks whether to start another one: **Start another** discards the current card, and **Keep this one** discards the new sentence. "no, it was a sale" changes the operation without asking.
+- At the top of the card, **Transaction** switches between sale, purchase, count and production with one tap, and the lines stay.
+- If you say the type or category of a product that already exists, like "the flour is a supply", the card does not change: that is changed in the product, with **Open product**.
+- A line only leaves with "remove…" or with **Remove from the card**.
 - **Start over** clears the card.
 
 Anything missing is marked in place, and **Register** saves nothing until it is complete. What you record is the same as if you had done it on its screen, and you void it as usual.

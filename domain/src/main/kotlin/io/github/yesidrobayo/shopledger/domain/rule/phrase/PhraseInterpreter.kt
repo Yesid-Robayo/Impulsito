@@ -51,8 +51,9 @@ object PhraseInterpreter {
 
     /**
      * Si la frase dice con un verbo qué operación es: "vendí 2 panes", "compré harina", "el pan
-     * vale 600". Con una tarjeta a la vista, solo una frase así la reemplaza: "la harina es
-     * insumo" o "2 panes" no dicen qué pasó, y no borran lo ya revisado.
+     * vale 600". Con una tarjeta a la vista, solo una frase así puede ser otra operación: "la
+     * harina es insumo" o "2 panes" no dicen qué pasó, y se suman a la tarjeta o la dejan como
+     * estaba.
      */
     fun statesOperation(text: String, language: PhraseLanguage): Boolean {
         val lexicon = PhraseLexicons.of(language)

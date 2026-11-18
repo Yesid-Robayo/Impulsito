@@ -3053,5 +3053,818 @@
    "unit": null,
    "issues": []
   }
+ },
+ {
+  "id": "es-c5054",
+  "initial": "tengo 1 kilo de azúcar",
+  "initial_expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "COUNT_CORRECTION",
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "1",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "un kilo de arroz",
+  "tags": [
+   "correction",
+   "joins",
+   "add",
+   "no_verb",
+   "stock"
+  ],
+  "screen": true,
+  "applies": true,
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "COUNT_CORRECTION",
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "1",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "rice",
+     "qty": "1",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5055",
+  "initial": "tengo 1 kilo de azúcar y 1 kilo de arroz",
+  "initial_expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "COUNT_CORRECTION",
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "1",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "rice",
+     "qty": "1",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "tengo 2 kilos de papa",
+  "tags": [
+   "correction",
+   "joins",
+   "add",
+   "same_verb",
+   "stock"
+  ],
+  "screen": true,
+  "applies": true,
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "COUNT_CORRECTION",
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "1",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "rice",
+     "qty": "1",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "potato",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5056",
+  "initial": "compré 2 kilos de azúcar",
+  "initial_expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "y 1 de arroz a 3000",
+  "tags": [
+   "correction",
+   "joins",
+   "add",
+   "no_verb",
+   "purchase"
+  ],
+  "screen": true,
+  "applies": true,
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "rice",
+     "qty": "1",
+     "unit": null,
+     "unit_price": "3000",
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5057",
+  "initial": "vendí 2 panes",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "y otros 2 panes",
+  "tags": [
+   "correction",
+   "joins",
+   "sum",
+   "no_verb",
+   "sale"
+  ],
+  "screen": true,
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "4",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5058",
+  "initial": "vendí 2 panes",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "vendí 3 empanadas",
+  "tags": [
+   "correction",
+   "joins",
+   "add",
+   "same_verb",
+   "sale"
+  ],
+  "screen": true,
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "empanada",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5059",
+  "initial": "tengo 2 kilos de azúcar",
+  "initial_expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "COUNT_CORRECTION",
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "tengo 5 kilos de azúcar",
+  "tags": [
+   "correction",
+   "joins",
+   "repeated",
+   "same_verb",
+   "stock"
+  ],
+  "screen": true,
+  "applies": true,
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "COUNT_CORRECTION",
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "5",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5060",
+  "initial": "tengo 1 kilo de arroz",
+  "initial_expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "COUNT_CORRECTION",
+   "lines": [
+    {
+     "product": "rice",
+     "qty": "1",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "el arroz es un insumo con categoría materia prima",
+  "tags": [
+   "correction",
+   "joins",
+   "known_product",
+   "stock"
+  ],
+  "screen": true,
+  "applies": false,
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "COUNT_CORRECTION",
+   "lines": [
+    {
+     "product": "rice",
+     "qty": "1",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5061",
+  "initial": "compré 2 kilos de azúcar",
+  "initial_expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "vendí 2 panes",
+  "tags": [
+   "correction",
+   "joins",
+   "other_operation",
+   "purchase"
+  ],
+  "screen": true,
+  "applies": false,
+  "expect": {
+   "intent": "PURCHASE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5062",
+  "initial": "vendí 2 panes",
+  "initial_expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "vendí 3 empanadas en efectivo",
+  "tags": [
+   "correction",
+   "joins",
+   "add",
+   "same_verb",
+   "payment",
+   "sale"
+  ],
+  "screen": true,
+  "applies": true,
+  "expect": {
+   "intent": "SALE",
+   "reason": null,
+   "lines": [
+    {
+     "product": "bread",
+     "qty": "2",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "empanada",
+     "qty": "3",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": "cash",
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5063",
+  "initial": "hice 10 empanadas",
+  "initial_expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "hice 5 panes",
+  "tags": [
+   "correction",
+   "joins",
+   "add",
+   "same_verb",
+   "production"
+  ],
+  "screen": true,
+  "applies": true,
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "bread",
+     "qty": "5",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5064",
+  "initial": "hice 10 empanadas",
+  "initial_expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "10",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "y otras 5 empanadas",
+  "tags": [
+   "correction",
+   "joins",
+   "sum",
+   "no_verb",
+   "production"
+  ],
+  "screen": true,
+  "applies": true,
+  "expect": {
+   "intent": "PRODUCTION",
+   "reason": null,
+   "lines": [
+    {
+     "product": "empanada",
+     "qty": "15",
+     "unit": null,
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
+ },
+ {
+  "id": "es-c5065",
+  "initial": "tengo 1 kilo de azúcar",
+  "initial_expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "COUNT_CORRECTION",
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "1",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  },
+  "correction": "1 kilo de arroz y 2 kilos de papa",
+  "tags": [
+   "correction",
+   "joins",
+   "add",
+   "no_verb",
+   "stock"
+  ],
+  "screen": true,
+  "applies": true,
+  "expect": {
+   "intent": "STOCK_ADJUSTMENT",
+   "reason": "COUNT_CORRECTION",
+   "lines": [
+    {
+     "product": "sugar",
+     "qty": "1",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "rice",
+     "qty": "1",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    },
+    {
+     "product": "potato",
+     "qty": "2",
+     "unit": "kilogram",
+     "unit_price": null,
+     "line_total": null
+    }
+   ],
+   "payment": null,
+   "party": null,
+   "category": null,
+   "total": null,
+   "credit": false,
+   "target": null,
+   "target_qty": null,
+   "price": null,
+   "cost": null,
+   "unit": null,
+   "issues": []
+  }
  }
 ]

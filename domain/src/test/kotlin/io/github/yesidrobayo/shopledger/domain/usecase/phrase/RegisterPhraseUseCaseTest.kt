@@ -53,6 +53,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.product
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CorrectCostResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentResult
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentsResult
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -661,11 +662,47 @@ class RegisterPhraseUseCaseTest {
     }
 
     @Test
-    fun `an adjustment goes one product at a time and with a unit that converts`() = runTest {
-        assertEquals(
-            rejected(PhraseRejection.OneProductAtATime),
-            register(single(PhraseIntent.STOCK_ADJUSTMENT, line(BREAD), line(SODA))),
+    fun `a count of several products goes in one request with one line each`() = runTest {
+        val count = PhraseDraft(
+            intent = PhraseIntent.STOCK_ADJUSTMENT,
+            reason = StockAdjustmentReason.COUNT_CORRECTION,
+            lines = listOf(line(BREAD, 40_000), line(CHEESE, 500_000, unitId = GRAM)),
         )
+        assertEquals(
+            RegisterPhraseResult.Registered(PhraseIntent.STOCK_ADJUSTMENT, 15L),
+            register(count),
+        )
+        assertEquals(
+            listOf(
+                StockAdjustmentRequest.Count(BREAD, QuantityMilli(40_000)),
+                StockAdjustmentRequest.Count(CHEESE, QuantityMilli(500)),
+            ),
+            writers.requests,
+        )
+    }
+
+    @Test
+    fun `an adjustment of several products goes out with its reason`() = runTest {
+        register(single(PhraseIntent.STOCK_ADJUSTMENT, line(BREAD, 2_000), line(SODA, 1_000)))
+        assertEquals(
+            listOf(
+                StockAdjustmentRequest.Change(
+                    BREAD,
+                    StockAdjustmentReason.DAMAGED,
+                    QuantityMilli(2_000),
+                ),
+                StockAdjustmentRequest.Change(
+                    SODA,
+                    StockAdjustmentReason.DAMAGED,
+                    QuantityMilli(1_000),
+                ),
+            ),
+            writers.requests,
+        )
+    }
+
+    @Test
+    fun `an adjustment needs products that exist and units that convert`() = runTest {
         assertEquals(
             rejected(PhraseRejection.ProductUnavailable(ARCHIVED)),
             register(single(PhraseIntent.STOCK_ADJUSTMENT, line(ARCHIVED))),
@@ -674,16 +711,30 @@ class RegisterPhraseUseCaseTest {
             rejected(PhraseRejection.UnitNotConvertible(0)),
             register(single(PhraseIntent.STOCK_ADJUSTMENT, line(BREAD, unitId = POUND))),
         )
+        assertEquals(
+            rejected(PhraseRejection.UnitNotConvertible(1)),
+            register(
+                single(PhraseIntent.STOCK_ADJUSTMENT, line(SODA), line(BREAD, unitId = POUND)),
+            ),
+        )
+        // Nada se pidió: lo que no se puede llevar al libro se rechaza antes de escribir.
+        assertEquals(emptyList<Any>(), writers.requests)
     }
 
     @Test
     fun `an adjustment refusal and a storage failure come back as they are`() = runTest {
-        writers.adjustment = StockAdjustmentResult.NoDifference
+        writers.adjustments = StockAdjustmentsResult.NoDifference
         assertEquals(
             rejected(PhraseRejection.Adjustment(StockAdjustmentResult.NoDifference)),
             register(single(PhraseIntent.STOCK_ADJUSTMENT, line(BREAD))),
         )
-        writers.adjustment = StockAdjustmentResult.StorageFailed(StorageFailure.DISK_FULL)
+        writers.adjustments =
+            StockAdjustmentsResult.Rejected(1, StockAdjustmentResult.ProductArchived)
+        assertEquals(
+            rejected(PhraseRejection.Adjustment(StockAdjustmentResult.ProductArchived)),
+            register(single(PhraseIntent.STOCK_ADJUSTMENT, line(BREAD), line(SODA))),
+        )
+        writers.adjustments = StockAdjustmentsResult.StorageFailed(StorageFailure.DISK_FULL)
         assertEquals(
             RegisterPhraseResult.StorageFailed(StorageFailure.DISK_FULL),
             register(single(PhraseIntent.STOCK_ADJUSTMENT, line(BREAD))),

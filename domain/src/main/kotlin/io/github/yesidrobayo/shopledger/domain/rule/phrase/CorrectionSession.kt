@@ -3,6 +3,7 @@ package io.github.yesidrobayo.shopledger.domain.rule.phrase
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.Scale
+import io.github.yesidrobayo.shopledger.domain.model.phrase.CardFollowUp
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftTarget
 import io.github.yesidrobayo.shopledger.domain.model.phrase.NewProductTraits
@@ -10,7 +11,9 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.NumberStyle
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseCatalog
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIntent
+import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseReading
 import io.github.yesidrobayo.shopledger.domain.model.phrase.ProductMatch
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
 import io.github.yesidrobayo.shopledger.domain.rule.roundDiv
 
 /**
@@ -20,9 +23,9 @@ import io.github.yesidrobayo.shopledger.domain.rule.roundDiv
 internal class CorrectionSession(
     private val lexicon: PhraseLexicon,
     private val words: CorrectionVocabulary,
-    style: NumberStyle,
+    private val style: NumberStyle,
     private val moneyDecimals: Int,
-    catalog: PhraseCatalog,
+    private val catalog: PhraseCatalog,
 ) {
     private val numbers = NumberReader(lexicon, style, cents = moneyDecimals > 0)
     private val units = UnitIndex(catalog.units, lexicon)
@@ -42,6 +45,103 @@ internal class CorrectionSession(
         val body = afterLeads(tokens)
         return correctBody(draft, body, led = body.size < tokens.size)
     }
+
+    /**
+     * Lo que hace con [draft] la frase [text], que no se aplicó como corrección, leída entera en
+     * [next]. Ver `followedBy`.
+     */
+    fun follow(draft: PhraseDraft, text: String, next: PhraseReading): CardFollowUp {
+        val tokens = PhraseTokenizer.tokenize(text).let { it.without(lexicon.fillers.findAll(it)) }
+        val body = afterLeads(tokens)
+        // "y vendí otros 2 panes": "otros" solo dice que se suma, y no es parte del producto.
+        val others = words.others.findAll(body)
+        val read = if (others.isEmpty()) {
+            next
+        } else {
+            PhraseSession(lexicon, style, moneyDecimals, catalog)
+                .read(body.without(others).joinToString(" ") { it.raw })
+        }
+        val stated = lexicon.verbs.findAll(body).any { it.value.intent != null }
+        if (!stated) return unstated(draft, body, read)
+        val said = read.toDraft() ?: return CardFollowUp.NotUnderstood
+        return when {
+            sameOperation(draft, said) ->
+                CardFollowUp.Joined(draft.joinedWith(said, sums(draft, body), ::unitOfLine))
+
+            body.size < tokens.size -> CardFollowUp.Replaced(said)
+
+            else -> CardFollowUp.OtherOperation(said)
+        }
+    }
+
+    /**
+     * Una frase sin verbo nunca es otra operación. Si dice el tipo o la categoría de un producto
+     * que ya existe, es de ese producto. Si no, lo que nombra se lee como de la operación de la
+     * tarjeta y se suma a ella; la persona leída solo sirve si la lectura era de esa operación,
+     * porque un cliente no es un proveedor.
+     */
+    private fun unstated(draft: PhraseDraft, body: List<Token>, next: PhraseReading): CardFollowUp {
+        val scan = traitReader.scan(body)
+        if (scan.traits.isNotEmpty()) return known(draft, scan.rest)
+        if (next.lines.isEmpty() || shapeOf(draft.intent) != Shape.LINES) {
+            return CardFollowUp.NotUnderstood
+        }
+        val inherited = next.copy(
+            reason = draft.reason,
+            party = next.party.takeIf { next.intent == draft.intent },
+        ).draftAs(draft.intent)
+        return CardFollowUp.Joined(draft.joinedWith(inherited, sums(draft, body), ::unitOfLine))
+    }
+
+    /**
+     * El producto del catálogo del que se dice el tipo o la categoría: el que se nombra antes del
+     * número o de "es", o sin nombre, el último de la tarjeta. Entre varios que se llaman parecido,
+     * el que está en la tarjeta; si sigue habiendo varios, o ninguno, no se entendió.
+     */
+    private fun known(draft: PhraseDraft, rest: List<Token>): CardFollowUp {
+        val ref = rest.filterNot { it.isSeparator }
+        val number = ref.indices.firstOrNull { numbers.startsAt(ref, it) } ?: ref.size
+        val copula = words.copulas.findAll(ref).firstOrNull()?.start ?: ref.size
+        val name = ref.subList(0, minOf(number, copula))
+        val onCard = (draft.lines.map { it.product } + draft.target)
+            .filterIsInstance<DraftTarget.Existing>()
+            .map { it.productId }
+        val ids = if (named(name)) idsOf(matchOf(name, ANY_PRODUCT)) else onCard.takeLast(1)
+        val id = ids.filter { it in onCard }.ifEmpty { ids }.singleOrNull()
+            ?: return CardFollowUp.NotUnderstood
+        return CardFollowUp.KnownProduct(id)
+    }
+
+    /**
+     * Si [said] es la misma operación que la tarjeta y se puede sumar a ella: una de las que tienen
+     * líneas, con el mismo motivo si es un ajuste y, en una receta, del mismo producto.
+     */
+    private fun sameOperation(card: PhraseDraft, said: PhraseDraft): Boolean =
+        card.intent == said.intent && card.reason == said.reason &&
+            shapeOf(card.intent) == Shape.LINES &&
+            (said.target == null || sameProduct(card.target, said.target))
+
+    /**
+     * Si lo dicho de un producto que ya está en la tarjeta se suma. En un conteo o en una receta,
+     * lo dicho es lo que hay o lo que lleva, y corrige, salvo que diga "otros". En las demás, se
+     * suma si se agrega con "y", "también", "agrega" u "otros"; si no, la frase repite lo dicho y
+     * corrige.
+     */
+    private fun sums(draft: PhraseDraft, body: List<Token>): Boolean {
+        val others = words.others.findAll(body).isNotEmpty()
+        val adds = words.additions.findAll(body).isNotEmpty() ||
+            lexicon.separators.matchAt(body, 0) != null
+        return others || (adds && !restates(draft))
+    }
+
+    private fun idsOf(match: ProductMatch): List<Long> = when (match) {
+        is ProductMatch.Found -> listOf(match.id)
+        is ProductMatch.Choose -> match.ids
+        is ProductMatch.Unknown -> emptyList()
+    }
+
+    /** La unidad en que va la línea: la dicha o, si no se dijo, la base de su producto. */
+    private fun unitOfLine(line: DraftLine): Long? = unitOf(line.product, line.unitId)
 
     /**
      * Lo que dice [body], ya sin "no" ni "perdón" delante; [led] dice si lo traía. Primero lo que
@@ -64,7 +164,10 @@ internal class CorrectionSession(
         if (removal != null) return removed(draft, body.subList(removal.end, body.size))
         val addition = words.additions.matchAt(body, 0)
         val separator = if (addition == null) lexicon.separators.matchAt(body, 0) else null
-        val said = body.subList(addition?.end ?: separator?.end ?: 0, body.size)
+        val opened = body.subList(addition?.end ?: separator?.end ?: 0, body.size)
+        // "y otros 2 panes", "2 panes más": lo nombrado se suma al que ya estaba.
+        val others = words.others.findAll(opened)
+        val said = opened.without(others)
         val shape = shapeOf(draft.intent)
         // Un precio o un costo dicho con su verbo ("vale 600") corrige la tarjeta de un precio o
         // de un costo; en las demás, esas palabras se quedan, porque "ahora a 600" es un precio.
@@ -83,6 +186,8 @@ internal class CorrectionSession(
         // "no, compré": la operación era otra, y lo demás queda. Solo entre venta y compra; en
         // otra operación el verbo se salta, como siempre.
         val switchTo = main.mapNotNull { SWITCHING_VERBS[it.value] }.distinct().singleOrNull()
+        // Sin "no" delante, el verbo de otra operación es otra tarjeta, y se pregunta antes.
+        if (!led && switchTo != null && switchTo != draft.intent) return null
         val switched =
             switchTo?.takeIf { draft.intent in SWITCHABLE }?.let { switchedTo(draft, it) }
         // "no, se vencieron": el motivo de un ajuste era otro.
@@ -103,10 +208,11 @@ internal class CorrectionSession(
         if (shaper.shape(content.without(words.copulas.findAll(content))).words.isEmpty()) {
             return base.takeIf { facts.any || switched != null || reason != null }
         }
+        val sums = others.isNotEmpty() || !restates(base)
         return when {
-            addition != null -> added(base, content, loose = false)
-            separator != null -> added(base, content, loose = true)
-            else -> changed(base, content.filterNot(Token::isSeparator), shape)
+            addition != null -> added(base, content, loose = false, sums = sums)
+            separator != null || others.isNotEmpty() -> added(base, content, loose = true, sums)
+            else -> changed(base, content.filterNot(Token::isSeparator), shape, led)
         }
     }
 
@@ -194,14 +300,15 @@ internal class CorrectionSession(
     }
 
     /**
-     * La misma tarjeta como otra operación: una venta que era una compra, o al revés. Las
-     * líneas, sus cantidades y precios, el pago y el total quedan; la persona no, porque un
-     * cliente no es un proveedor. [intent] es siempre una de las dos; desde otra operación no se
-     * cambia, y la frase se lee como nueva.
+     * La misma tarjeta como otra operación: una venta que era una compra, o un conteo que era una
+     * venta. Las líneas, sus cantidades y precios, el pago y el total quedan; la persona no,
+     * porque un cliente no es un proveedor. [intent] es siempre una venta o una compra, y solo se
+     * cambia desde una operación que también se elige a mano en la tarjeta; desde otra, la frase
+     * se lee como nueva.
      */
     private fun switchedTo(draft: PhraseDraft, intent: PhraseIntent): PhraseDraft? = when {
         intent == draft.intent -> draft
-        draft.intent in SWITCHABLE -> draft.copy(intent = intent, partyId = null)
+        draft.intent in CHOSEN_BY_HAND -> draft.asOperation(intent, reason = null)
         else -> null
     }
 
@@ -275,7 +382,12 @@ internal class CorrectionSession(
      * Las líneas nuevas. Después de "y" o "también" cada una debe nombrar un producto del catálogo
      * o decir cuántos: así "y la cuenta" no se vuelve un producto nuevo.
      */
-    private fun added(draft: PhraseDraft, tokens: List<Token>, loose: Boolean): PhraseDraft? {
+    private fun added(
+        draft: PhraseDraft,
+        tokens: List<Token>,
+        loose: Boolean,
+        sums: Boolean,
+    ): PhraseDraft? {
         if (shapeOf(draft.intent) != Shape.LINES) return null
         val rule = ruleOf(draft.intent)
         val lines = splitter.split(tokens).map { tokensOfLine ->
@@ -295,18 +407,27 @@ internal class CorrectionSession(
                 candidates = (match as? ProductMatch.Choose)?.ids.orEmpty(),
             )
         }
-        return draft.copy(lines = draft.lines + lines)
+        return draft.copy(lines = joinedLines(draft.lines, lines, sums, ::unitOfLine))
     }
 
     // Lo que cambia en una línea, en el monto o en el producto nuevo.
 
-    private fun changed(draft: PhraseDraft, tokens: List<Token>, shape: Shape): PhraseDraft? {
+    private fun changed(
+        draft: PhraseDraft,
+        tokens: List<Token>,
+        shape: Shape,
+        led: Boolean,
+    ): PhraseDraft? {
         val copula = words.copulas.findAll(tokens).firstOrNull()
         val ref = if (copula == null) emptyList() else tokens.subList(0, copula.start)
         val spec = lineReader.read(
             priceFirst(if (copula == null) tokens else tokens.subList(copula.end, tokens.size)),
         )
         if (spec.unreadable) return null
+        // Sin "no" ni "era", un producto del catálogo que no está en la tarjeta, con su cantidad o
+        // su precio, es una línea más: "un kilo de harina" no cambia el queso por harina.
+        val adds = !led && copula == null && shape == Shape.LINES && addsLine(draft.lines, spec)
+        if (adds) return added(draft, tokens, loose = false, sums = false)
         return when (shape) {
             Shape.LINES -> lineChange(draft, ref, spec, said(spec), keepsPrice = false)
             Shape.SINGLE_LINE -> lineChange(draft, ref, spec, price(spec, draft), keepsPrice = true)
@@ -380,6 +501,20 @@ internal class CorrectionSession(
             for (index in aim.indices) lines[index] = holed(lines[index], aim, value)
         }
         return draft.copy(lines = lines)
+    }
+
+    /**
+     * Si [spec] nombra, con algo que registrar, un producto del catálogo que ninguna línea tiene ni
+     * espera elegir: entonces es una línea nueva y no un cambio de la última.
+     */
+    private fun addsLine(lines: List<DraftLine>, spec: LineDraft): Boolean {
+        val name = spec.span.filterNot { it.norm in lexicon.pronounHeads }
+        if (!named(name) || !said(spec).any) return false
+        val ids = idsOf(matchOf(name, ANY_PRODUCT))
+        val waiting = lines.any { line ->
+            line.product == null && line.candidates.any { it in ids }
+        }
+        return ids.isNotEmpty() && !waiting && referred(lines, name, toHoles = false).isEmpty()
     }
 
     /**
@@ -724,11 +859,29 @@ internal class CorrectionSession(
         /** Las operaciones que una corrección puede cambiar entre sí: venta y compra. */
         val SWITCHABLE = setOf(PhraseIntent.SALE, PhraseIntent.PURCHASE)
 
+        /**
+         * Las operaciones con líneas que también se eligen a mano en la tarjeta, y desde las que
+         * "no, fue una venta" cambia la operación sin perder las líneas.
+         */
+        val CHOSEN_BY_HAND = setOf(
+            PhraseIntent.SALE,
+            PhraseIntent.PURCHASE,
+            PhraseIntent.PRODUCTION,
+            PhraseIntent.STOCK_ADJUSTMENT,
+        )
+
         /** Los verbos que dicen sin duda una de esas operaciones, "vendí" y "compré", y cuál. */
         val SWITCHING_VERBS = mapOf(
             VerbKind.SALE to PhraseIntent.SALE,
             VerbKind.PURCHASE to PhraseIntent.PURCHASE,
         )
+
+        /**
+         * Si lo dicho de un producto que ya está en la tarjeta la corrige en vez de sumarse: en un
+         * conteo, lo dicho es lo que hay; en una receta, lo que lleva.
+         */
+        fun restates(draft: PhraseDraft): Boolean = draft.intent == PhraseIntent.RECIPE ||
+            draft.reason == StockAdjustmentReason.COUNT_CORRECTION
 
         fun shapeOf(intent: PhraseIntent): Shape = when (intent) {
             PhraseIntent.SALE,

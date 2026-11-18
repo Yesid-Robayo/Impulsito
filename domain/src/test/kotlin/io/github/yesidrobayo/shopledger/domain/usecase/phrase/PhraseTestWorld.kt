@@ -40,7 +40,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.measureUnit
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CorrectCostResult
-import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentResult
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentsResult
 import kotlin.time.Instant
 
 /** Un cambio de costo o de precio pedido a un caso de uso de mentira. */
@@ -63,7 +63,7 @@ internal class RecordingWriters {
     var purchase: RegisterPurchaseResult = RegisterPurchaseResult.Registered(12L, emptyList())
     var expense: RegisterExpenseResult = RegisterExpenseResult.Registered(13L)
     var production: RegisterProductionResult = RegisterProductionResult.Registered(14L, Money(0))
-    var adjustment: StockAdjustmentResult = StockAdjustmentResult.Adjusted(15L, QuantityMilli(0))
+    var adjustments: StockAdjustmentsResult = StockAdjustmentsResult.Adjusted(listOf(15L))
     var customerPayment: RecordCustomerPaymentResult = RecordCustomerPaymentResult.Recorded(
         entryId = 16L,
         movementId = null,
@@ -93,9 +93,9 @@ internal class RecordingWriters {
             requests += request
             production
         },
-        adjustment = { request: StockAdjustmentRequest ->
-            requests += request
-            adjustment
+        adjustments = { list: List<StockAdjustmentRequest> ->
+            requests.addAll(list)
+            adjustments
         },
         customerPayment = { request: CustomerPaymentRequest ->
             requests += request

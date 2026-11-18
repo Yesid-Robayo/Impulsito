@@ -44,6 +44,18 @@ sealed interface PhraseAction {
     /** `Empezar de nuevo`: descarta la tarjeta sin registrar nada. */
     data object StartOver : PhraseAction
 
+    /** `Empezar otra`: descarta la tarjeta a la vista y muestra la de la frase nueva. */
+    data object StartNewCard : PhraseAction
+
+    /** `Seguir con esta`: descarta la frase nueva y deja la tarjeta como estaba. */
+    data object KeepCard : PhraseAction
+
+    /** `Abrir producto`: abre [productId] para cambiar su tipo o su categoría. */
+    data class OpenProduct(val productId: Long) : PhraseAction
+
+    /** Elige otra operación arriba de la tarjeta; las líneas quedan. */
+    data class ChooseOperation(val operation: CardOperation) : PhraseAction
+
     /** Elige [productId] para la línea [index], entre los candidatos o en la lista. */
     data class ChooseProduct(val index: Int, val productId: Long) : PhraseAction
 

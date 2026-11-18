@@ -8,6 +8,8 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftTarget
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIntent
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentRequest
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
 import io.github.yesidrobayo.shopledger.domain.testing.FakePaymentMethodRepository
@@ -22,6 +24,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.SaleWorld
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.method
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.product
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentsResult
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockFixture
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -36,12 +40,15 @@ class RegisterPhraseWithUseCasesTest {
     private fun writers(
         sale: suspend (SaleRequest) -> RegisterSaleResult = { error("No es una venta") },
         expense: suspend (ExpenseRequest) -> RegisterExpenseResult = { error("No es un gasto") },
+        adjustments: suspend (List<StockAdjustmentRequest>) -> StockAdjustmentsResult = {
+            error("No es un ajuste")
+        },
     ) = PhraseWriters(
         sale = sale,
         purchase = { error("No es una compra") },
         expense = expense,
         production = { error("No es una producción") },
-        adjustment = { error("No es un ajuste") },
+        adjustments = adjustments,
         customerPayment = { error("No es un abono") },
         supplierPayment = { error("No es un pago") },
         cost = { _, _ -> error("No es un costo") },
@@ -90,6 +97,72 @@ class RegisterPhraseWithUseCasesTest {
             registerExpense()(expenseDraft()),
         )
         assertTrue(expenses.database.read().expenses.isEmpty())
+    }
+
+    // Conteo de varios productos.
+
+    private val stock = StockFixture()
+
+    private fun registerCount(): RegisterPhraseUseCase {
+        val catalog = stock.catalog
+        return RegisterPhraseUseCase(
+            writers = writers(adjustments = { stock.adjust.all(it) }),
+            products = catalog.products,
+            productUnits = FakeProductUnitRepository(catalog.database),
+            units = catalog.units,
+            components = catalog.components,
+            paymentMethods = FakePaymentMethodRepository(catalog.database),
+        )
+    }
+
+    private fun countDraft(vararg counted: Pair<Long, Long>) = PhraseDraft(
+        intent = PhraseIntent.STOCK_ADJUSTMENT,
+        reason = StockAdjustmentReason.COUNT_CORRECTION,
+        lines = counted.map { (id, milli) ->
+            DraftLine(DraftTarget.Existing(id), QuantityMilli(milli), unitId = null)
+        },
+    )
+
+    @Test
+    fun `a count of three products is registered whole in one transaction`() = runTest {
+        stock.seedStock(id = 1L, units = 4_000L, unitCost = 1_000L)
+        stock.seedStock(id = 2L, units = 0L, unitCost = 500L)
+        stock.seedStock(id = 3L, units = 2_000L, unitCost = 800L)
+        val commits = stock.catalog.transactions.commits
+
+        val result = registerCount()(countDraft(1L to 1_000L, 2L to 1_000L, 3L to 1_000L))
+
+        val first = stock.movementsOf(1L).last()
+        assertEquals(
+            RegisterPhraseResult.Registered(PhraseIntent.STOCK_ADJUSTMENT, first.id),
+            result,
+        )
+        assertEquals(commits + 1, stock.catalog.transactions.commits)
+        for (id in 1L..3L) {
+            assertEquals(QuantityMilli(1_000L), stock.product(id).onHand)
+            assertEquals(
+                StockAdjustmentReason.COUNT_CORRECTION,
+                stock.movementsOf(id).last().reason,
+            )
+        }
+    }
+
+    @Test
+    fun `a count whose second line fails leaves nothing`() = runTest {
+        stock.seedStock(id = 1L, units = 4_000L, unitCost = 1_000L)
+        stock.seedStock(id = 2L, units = 2_000L, unitCost = 800L)
+        // Cuántas escrituras hace la primera línea sola, para fallar en la primera de la segunda.
+        val counting = StockFixture()
+        counting.seedStock(id = 1L, units = 4_000L, unitCost = 1_000L)
+        counting.adjust.all(listOf(StockAdjustmentRequest.Count(1L, QuantityMilli(1_000L))))
+        val before = stock.catalog.tables
+        stock.catalog.database.failAtWrite = counting.catalog.database.lastTransactionWrites + 1
+        stock.catalog.database.failure = { StorageFailureException(StorageFailure.DISK_FULL) }
+
+        val result = registerCount()(countDraft(1L to 1_000L, 2L to 1_000L))
+
+        assertEquals(RegisterPhraseResult.StorageFailed(StorageFailure.DISK_FULL), result)
+        assertEquals(before, stock.catalog.tables)
     }
 
     // Venta.

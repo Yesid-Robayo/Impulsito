@@ -349,6 +349,7 @@ private fun StageContent(stage: PhraseStage, onAction: (PhraseAction) -> Unit) {
                         },
                 )
             }
+            stage.notice?.let { CardNoticeView(it, onAction) }
             PhraseCardView(
                 card = stage.card,
                 onAction = onAction,
@@ -407,6 +408,7 @@ internal fun PhraseCardView(
     AppCard {
         Column(verticalArrangement = Arrangement.spacedBy(spacing.s12)) {
             CardHeader(card)
+            if (card.operations.isNotEmpty()) OperationChips(card, onAction)
             card.notices.forEach { issue ->
                 NoticeCard(
                     text = stringResource(noticeText(issue)),
@@ -451,6 +453,56 @@ private fun CardHeader(card: PhraseCard) {
         ) {
             StatusTag(text = reasonLabel(reason), tone = StatusTone.INFO)
         }
+    }
+}
+
+/**
+ * Lo que la última frase dejó sobre la tarjeta sin cambiarla: otra operación, con la pregunta de si
+ * empezar otra tarjeta, o un producto que ya existe, con el botón que lo abre.
+ */
+@Composable
+private fun CardNoticeView(notice: CardNotice, onAction: (PhraseAction) -> Unit) {
+    when (notice) {
+        is CardNotice.OtherOperation ->
+            NoticeCard(
+                text =
+                    stringResource(
+                        R.string.phrase_other_operation,
+                        stringResource(intentLabel(notice.intent, notice.reason)),
+                    ),
+                variant = NoticeVariant.INFO,
+                actionLabel = stringResource(R.string.phrase_start_new_card),
+                onAction = { onAction(PhraseAction.StartNewCard) },
+                secondaryLabel = stringResource(R.string.phrase_keep_card),
+                onSecondary = { onAction(PhraseAction.KeepCard) },
+            )
+
+        is CardNotice.KnownProduct ->
+            NoticeCard(
+                text = stringResource(R.string.phrase_known_product, notice.name),
+                variant = NoticeVariant.INFO,
+                actionLabel = stringResource(R.string.phrase_open_product),
+                onAction = { onAction(PhraseAction.OpenProduct(notice.productId)) },
+            )
+    }
+}
+
+/**
+ * La operación de la tarjeta, para cambiarla con un toque: lo dicho sin verbo queda como venta, y
+ * aquí se pasa a compra, conteo o producción sin perder las líneas.
+ */
+@Composable
+private fun OperationChips(card: PhraseCard, onAction: (PhraseAction) -> Unit) {
+    val selected = CardOperation(card.intent, card.reason)
+    Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8)) {
+        SectionLabel(stringResource(R.string.phrase_operation))
+        CompactChipRow(
+            options = card.operations,
+            label = { stringResource(intentLabel(it.intent, it.reason)) },
+            selected = setOf(selected),
+            onToggle = { onAction(PhraseAction.ChooseOperation(it)) },
+            multiple = false,
+        )
     }
 }
 

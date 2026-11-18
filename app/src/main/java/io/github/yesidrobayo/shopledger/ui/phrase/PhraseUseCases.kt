@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.phrase
 
 import android.content.res.Resources
 import io.github.yesidrobayo.shopledger.domain.model.SeedTable
+import io.github.yesidrobayo.shopledger.domain.model.phrase.CardFollowUp
 import io.github.yesidrobayo.shopledger.domain.model.phrase.NumberStyle
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseCatalog
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
@@ -9,6 +10,7 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLanguage
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseInterpreter
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.correctedBy
+import io.github.yesidrobayo.shopledger.domain.rule.phrase.followedBy
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ChangePriceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.CreateProductUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveRecipeUseCase
@@ -36,12 +38,13 @@ import io.github.yesidrobayo.shopledger.ui.format.AppFormats
 
 /**
  * Lo que `Decir o escribir` hace con la base abierta: leer una frase, corregir la tarjeta con otra
- * frase y registrarla. Cada operación se registra con el caso de uso de siempre, armado como en su
+ * frase o sumársela, y registrarla. Cada operación se registra con el caso de uso de siempre, armado como en su
  * pantalla, así lo dicho guarda exactamente lo mismo, con sus reglas y en su transacción.
  */
 internal class PhraseUseCases(
     val read: suspend (String) -> PhraseReadResult,
     val correct: (PhraseDraft, String, PhraseCatalog) -> PhraseDraft?,
+    val follow: (PhraseDraft, String, PhraseReadResult) -> CardFollowUp,
     val register: suspend (PhraseDraft) -> PhraseOutcome,
 )
 
@@ -227,6 +230,21 @@ internal fun phraseUseCases(
                 )
             } else {
                 null
+            }
+        },
+        follow = { draft, text, result ->
+            // Con esa moneda, la lectura tampoco entendió la frase: la tarjeta sigue como estaba.
+            if (moneyDecimals in 0..PhraseInterpreter.MAX_MONEY_DECIMALS) {
+                draft.followedBy(
+                    text,
+                    result.reading,
+                    texts.language(),
+                    texts.numberStyle(),
+                    moneyDecimals,
+                    result.catalog,
+                )
+            } else {
+                CardFollowUp.NotUnderstood
             }
         },
         register = { outcomeOf(register(it)) },

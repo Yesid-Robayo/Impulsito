@@ -31,7 +31,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.AdjustStockUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CorrectCostResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CorrectCostUseCase
-import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentResult
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentsResult
 
 /**
  * Los casos de uso de siempre con que se registra cada operación de una tarjeta. Cada uno abre su
@@ -46,7 +46,8 @@ class PhraseWriters(
     val purchase: suspend (PurchaseRequest) -> RegisterPurchaseResult,
     val expense: suspend (ExpenseRequest) -> RegisterExpenseResult,
     val production: suspend (ProductionRequest) -> RegisterProductionResult,
-    val adjustment: suspend (StockAdjustmentRequest) -> StockAdjustmentResult,
+    /** Los ajustes de una tarjeta, de una o de varias líneas, todos en una transacción. */
+    val adjustments: suspend (List<StockAdjustmentRequest>) -> StockAdjustmentsResult,
     val customerPayment: suspend (CustomerPaymentRequest) -> RecordCustomerPaymentResult,
     val supplierPayment: suspend (SupplierPaymentRequest) -> PaySupplierResult,
     val cost: suspend (productId: Long, newCost: Money) -> CorrectCostResult,
@@ -74,7 +75,7 @@ class PhraseWriters(
             purchase = { purchase(it) },
             expense = { expense(it) },
             production = { production(it) },
-            adjustment = { adjustment(it) },
+            adjustments = { adjustment.all(it) },
             customerPayment = { customerPayment(it) },
             supplierPayment = { supplierPayment(it) },
             cost = { productId, newCost -> cost(productId, newCost) },

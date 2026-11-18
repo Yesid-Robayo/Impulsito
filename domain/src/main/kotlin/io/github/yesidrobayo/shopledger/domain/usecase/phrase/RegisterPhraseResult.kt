@@ -78,8 +78,8 @@ sealed interface PhraseRejection {
     data class Recipe(val result: SaveRecipeResult) : PhraseRejection
 
     /**
-     * Esta operación se registra con un solo producto, y la tarjeta trae varios: un ajuste, una
-     * producción o un cambio de precio o de costo van uno por uno, cada uno en su registro.
+     * Esta operación se registra con un solo producto, y la tarjeta trae varios: una producción o
+     * un cambio de precio o de costo van uno por uno, cada uno en su registro.
      */
     data object OneProductAtATime : PhraseRejection
 

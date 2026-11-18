@@ -20,14 +20,17 @@ import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.UnitKind
+import io.github.yesidrobayo.shopledger.domain.model.phrase.CardFollowUp
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftTarget
 import io.github.yesidrobayo.shopledger.domain.model.phrase.NameMatch
 import io.github.yesidrobayo.shopledger.domain.model.phrase.NewProductTraits
+import io.github.yesidrobayo.shopledger.domain.model.phrase.NumberStyle
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseCatalog
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIntent
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIssue
+import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLanguage
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseName
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhrasePrices
@@ -37,6 +40,9 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseUnit
 import io.github.yesidrobayo.shopledger.domain.model.phrase.ProductMatch
 import io.github.yesidrobayo.shopledger.domain.model.region.DigitGrouping
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberSymbols
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
+import io.github.yesidrobayo.shopledger.domain.rule.phrase.followedBy
+import io.github.yesidrobayo.shopledger.domain.rule.phrase.toDraft
 import io.github.yesidrobayo.shopledger.domain.usecase.phrase.PhraseReadResult
 import io.github.yesidrobayo.shopledger.format.IcuTextNormalizer
 import io.github.yesidrobayo.shopledger.ui.clickWhenStill
@@ -447,7 +453,149 @@ class PhraseScreenTest {
     }
 
     @Test
-    fun aPhraseWithoutAVerbKeepsTheCard() {
+    fun aPhraseThatSaysNothingKeepsTheCard() {
+        val reads = mutableListOf<String>()
+        val model =
+            viewModel(read = {
+                reads += it
+                if (reads.size == 1) chosenResult() else nothingResult()
+            })
+        show(model)
+
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput(SALE_PHRASE)
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+        compose.waitUntil(TIMEOUT_MS) { has("Gaseosa grande") }
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput("hola")
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+
+        // No dice nada que sumar: la tarjeta sigue como estaba y avisa que no se entendió.
+        compose.waitUntil(TIMEOUT_MS) {
+            (model.uiState.value.stage as? PhraseStage.Card)?.failure == PhraseFailure.NotUnderstood
+        }
+        assertEquals(PhraseIntent.SALE, card(model).intent)
+        assertEquals(1, card(model).lines.size)
+        assertEquals(2, reads.size)
+    }
+
+    @Test
+    fun aPhraseWithoutAVerbAddsItsLinesToTheCard() {
+        val reads = mutableListOf<String>()
+        val model =
+            viewModel(read = {
+                reads += it
+                if (reads.size == 1) chosenResult() else smallSodaResult()
+            })
+        show(model)
+
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput(SALE_PHRASE)
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+        compose.waitUntil(TIMEOUT_MS) { has("Gaseosa grande") }
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput("3 pequeñas")
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+
+        // Sin verbo hereda la operación de la tarjeta: la venta suma la línea nueva.
+        compose.waitUntil(TIMEOUT_MS) { has("Gaseosa pequeña") }
+        compose.onNodeWithText("Gaseosa grande").assertIsDisplayed()
+        assertEquals(PhraseIntent.SALE, card(model).intent)
+        assertEquals(2, card(model).lines.size)
+    }
+
+    @Test
+    fun anotherOperationAsksAndStartingAnotherCardShowsIt() {
+        val model = askedViewModel()
+
+        compose.onNodeWithText(text(R.string.phrase_start_new_card)).performClick()
+
+        compose.waitUntil(TIMEOUT_MS) {
+            (model.uiState.value.stage as? PhraseStage.Card)?.card?.intent == PhraseIntent.PURCHASE
+        }
+        assertEquals(false, has(text(R.string.phrase_keep_card)))
+    }
+
+    @Test
+    fun anotherOperationAsksAndKeepingTheCardDiscardsThePhrase() {
+        val model = askedViewModel()
+
+        compose.onNodeWithText(text(R.string.phrase_keep_card)).performClick()
+
+        compose.waitUntil(TIMEOUT_MS) { !has(text(R.string.phrase_keep_card)) }
+        assertEquals(PhraseIntent.SALE, card(model).intent)
+        compose.onNodeWithText("Gaseosa grande").assertIsDisplayed()
+    }
+
+    @Test
+    fun theTypeOfAProductThatExistsOffersToOpenIt() {
+        val actions = mutableListOf<PhraseAction>()
+        val model = viewModel(read = { chosenResult() })
+        compose.setContent {
+            PreviewTheme {
+                val state by model.uiState.collectAsState()
+                PhraseScreen(state, { action ->
+                    actions += action
+                    model.onAction(action)
+                })
+            }
+        }
+
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput(SALE_PHRASE)
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+        compose.waitUntil(TIMEOUT_MS) { has("Gaseosa grande") }
+        compose.onNodeWithText(text(R.string.phrase_field_label))
+            .performTextInput("la gaseosa grande es un insumo")
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+
+        compose.waitUntil(TIMEOUT_MS) { has(text(R.string.phrase_open_product)) }
+        compose.onNodeWithText(text(R.string.phrase_known_product, "Gaseosa grande"))
+            .assertIsDisplayed()
+        assertEquals(1, card(model).lines.size)
+        compose.onNodeWithText(text(R.string.phrase_open_product)).performClick()
+        assertEquals(PhraseAction.OpenProduct(BIG_SODA), actions.last())
+    }
+
+    @Test
+    fun theOperationChipsChangeTheOperationAndKeepTheLines() {
+        val model = viewModel(read = { chosenResult() })
+        show(model)
+
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput("2 grandes")
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+        compose.waitUntil(TIMEOUT_MS) { has(text(R.string.phrase_intent_stock_count)) }
+        compose.onNodeWithText(text(R.string.phrase_intent_stock_count)).performClick()
+
+        compose.waitUntil(TIMEOUT_MS) {
+            (model.uiState.value.stage as? PhraseStage.Card)?.card?.intent ==
+                PhraseIntent.STOCK_ADJUSTMENT
+        }
+        compose.onNodeWithText("Gaseosa grande").assertIsDisplayed()
+        assertEquals(1, card(model).lines.size)
+    }
+
+    @Test
+    fun aCountOfSeveralProductsRegistersEveryLine() {
+        val registered = mutableListOf<PhraseDraft>()
+        val model =
+            viewModel(
+                read = { countResult() },
+                register = {
+                    registered += it
+                    PhraseOutcome.Registered(it.intent, documentId = 9L)
+                },
+            )
+        show(model)
+
+        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput(COUNT_PHRASE)
+        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+        compose.waitUntil(TIMEOUT_MS) { has("Gaseosa pequeña") }
+        compose.onNodeWithText(text(R.string.phrase_register)).performClick()
+        compose.waitUntil(TIMEOUT_MS) { registered.isNotEmpty() }
+
+        assertEquals(2, registered.single().lines.size)
+        assertEquals(PhraseIntent.STOCK_ADJUSTMENT, registered.single().intent)
+        assertEquals(false, has(text(R.string.phrase_rejected)))
+    }
+
+    /** Una venta a la vista y una compra dicha encima, con la pregunta ya en pantalla. */
+    private fun askedViewModel(): PhraseViewModel {
         val reads = mutableListOf<String>()
         val model =
             viewModel(read = {
@@ -455,41 +603,16 @@ class PhraseScreenTest {
                 if (reads.size == 1) chosenResult() else purchaseResult()
             })
         show(model)
-
-        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput(SALE_PHRASE)
-        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
-        compose.waitUntil(TIMEOUT_MS) { has("Gaseosa grande") }
-        compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput("2 gaseosas")
-        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
-
-        // Sin verbo no dice qué pasó: la tarjeta sigue como estaba y avisa que no se entendió.
-        compose.waitUntil(TIMEOUT_MS) {
-            (model.uiState.value.stage as? PhraseStage.Card)?.failure == PhraseFailure.NotUnderstood
-        }
-        assertEquals(PhraseIntent.SALE, card(model).intent)
-        assertEquals(2, reads.size)
-    }
-
-    @Test
-    fun aStatedOperationReplacesTheCard() {
-        val reads = mutableListOf<String>()
-        val model =
-            viewModel(read = {
-                reads += it
-                val purchase = purchaseResult().copy(statesOperation = true)
-                if (reads.size == 1) chosenResult() else purchase
-            })
-        show(model)
-
         compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput(SALE_PHRASE)
         compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
         compose.waitUntil(TIMEOUT_MS) { has("Gaseosa grande") }
         compose.onNodeWithText(text(R.string.phrase_field_label)).performTextInput(PURCHASE_PHRASE)
         compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
-
-        compose.waitUntil(TIMEOUT_MS) {
-            (model.uiState.value.stage as? PhraseStage.Card)?.card?.intent == PhraseIntent.PURCHASE
-        }
+        compose.waitUntil(TIMEOUT_MS) { has(text(R.string.phrase_start_new_card)) }
+        // La tarjeta sigue entera debajo de la pregunta.
+        assertEquals(PhraseIntent.SALE, card(model).intent)
+        compose.onNodeWithText("Gaseosa grande").assertIsDisplayed()
+        return model
     }
 
     @Test
@@ -563,12 +686,16 @@ class PhraseScreenTest {
     private fun viewModel(
         read: suspend (String) -> PhraseReadResult,
         correct: (PhraseDraft, String, PhraseCatalog) -> PhraseDraft? = { _, _, _ -> null },
+        follow: (PhraseDraft, String, PhraseReadResult) -> CardFollowUp = { draft, said, result ->
+            draft.followedBy(said, result.reading, PhraseLanguage.ES, STYLE, 0, result.catalog)
+        },
         register: suspend (PhraseDraft) -> PhraseOutcome = {
             PhraseOutcome.Registered(it.intent, documentId = 1L)
         },
     ): PhraseViewModel = PhraseViewModel(
         read = read,
         correct = correct,
+        follow = follow,
         register = register,
         savedState = SavedStateHandle(),
         numbers = NUMBERS,
@@ -585,7 +712,11 @@ class PhraseScreenTest {
         const val ON_CREDIT = 2L
         const val ON_CREDIT_NAME = "A crédito"
         const val PURCHASE_PHRASE = "compré 2 gaseosas grandes"
+        const val COUNT_PHRASE = "tengo 3 gaseosas grandes y 2 pequeñas"
         const val UNIT = 1L
+
+        /** Los números de las frases de la prueba, para leerlas encima de la tarjeta. */
+        val STYLE = NumberStyle(decimal = '.', grouping = ',')
 
         /** Los números de las pruebas: punto decimal, coma de miles y moneda sin decimales. */
         val NUMBERS =
@@ -823,6 +954,53 @@ class PhraseScreenTest {
                         ),
                 )
             return PhraseReadResult(reading, catalog, draft)
+        }
+
+        /** Tres gaseosas pequeñas, sin verbo. */
+        fun smallSodaResult(): PhraseReadResult {
+            val reading =
+                PhraseReading(
+                    intent = PhraseIntent.SALE,
+                    lines =
+                        listOf(
+                            PhraseLine(
+                                product = ProductMatch.Found(SMALL_SODA),
+                                quantity = QuantityMilli.ofUnits(3),
+                                unitId = null,
+                                unitPrice = null,
+                                lineTotal = null,
+                            ),
+                        ),
+                )
+            return PhraseReadResult(reading, catalog(), reading.toDraft())
+        }
+
+        /** El conteo real de dos gaseosas: 3 grandes y 2 pequeñas. */
+        fun countResult(): PhraseReadResult {
+            val lines =
+                listOf(BIG_SODA to 3L, SMALL_SODA to 2L).map { (id, units) ->
+                    PhraseLine(
+                        product = ProductMatch.Found(id),
+                        quantity = QuantityMilli.ofUnits(units),
+                        unitId = null,
+                        unitPrice = null,
+                        lineTotal = null,
+                    )
+                }
+            val reading =
+                PhraseReading(
+                    intent = PhraseIntent.STOCK_ADJUSTMENT,
+                    reason = StockAdjustmentReason.COUNT_CORRECTION,
+                    lines = lines,
+                )
+            return PhraseReadResult(reading, catalog(), reading.toDraft())
+        }
+
+        /** Una frase que no dice nada que registrar. */
+        fun nothingResult(): PhraseReadResult {
+            val reading =
+                PhraseReading(intent = null, issues = setOf(PhraseIssue.NOTHING_UNDERSTOOD))
+            return PhraseReadResult(reading, catalog(), draft = null)
         }
 
         fun mixedReading() =

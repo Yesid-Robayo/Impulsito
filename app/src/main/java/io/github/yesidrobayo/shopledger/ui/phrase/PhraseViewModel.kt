@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.phrase.CardFollowUp
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftTarget
 import io.github.yesidrobayo.shopledger.domain.model.phrase.NameMatch
@@ -22,8 +23,10 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseReading
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseUnit
 import io.github.yesidrobayo.shopledger.domain.model.phrase.ProductMatch
 import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
+import io.github.yesidrobayo.shopledger.domain.rule.phrase.asOperation
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.estimatedLineAmounts
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.estimatedTotal
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.gaps
@@ -50,15 +53,18 @@ import kotlinx.coroutines.withContext
  *   descarta, y lo único que sobrevive a que Android cierre el proceso es lo escrito en el campo.
  * - **Preguntar antes que adivinar.** Lo dudoso queda como hueco en su lugar de la tarjeta, y
  *   `Registrar` dice qué falta en vez de registrar.
- * - **Corregir sin empezar de nuevo.** Con la tarjeta a la vista, lo que se dice o se escribe se
- *   prueba primero como corrección, y cambia solo lo nombrado. Si no corrige nada, solo una
- *   operación dicha con su verbo y con algo que registrar ("vendí 2 panes") reemplaza la tarjeta;
- *   ante la duda, la tarjeta sigue como estaba y dice que no se entendió. Cada línea y cada dato
- *   también se tocan y se cambian a mano.
- * - **Un error nunca borra lo escrito**, ni la tarjeta.
+ * - **Corregir y sumar sin empezar de nuevo.** Con la tarjeta a la vista, lo que se dice o se
+ *   escribe se prueba primero como corrección, y cambia solo lo nombrado. Si no corrige nada, se
+ *   lee entera: lo dicho sin verbo, o con el de la misma operación, suma sus líneas a la tarjeta o
+ *   corrige las del mismo producto. Lo que dice de un producto que ya existe deja la tarjeta como
+ *   estaba y ofrece abrir el producto. Otra operación pregunta antes de empezar otra tarjeta, salvo
+ *   después de "no". Ante la duda, la tarjeta sigue como estaba y dice que no se entendió. Cada
+ *   línea, cada dato y la operación también se cambian a mano.
+ * - **Un error nunca borra lo escrito**, ni la tarjeta. Una línea solo sale si la persona lo pide.
  *
  * @param read lee la frase con el catálogo del negocio.
  * @param correct aplica una frase corta sobre la propuesta, o `null` si no es una corrección.
+ * @param follow lo que hace con la propuesta una frase que no la corrigió, ya leída entera.
  * @param register registra la propuesta con el caso de uso de esa operación, en una transacción.
  * @param numbers los símbolos para leer lo que la persona escribe al corregir un número.
  * @param computation donde se corrige y se arma la tarjeta, fuera del hilo principal.
@@ -69,6 +75,7 @@ import kotlinx.coroutines.withContext
 class PhraseViewModel(
     private val read: suspend (String) -> PhraseReadResult,
     private val correct: (PhraseDraft, String, PhraseCatalog) -> PhraseDraft?,
+    private val follow: (PhraseDraft, String, PhraseReadResult) -> CardFollowUp,
     private val register: suspend (PhraseDraft) -> PhraseOutcome,
     private val savedState: SavedStateHandle,
     private val numbers: PhraseInputFormat,
@@ -88,6 +95,9 @@ class PhraseViewModel(
 
     /** La propuesta a la vista, con lo que hace falta para preguntar lo dudoso. */
     private var session: Session? = null
+
+    /** La tarjeta de otra operación que se dijo, mientras se pregunta si empezarla. */
+    private var pending: Session? = null
     private var work: Job? = null
 
     init {
@@ -122,6 +132,13 @@ class PhraseViewModel(
             PhraseAction.Retry -> understand()
 
             PhraseAction.StartOver -> startOver()
+
+            PhraseAction.StartNewCard -> startNewCard()
+
+            PhraseAction.KeepCard -> keepCard()
+
+            is PhraseAction.ChooseOperation ->
+                editDraft { it.asOperation(action.operation.intent, action.operation.reason) }
 
             is PhraseAction.ChooseProduct ->
                 editLine(action.index) { it.copy(product = DraftTarget.Existing(action.productId)) }
@@ -229,6 +246,7 @@ class PhraseViewModel(
             PhraseAction.SellByHand,
             PhraseAction.MicHelp,
             PhraseAction.OpenMicSettings,
+            is PhraseAction.OpenProduct,
             PhraseAction.Close,
             -> Unit
         }
@@ -241,7 +259,8 @@ class PhraseViewModel(
 
     /**
      * Lee lo escrito. Con una tarjeta a la vista, primero lo prueba como corrección: "no, eran 3"
-     * cambia la tarjeta; "vendí 2 panes" no la corrige y se lee como una frase nueva.
+     * cambia la tarjeta; "vendí 2 panes" no la corrige, se lee entera y se suma a ella o pregunta,
+     * ver [followUp].
      */
     private fun understand() {
         val text = state.value.text.trim()
@@ -251,6 +270,7 @@ class PhraseViewModel(
         }
         if (work?.isActive == true || registering()) return
         val current = session
+        pending = null
         work = viewModelScope.launch {
             if (current != null) {
                 val corrected = withContext(computation) {
@@ -276,44 +296,119 @@ class PhraseViewModel(
                 // El catálogo no se pudo leer: lo escrito sigue, con `Reintentar`.
                 ReadOutcome.Failed -> state.update { it.copy(stage = PhraseStage.ReadFailed) }
 
-                is ReadOutcome.Read -> show(outcome.value, previous = current)
+                is ReadOutcome.Read ->
+                    if (current == null) {
+                        show(outcome.value, outcome.value.draft)
+                    } else {
+                        followUp(current, text, outcome.value)
+                    }
             }
         }
     }
 
     /**
-     * Muestra lo que se leyó. Con una tarjeta a la vista, solo la reemplaza una operación dicha con
-     * su verbo y con algo que registrar. Si no, la tarjeta sigue como estaba, con el aviso arriba:
-     * una frase mal dicha, o que no se sabe qué corrige, no borra lo ya revisado.
+     * Muestra [draft], la tarjeta de lo que se leyó en [result]. Sin tarjeta, lo que no se entendió
+     * deja lo escrito en el campo, para decirlo de otra forma sin empezar de cero.
      */
-    private suspend fun show(result: PhraseReadResult, previous: Session?) {
-        val draft = result.draft?.takeIf { previous == null || replacesCard(result, it) }
+    private suspend fun show(result: PhraseReadResult, draft: PhraseDraft?) {
         if (draft == null) {
-            val mixed = PhraseIssue.MIXED_OPERATIONS in result.reading.issues
-            if (previous != null) {
-                val card = withContext(computation) { cardOf(previous) }
-                val failure = if (mixed) PhraseFailure.Mixed else PhraseFailure.NotUnderstood
-                state.update { it.copy(stage = PhraseStage.Card(card, failure = failure)) }
-                return
-            }
             session = null
+            val mixed = PhraseIssue.MIXED_OPERATIONS in result.reading.issues
             val stage = if (mixed) PhraseStage.Mixed else PhraseStage.NotUnderstood
-            // Lo escrito queda en el campo, para decirlo de otra forma sin empezar de cero.
             state.update { it.copy(stage = stage) }
             return
         }
-        val next = Session.of(result.reading, result.catalog, draft, result.prices)
+        showSession(Session.of(result.reading, result.catalog, draft, result.prices))
+    }
+
+    /** Deja [next] a la vista como la tarjeta, recién leída o sumada, y vacía el campo. */
+    private suspend fun showSession(next: Session) {
         session = next
         val card = withContext(computation) { cardOf(next) }
         setText("")
         state.update { it.copy(stage = PhraseStage.Card(card), cardShown = it.cardShown + 1) }
     }
 
+    /**
+     * Lo que hace con la tarjeta [current] una frase que no la corrigió, leída en [result]. Nunca
+     * la borra en silencio: la suma, la deja con un aviso, o pregunta antes de empezar otra. Solo
+     * "no" con otra operación la reemplaza, como corrección de lo que se dijo antes.
+     */
+    private suspend fun followUp(current: Session, text: String, result: PhraseReadResult) {
+        val next = withContext(computation) { follow(current.draft, text, result) }
+        when (next) {
+            is CardFollowUp.Joined -> showSession(current.joined(next.draft, result))
+
+            is CardFollowUp.Replaced -> show(result, next.draft)
+
+            is CardFollowUp.OtherOperation -> {
+                pending = Session.of(result.reading, result.catalog, next.draft, result.prices)
+                val notice = CardNotice.OtherOperation(next.draft.intent, next.draft.reason)
+                keep(current, notice = notice)
+            }
+
+            is CardFollowUp.KnownProduct -> {
+                val name = result.catalog.products.firstOrNull { it.id == next.productId }?.name
+                if (name == null) {
+                    keep(current, failure = PhraseFailure.NotUnderstood, clears = false)
+                } else {
+                    keep(current, notice = CardNotice.KnownProduct(next.productId, name))
+                }
+            }
+
+            CardFollowUp.NotUnderstood -> {
+                val mixed = PhraseIssue.MIXED_OPERATIONS in result.reading.issues
+                val failure = if (mixed) PhraseFailure.Mixed else PhraseFailure.NotUnderstood
+                keep(current, failure = failure, clears = false)
+            }
+        }
+    }
+
+    /**
+     * Deja la tarjeta [current] como estaba, con [notice] o [failure] arriba. Si [clears], la frase
+     * ya se atendió y el campo queda vacío; si no, queda para decirla de otra forma.
+     */
+    private suspend fun keep(
+        current: Session,
+        notice: CardNotice? = null,
+        failure: PhraseFailure? = null,
+        clears: Boolean = true,
+    ) {
+        val card = withContext(computation) { cardOf(current) }
+        if (clears) setText("")
+        state.update {
+            it.copy(stage = PhraseStage.Card(card, failure = failure, notice = notice))
+        }
+    }
+
     private fun startOver() {
         if (registering()) return
         work?.cancel()
         session = null
+        pending = null
         state.update { it.copy(stage = PhraseStage.Empty, sheet = null) }
+    }
+
+    /** `Empezar otra`: la tarjeta de la otra operación reemplaza a la de la vista. */
+    private fun startNewCard() {
+        if (registering()) return
+        val next = pending ?: return
+        pending = null
+        session = next
+        state.update {
+            it.copy(
+                stage = PhraseStage.Card(cardOf(next)),
+                sheet = null,
+                cardShown = it.cardShown + 1,
+            )
+        }
+    }
+
+    /** `Seguir con esta`: la frase de otra operación se descarta y la tarjeta sigue como estaba. */
+    private fun keepCard() {
+        pending = null
+        val current = session ?: return
+        state.update { it.copy(stage = PhraseStage.Card(cardOf(current))) }
     }
 
     private fun registering(): Boolean =
@@ -323,6 +418,8 @@ class PhraseViewModel(
     private fun editDraft(change: (PhraseDraft) -> PhraseDraft) {
         if (registering()) return
         val current = session ?: return
+        // Cambiar la tarjeta a mano responde la pregunta: sigue esta.
+        pending = null
         val next = current.edited(change(current.draft))
         session = next
         state.update { it.copy(stage = PhraseStage.Card(cardOf(next))) }
@@ -773,6 +870,42 @@ class PhraseViewModel(
         fun corrected(next: PhraseDraft): Session = realigned(next, edited = true)
 
         /**
+         * La sesión con [next], esta tarjeta con otra frase sumada, leída en [result]: el catálogo
+         * y los precios son los de esa lectura, que ya conoce lo creado desde la tarjeta. Una línea
+         * que ya estaba guarda sus candidatos y lo dicho; una nueva, los de su propia lectura.
+         */
+        fun joined(next: PhraseDraft, result: PhraseReadResult): Session {
+            val read = result.draft?.lines.orEmpty()
+            val readSpoken = read.indices.map { i ->
+                (result.reading.lines.getOrNull(i)?.product as? ProductMatch.Unknown)?.spokenName
+            }
+            val candidates = next.lines.map { line ->
+                val mine = draft.lines.indexOf(line)
+                if (mine >= 0) lineCandidates.getOrNull(mine).orEmpty() else line.candidates
+            }
+            val spoken = next.lines.map { line ->
+                val mine = draft.lines.indexOf(line)
+                if (mine >=
+                    0
+                ) {
+                    lineSpoken.getOrNull(mine)
+                } else {
+                    readSpoken.getOrNull(read.indexOf(line))
+                }
+            }
+            return Session(
+                reading,
+                result.catalog,
+                next,
+                candidates,
+                spoken,
+                edited = true,
+                created,
+                result.prices,
+            )
+        }
+
+        /**
          * Lleva los candidatos de cada línea a la propuesta nueva: con las mismas líneas, por
          * posición; si se agregó o se quitó una, por la línea igual que quedó.
          */
@@ -975,6 +1108,26 @@ class PhraseViewModel(
             sensitive = intent in SENSITIVE,
             gaps = gaps,
             notices = notices,
+            operations = operationsOf(session),
+        )
+    }
+
+    /**
+     * Las operaciones que se eligen a mano arriba de la tarjeta, solo si la suya es una de ellas:
+     * venta, compra, conteo y producción, y el ajuste con el motivo que se dijo, si se dijo uno.
+     * Las demás no tienen las mismas líneas, y cambiarlas perdería lo dicho.
+     */
+    private fun operationsOf(session: Session): List<CardOperation> {
+        if (session.draft.intent !in BY_HAND) return emptyList()
+        val adjusted =
+            listOfNotNull(session.draft.reason, session.reading.reason)
+                .firstOrNull { it != StockAdjustmentReason.COUNT_CORRECTION }
+        return listOfNotNull(
+            CardOperation(PhraseIntent.SALE),
+            CardOperation(PhraseIntent.PURCHASE),
+            CardOperation(PhraseIntent.STOCK_ADJUSTMENT, StockAdjustmentReason.COUNT_CORRECTION),
+            CardOperation(PhraseIntent.PRODUCTION),
+            adjusted?.let { CardOperation(PhraseIntent.STOCK_ADJUSTMENT, it) },
         )
     }
 
@@ -994,6 +1147,15 @@ class PhraseViewModel(
                 PhraseIntent.EXPENSE,
                 PhraseIntent.CUSTOMER_PAYMENT,
                 PhraseIntent.SUPPLIER_PAYMENT,
+            )
+
+        /** Las que se eligen a mano arriba de la tarjeta, sin perder sus líneas. */
+        val BY_HAND =
+            setOf(
+                PhraseIntent.SALE,
+                PhraseIntent.PURCHASE,
+                PhraseIntent.PRODUCTION,
+                PhraseIntent.STOCK_ADJUSTMENT,
             )
 
         /** Las que nombran a una persona: un cliente o un proveedor. */
@@ -1055,16 +1217,6 @@ private fun newProduct(
         },
         newCategory = traits.newCategory,
     )
-}
-
-/**
- * Si lo leído reemplaza la tarjeta a la vista: la frase dice con un verbo qué operación es, y tiene
- * algo que registrar. "la harina es insumo" o "2 panes" no lo hacen, y la tarjeta sigue.
- */
-private fun replacesCard(result: PhraseReadResult, draft: PhraseDraft): Boolean {
-    val content = draft.lines.isNotEmpty() || draft.total != null || draft.target != null ||
-        draft.price != null || draft.cost != null
-    return result.statesOperation && content
 }
 
 /** Si el producto es de [intent]: en una venta, que se venda; en una compra, que se compre. */

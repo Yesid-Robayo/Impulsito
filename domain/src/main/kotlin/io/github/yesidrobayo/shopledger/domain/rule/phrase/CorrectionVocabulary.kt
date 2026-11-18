@@ -13,6 +13,8 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLanguage
  * - [removals] abren una línea que sale: "quita las gaseosas".
  * - [additions] abren una línea que se suma: "agrega 2 huevos". Las palabras que separan líneas en
  *   una frase ("y", "también") también suman, pero con más cuidado: ver la corrección.
+ * - [others] dicen que lo nombrado es de más y se suma a lo que ya estaba: "y **otros** 2 panes",
+ *   "2 panes **más**". Sin ellas, un conteo o una receta corrigen el producto repetido.
  * - [renames] abren el nombre nuevo del producto que se va a crear: "se llama harina integral".
  * - [operations] nombran la operación que era: "fue una **compra**".
  */
@@ -21,6 +23,7 @@ internal class CorrectionVocabulary(
     copulas: List<String>,
     removals: List<String>,
     additions: List<String>,
+    others: List<String>,
     renames: List<String>,
     operations: Map<String, PhraseIntent>,
 ) {
@@ -28,6 +31,7 @@ internal class CorrectionVocabulary(
     val copulas: PhraseTable<Unit> = PhraseTable.of(copulas)
     val removals: PhraseTable<Unit> = PhraseTable.of(removals)
     val additions: PhraseTable<Unit> = PhraseTable.of(additions)
+    val others: PhraseTable<Unit> = PhraseTable.of(others)
     val renames: PhraseTable<Unit> = PhraseTable.of(renames)
     val operations: PhraseTable<PhraseIntent> = PhraseTable(operations.toList())
 }
@@ -54,6 +58,7 @@ internal object CorrectionVocabularies {
             "suma", "sumá", "súmale", "sumar", "pon", "poné", "ponle", "ponme", "incluye",
             "incluí", "incluir", "falta", "faltó", "faltan", "faltaron", "me faltó", "se me olvidó",
         ),
+        others = listOf("otro", "otra", "otros", "otras", "más"),
         renames = listOf(
             "se llama",
             "se llamaba",
@@ -87,6 +92,7 @@ internal object CorrectionVocabularies {
             "add", "also add", "add also", "and add", "plus add", "include", "put", "throw in",
             "forgot", "i forgot", "missing",
         ),
+        others = listOf("another", "other", "others", "more"),
         renames = listOf(
             "its called",
             "it is called",
@@ -117,6 +123,7 @@ internal object CorrectionVocabularies {
             "adiciona", "adicione", "adicionar", "acrescenta", "acrescente", "acrescentar", "põe",
             "ponha", "coloca", "coloque", "inclui", "inclua", "bota", "faltou", "esqueci",
         ),
+        others = listOf("outro", "outra", "outros", "outras", "mais"),
         renames = listOf("se chama", "chama", "o nome é", "chame de", "o nome dele é"),
         operations = mapOf(
             "compra" to PhraseIntent.PURCHASE,

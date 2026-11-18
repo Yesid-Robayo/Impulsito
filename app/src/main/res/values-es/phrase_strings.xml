@@ -96,6 +96,12 @@
     <string name="phrase_amount_missing">Falta el monto</string>
     <string name="phrase_total_at_register">Completar las líneas para ver el total</string>
     <string name="phrase_start_over">Empezar de nuevo</string>
+    <string name="phrase_operation">Operación</string>
+    <string name="phrase_other_operation">Lo dicho es otra operación: %1$s. ¿Empezar otra tarjeta? Esta se descarta</string>
+    <string name="phrase_start_new_card">Empezar otra</string>
+    <string name="phrase_keep_card">Seguir con esta</string>
+    <string name="phrase_known_product">«%1$s» ya existe. Su tipo y su categoría se cambian en el producto</string>
+    <string name="phrase_open_product">Abrir producto</string>
     <string name="phrase_register">Registrar</string>
     <string name="phrase_incomplete">Faltan datos. Completar lo marcado para registrar</string>
     <string name="phrase_rejected">No se pudo registrar con estos datos. Revisar la tarjeta</string>

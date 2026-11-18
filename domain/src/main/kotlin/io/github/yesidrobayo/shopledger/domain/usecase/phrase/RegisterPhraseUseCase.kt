@@ -54,6 +54,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchase
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CorrectCostResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentResult
+import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentsResult
 
 /**
  * Registra la tarjeta que confirmó la persona con el caso de uso de siempre de su operación: arma
@@ -79,6 +80,8 @@ import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentResu
  *   entonces como el total de la línea.
  * - **El dinero** de un gasto, una compra pagada, un abono o un pago sale de la cuenta del método
  *   de pago dicho, si tiene una; la venta ya lo hace sola con su método.
+ * - **Un conteo o un ajuste de varios productos** se registra entero en una sola transacción: cada
+ *   línea es un movimiento nuevo del libro, y si una se rechaza no queda ninguna.
  *
  * Lee el catálogo fuera de la escritura, como la pantalla de cada operación: el caso de uso vuelve
  * a leer y validar todo dentro de su propia transacción.
@@ -220,24 +223,36 @@ class RegisterPhraseUseCase(
         return rejected(PhraseRejection.Production(result))
     }
 
+    /**
+     * Un conteo o un ajuste, de una o de varias líneas, en una sola transacción: en un conteo cada
+     * línea fija lo que hay de su producto, y con otro motivo cada línea sale con ese motivo. Si
+     * una línea se rechaza, no queda ninguna.
+     */
     private suspend fun adjustment(draft: PhraseDraft): RegisterPhraseResult {
-        val line = draft.lines.singleOrNull()
-            ?: return rejected(PhraseRejection.OneProductAtATime)
-        val product = productOf(line) ?: return unavailable(line)
-        // El libro va en la unidad base: lo dicho en otra unidad se lleva a ella.
-        val placed = placementOf(product, line, keeps = { false })
-            ?: return rejected(PhraseRejection.UnitNotConvertible(0))
         val reason = requireNotNull(draft.reason) { "Un ajuste completo tiene motivo" }
-        val request = if (reason == StockAdjustmentReason.COUNT_CORRECTION) {
-            // Lo dicho es lo que hay de verdad, no lo que sale.
-            StockAdjustmentRequest.Count(product.id, placed.quantity)
-        } else {
-            StockAdjustmentRequest.Change(product.id, reason, placed.quantity)
+        val requests = draft.lines.mapIndexed { index, line ->
+            val product = productOf(line) ?: return unavailable(line)
+            // El libro va en la unidad base: lo dicho en otra unidad se lleva a ella.
+            val placed = placementOf(product, line, keeps = { false })
+                ?: return rejected(PhraseRejection.UnitNotConvertible(index))
+            if (reason == StockAdjustmentReason.COUNT_CORRECTION) {
+                // Lo dicho es lo que hay de verdad, no lo que sale.
+                StockAdjustmentRequest.Count(product.id, placed.quantity)
+            } else {
+                StockAdjustmentRequest.Change(product.id, reason, placed.quantity)
+            }
         }
-        val result = writers.adjustment(request)
-        if (result is StockAdjustmentResult.Adjusted) return registered(draft, result.movementId)
-        if (result is StockAdjustmentResult.StorageFailed) return failed(result.failure)
-        return rejected(PhraseRejection.Adjustment(result))
+        return when (val result = writers.adjustments(requests)) {
+            is StockAdjustmentsResult.Adjusted -> registered(draft, result.movementIds.first())
+
+            StockAdjustmentsResult.NoDifference ->
+                rejected(PhraseRejection.Adjustment(StockAdjustmentResult.NoDifference))
+
+            is StockAdjustmentsResult.Rejected ->
+                rejected(PhraseRejection.Adjustment(result.result))
+
+            is StockAdjustmentsResult.StorageFailed -> failed(result.failure)
+        }
     }
 
     private suspend fun customerPayment(draft: PhraseDraft): RegisterPhraseResult {

@@ -1,9 +1,11 @@
 package io.github.yesidrobayo.shopledger.domain.rule.phrase
 
+import io.github.yesidrobayo.shopledger.domain.model.phrase.CardFollowUp
 import io.github.yesidrobayo.shopledger.domain.model.phrase.NumberStyle
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseCatalog
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLanguage
+import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseReading
 
 /**
  * Aplica una segunda frase corta sobre la tarjeta, en vez de leerla como una frase nueva, y
@@ -21,7 +23,11 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLanguage
  *   queda en hueco para elegir.
  * - **Quitar:** "quita las gaseosas", "sin el pan", "remove the soda", "tira o pão".
  * - **Agregar:** "agrega 2 huevos", "y también un pan", "add 2 eggs", "mais 2 ovos". Después de
- *   "y" o "también" la línea debe nombrar un producto del catálogo o decir cuántos.
+ *   "y" o "también" la línea debe nombrar un producto del catálogo o decir cuántos. Sin "no" ni
+ *   "era", un producto del catálogo que no está en la tarjeta, dicho con su cantidad o su precio
+ *   ("un kilo de harina"), también se agrega: nunca reemplaza la última línea. Un producto que ya
+ *   está se suma a su línea ("y otros 2 panes"), salvo en un conteo o una receta, donde lo dicho
+ *   es lo que hay o lo que lleva y corrige su cantidad; con "otros" se suma también ahí.
  * - **Precio:** "a 600 cada uno", "eran a 600", "at 6 each". En un precio o un costo nuevo, y en un
  *   gasto o un pago, el número solo ya es el monto.
  * - **Pago y crédito:** "en efectivo", "fue por transferencia", "it was cash", "foi no pix" (si el
@@ -72,4 +78,42 @@ fun PhraseDraft.correctedBy(
         moneyDecimals,
         catalog,
     ).correct(this, text)
+}
+
+/**
+ * Lo que hace con la tarjeta una frase que no se aplicó como corrección, ya leída entera en [next]
+ * con el mismo catálogo. Con la tarjeta abierta, lo dicho suma o corrige y nunca la borra en
+ * silencio:
+ *
+ * - **Sin verbo de operación,** la frase hereda la de la tarjeta: "un kilo de harina", "y 2 de
+ *   azúcar a 3 mil". Sus productos se agregan como líneas, o corrigen la del mismo producto.
+ *   Si dice el tipo o la categoría de un producto que ya existe ("la harina es un insumo"), la
+ *   tarjeta no cambia y la pantalla dice dónde se cambia eso. Sin productos que leer, no se
+ *   entendió.
+ * - **Con el verbo de la misma operación** ("tengo un kilo de harina" sobre un conteo, "vendí 2
+ *   panes" sobre una venta), sus líneas se juntan con las de la tarjeta, y el pago, la persona y
+ *   el total dichos la corrigen. Un producto que ya estaba se suma si se dice "y", "también",
+ *   "agrega" u "otros"; si no, corrige su cantidad. En un conteo y en una receta, lo dicho es lo que
+ *   hay o lo que lleva: corrige, salvo con "otros".
+ * - **Con el verbo de otra operación,** se pregunta antes de empezar otra tarjeta; después de "no",
+ *   la reemplaza como siempre.
+ */
+fun PhraseDraft.followedBy(
+    text: String,
+    next: PhraseReading,
+    language: PhraseLanguage,
+    numberStyle: NumberStyle,
+    moneyDecimals: Int,
+    catalog: PhraseCatalog,
+): CardFollowUp {
+    require(moneyDecimals in 0..PhraseInterpreter.MAX_MONEY_DECIMALS) {
+        "Los decimales de la moneda van de 0 a 3"
+    }
+    return CorrectionSession(
+        PhraseLexicons.of(language),
+        CorrectionVocabularies.of(language),
+        numberStyle,
+        moneyDecimals,
+        catalog,
+    ).follow(this, text, next)
 }

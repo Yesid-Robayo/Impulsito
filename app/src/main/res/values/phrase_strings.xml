@@ -96,6 +96,12 @@
     <string name="phrase_amount_missing">Amount missing</string>
     <string name="phrase_total_at_register">Complete the lines to see the total</string>
     <string name="phrase_start_over">Start over</string>
+    <string name="phrase_operation">Transaction</string>
+    <string name="phrase_other_operation">What was said is another transaction: %1$s. Start another card? This one is discarded</string>
+    <string name="phrase_start_new_card">Start another</string>
+    <string name="phrase_keep_card">Keep this one</string>
+    <string name="phrase_known_product">\"%1$s\" already exists. Its type and category are changed in the product</string>
+    <string name="phrase_open_product">Open product</string>
     <string name="phrase_register">Register</string>
     <string name="phrase_incomplete">Some details are missing. Complete what\'s marked to register</string>
     <string name="phrase_rejected">It couldn\'t be registered with these details. Check the card</string>
