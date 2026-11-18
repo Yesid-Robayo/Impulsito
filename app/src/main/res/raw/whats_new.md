@@ -1,5 +1,9 @@
 What each version of {app} brought, newest first.
 
+## 1.0.9
+
+- **Sentences better understood in English and Portuguese:** whoever buys in the third person is a customer, the word supplier says who got paid, setting the stock is a count, and a wholesale price doesn't change the list price. Where it used to guess wrong, it now gets it right or asks.
+
 ## 1.0.8
 
 - **What doesn't exist is created when registering:** a product that is said, isn't there and isn't like any other shows on the card as **New** and is created when **Register** is tapped, together with the operation. "made a cake with 200 g of flour" creates the cake with that as its recipe and produces it.

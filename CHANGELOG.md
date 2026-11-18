@@ -8,6 +8,17 @@ Las versiones publicadas tienen su APK, sus notas y su SHA-256 en [Releases](htt
 
 Cuando sale una versión nueva, se añade arriba con el mismo contenido que sus notas.
 
+## [1.0.9] - 2026-11-18
+
+### Corregido
+
+- **Frases que se leían mal en inglés y portugués:** la tarjeta ya no propone otra operación en frases como «they bought two cakes»
+  (una venta), «paid 30 to Julio, the supplier» (un pago a proveedor), «set the rice stock to 12 kilos» (un conteo), «bottled water is
+  1.25» (un precio) o «paguei 30 pro Júlio, o fornecedor». Un precio al por mayor no cambia el precio de lista, y el primer insumo de una
+  receta ya no se pierde.
+- **Costo y pagos:** «the empanada costs me 0.70 to make» corrige el costo, y lo que se le pagó a un proveedor se registra como pago a
+  proveedor.
+
 ## [1.0.8] - 2026-11-18
 
 ### Agregado

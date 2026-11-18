@@ -8,6 +8,17 @@ and versions follow [Semantic Versioning](https://semver.org/). Published versio
 
 When a new version is published, it's added at the top with the same content as its release notes.
 
+## [1.0.9] - 2026-11-18
+
+### Fixed
+
+- **Sentences misread in English and Portuguese:** the card no longer proposes another operation for sentences like "they bought two
+  cakes" (a sale), "paid 30 to Julio, the supplier" (a supplier payment), "set the rice stock to 12 kilos" (a count), "bottled water is
+  1.25" (a price) or "paguei 30 pro Júlio, o fornecedor". A wholesale price doesn't change the list price, and the first input of a
+  recipe is no longer lost.
+- **Cost and payments:** "the empanada costs me 0.70 to make" corrects the cost, and what a supplier got paid is registered as a supplier
+  payment.
+
 ## [1.0.8] - 2026-11-18
 
 ### Added

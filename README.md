@@ -5,7 +5,7 @@
 **Productos, stock, costos, ventas, gastos y ganancias de un emprendimiento, desde el celular. Sin internet, sin servidores y con
 respaldo en la nube que tú elijas.**
 
-![Versión](https://img.shields.io/badge/versión-1.0.8-43e5a0)
+![Versión](https://img.shields.io/badge/versión-1.0.9-43e5a0)
 ![Plataforma](https://img.shields.io/badge/plataforma-Android%208.0%2B-2f5fb3)
 ![Idiomas](https://img.shields.io/badge/idiomas-español%20%7C%20english%20%7C%20português-7ddc8f)
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-blue)](LICENSE)
@@ -157,17 +157,17 @@ Perder los datos es lo peor que le puede pasar a un negocio, así que esto va pr
 Impulsito no está en ninguna tienda de aplicaciones. El único lugar oficial para obtenerla son los
 [Releases](https://github.com/Yesid-Robayo/Impulsito/releases) de este repositorio.
 
-1. Descarga `impulsito-1.0.8.apk` del release.
+1. Descarga `impulsito-1.0.9.apk` del release.
 2. **Compruébalo antes de instalar.** En un computador con las herramientas de compilación del SDK de Android, compara su SHA-256 con
    el de las notas del release, y su certificado de firma con la huella de abajo. En PowerShell:
 
    ```powershell
    $bt = (Get-ChildItem "$env:ANDROID_HOME\build-tools" | Sort-Object Name | Select-Object -Last 1).FullName
-   & "$bt\apksigner.bat" verify --print-certs --verbose -Werr .\impulsito-1.0.8.apk
-   Get-FileHash -Algorithm SHA256 .\impulsito-1.0.8.apk
+   & "$bt\apksigner.bat" verify --print-certs --verbose -Werr .\impulsito-1.0.9.apk
+   Get-FileHash -Algorithm SHA256 .\impulsito-1.0.9.apk
    ```
 
-   En Linux o macOS, `apksigner verify --print-certs impulsito-1.0.8.apk` y `sha256sum impulsito-1.0.8.apk` hacen lo mismo.
+   En Linux o macOS, `apksigner verify --print-certs impulsito-1.0.9.apk` y `sha256sum impulsito-1.0.9.apk` hacen lo mismo.
 
    La línea `Signer #1 certificate SHA-256 digest` debe mostrar el certificado de release, con o sin dos puntos:
 

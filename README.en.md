@@ -5,7 +5,7 @@
 **Products, inventory, costs, sales, expenses and profit for a small business, from the phone. Offline, with no servers, and
 backed up to the cloud you choose.**
 
-![Version](https://img.shields.io/badge/version-1.0.8-43e5a0)
+![Version](https://img.shields.io/badge/version-1.0.9-43e5a0)
 ![Platform](https://img.shields.io/badge/platform-Android%208.0%2B-2f5fb3)
 ![Languages](https://img.shields.io/badge/languages-español%20%7C%20english%20%7C%20português-7ddc8f)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
@@ -156,17 +156,17 @@ Losing the data is the worst thing that can happen to a business, so this part c
 Impulsito isn't in any app store. The only official place to get it is this repository's
 [Releases](https://github.com/Yesid-Robayo/Impulsito/releases).
 
-1. Download `impulsito-1.0.8.apk` from the release.
+1. Download `impulsito-1.0.9.apk` from the release.
 2. **Check it before installing.** On a computer with the Android SDK build tools, compare its SHA-256 with the one in the release
    notes, and its signing certificate with the fingerprint below. In PowerShell:
 
    ```powershell
    $bt = (Get-ChildItem "$env:ANDROID_HOME\build-tools" | Sort-Object Name | Select-Object -Last 1).FullName
-   & "$bt\apksigner.bat" verify --print-certs --verbose -Werr .\impulsito-1.0.8.apk
-   Get-FileHash -Algorithm SHA256 .\impulsito-1.0.8.apk
+   & "$bt\apksigner.bat" verify --print-certs --verbose -Werr .\impulsito-1.0.9.apk
+   Get-FileHash -Algorithm SHA256 .\impulsito-1.0.9.apk
    ```
 
-   On Linux or macOS, `apksigner verify --print-certs impulsito-1.0.8.apk` and `sha256sum impulsito-1.0.8.apk` do the same.
+   On Linux or macOS, `apksigner verify --print-certs impulsito-1.0.9.apk` and `sha256sum impulsito-1.0.9.apk` do the same.
 
    The line `Signer #1 certificate SHA-256 digest` must show the release certificate, with or without colons:
 

@@ -1,5 +1,9 @@
 O que cada versão do {app} trouxe, da mais nova para a mais antiga.
 
+## 1.0.9
+
+- **Frases mais bem entendidas em inglês e português:** quem compra na terceira pessoa é um cliente, a palavra fornecedor diz a quem se pagou, definir o estoque é uma contagem e um preço de atacado não muda o preço de lista. Onde antes adivinhava errado, agora acerta ou pergunta.
+
 ## 1.0.8
 
 - **O que não existe é criado ao registrar:** um produto dito que não está e não se parece com nenhum aparece no cartão como **Novo** e é criado ao tocar em **Registrar**, junto com a operação. «fiz um bolo com 200 g de farinha» cria o bolo com isso como receita e o produz.

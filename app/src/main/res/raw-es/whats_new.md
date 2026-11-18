@@ -1,5 +1,9 @@
 Lo que trajo cada versión de {app}, de la más nueva a la más antigua.
 
+## 1.0.9
+
+- **Frases mejor entendidas en inglés y portugués:** quien compra en tercera persona es un cliente, la palabra proveedor dice a quién se le pagó, fijar el stock es un conteo y un precio al por mayor no cambia el precio de lista. Donde antes adivinaba mal, ahora acierta o pregunta.
+
 ## 1.0.8
 
 - **Lo que no existe se crea al registrar:** un producto dicho que no está y no se parece a ninguno aparece en la tarjeta como **Nuevo** y se crea al tocar **Registrar**, junto con la operación. «hice un pastel con 200 g de harina» crea el pastel con eso como su receta y lo produce.
