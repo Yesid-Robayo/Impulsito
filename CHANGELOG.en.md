@@ -8,6 +8,31 @@ and versions follow [Semantic Versioning](https://semver.org/). Published versio
 
 When a new version is published, it's added at the top with the same content as its release notes.
 
+## [1.0.7] - 2026-11-18
+
+### Added
+
+- **Producing by saying what it takes:** "made a cake with 200 g of flour and 3 eggs" produces with that. Without a recipe, the card
+  asks what it takes and, when registered, keeps it as the recipe per unit and produces in a single transaction. With a recipe, what
+  was said applies only that time; the card shows the difference and **Update the recipe** changes it too. Grams and kilos, millilitres
+  and litres are converted on their own.
+- **New versions are announced:** once a day, with internet and without sending any data, the app reads the version notice. If there
+  is a new one, a notification arrives, once per version, and **Home** says so until it is installed. Nothing is downloaded until
+  **Update** is tapped. It is turned off in **Updates and APK check**.
+- **Notifications at the start:** at the end of the initial setup, a sheet explains what they are for and Android asks for the
+  permission. People who already used the app are asked only once.
+- **Transaction on the card:** Sale, Purchase, Count and Production at the top of the card, keeping the lines when changing it.
+
+### Changed
+
+- **The card adds and never clears:** with the card open, what is said adds or corrects; without a verb, it follows the card's
+  operation. Another operation asks whether to start another card. The type or category of a product that already exists offers to
+  open the product, without touching the card.
+
+### Fixed
+
+- **Counts and productions of several products:** they are registered in full, in a single transaction, instead of being rejected.
+
 ## [1.0.6] - 2026-11-18
 
 ### Added

@@ -2,6 +2,7 @@ O que cada versão do {app} trouxe, da mais nova para a mais antiga.
 
 ## 1.0.7
 
+- **O cartão soma e não apaga:** com o cartão aberto, o que se diz soma ou corrige. «tenho 1 quilo de queijo» e depois «um quilo de farinha» mantém as duas linhas; sem verbo, a frase segue a operação do cartão. Outra operação pergunta se começa outro cartão. No alto, **Operação** a muda sem perder as linhas. Uma contagem de vários produtos é registrada inteira.
 - **Produzir dizendo o que leva:** «fiz um bolo com 200 gramas de farinha e 3 ovos» produz com isso. Se o produto não tem receita, o cartão pede para dizer o que leva e, ao registrar, salva como a receita. Se tem, mostra em que o que foi dito se afasta, e **Atualizar a receita** também a altera. «fiz 10 pastéis e 5 pães» registra os dois de uma vez.
 - **Avisa as novas versões:** uma vez por dia, com internet, o {app} consulta se há uma nova versão, sem enviar nenhum dado. Se houver, chega uma notificação, uma só vez por versão, e **Início** avisa até ela ser instalada. Nada é baixado sem tocar em **Atualizar**. É desligado com **Buscar atualizações automaticamente**, em **Atualizações e verificação de APK**.
 - **Notificações no início:** ao terminar a configuração inicial, uma folha curta explica para que servem as notificações, e depois o Android pede a permissão. Quem já usava o {app} recebe a pergunta uma só vez. Se for recusada, não é pedida de novo: as notificações são ativadas em **Configurações**, **Avisos**.

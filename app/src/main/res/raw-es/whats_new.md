@@ -2,6 +2,7 @@ Lo que trajo cada versión de {app}, de la más nueva a la más antigua.
 
 ## 1.0.7
 
+- **La tarjeta suma y no borra:** con la tarjeta abierta, lo que se dice suma o corrige. «tengo 1 kilo de queso» y después «un kilo de harina» deja las dos líneas; sin verbo, la frase sigue la operación de la tarjeta. Otra operación pregunta si empezar otra tarjeta. Arriba, **Operación** la cambia sin perder las líneas. Un conteo de varios productos se registra completo.
 - **Producir diciendo lo que lleva:** «hice un pastel con 200 gramos de harina y 3 huevos» produce con eso. Si el producto no tiene receta, la tarjeta pide decir qué lleva y, al registrar, lo guarda como su receta. Si la tiene, muestra en qué se aparta lo dicho, y **Actualizar la receta** también la cambia. «hice 10 empanadas y 5 panes» registra las dos a la vez.
 - **Avisa las versiones nuevas:** una vez al día, con internet, {app} consulta si hay una versión nueva, sin enviar ningún dato. Si la hay, llega una notificación, una sola vez por versión, e **Inicio** lo dice hasta instalarla. Nada se descarga sin tocar **Actualizar**. Se apaga con **Buscar actualizaciones automáticamente**, en **Actualizaciones y verificación de APK**.
 - **Notificaciones al empezar:** al terminar la configuración inicial, una hoja corta explica para qué sirven las notificaciones, y después Android pide el permiso. A quien ya usaba {app} se le pregunta una sola vez. Si se rechaza, no se vuelve a pedir: se encienden en **Ajustes**, **Avisos**.

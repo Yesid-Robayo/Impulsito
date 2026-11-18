@@ -8,6 +8,30 @@ Las versiones publicadas tienen su APK, sus notas y su SHA-256 en [Releases](htt
 
 Cuando sale una versión nueva, se añade arriba con el mismo contenido que sus notas.
 
+## [1.0.7] - 2026-11-18
+
+### Agregado
+
+- **Producir diciendo lo que lleva:** «hice un pastel con 200 g de harina y 3 huevos» produce con eso. Sin receta, la tarjeta pide qué
+  lleva y, al registrar, lo guarda como receta por unidad y produce en una sola transacción. Con receta, lo dicho vale solo esa vez; la
+  tarjeta muestra la diferencia y **Actualizar la receta** también la cambia. Gramos y kilos, mililitros y litros se convierten solos.
+- **Avisa las versiones nuevas:** una vez al día, con internet y sin enviar datos, la app consulta el aviso de versión. Si hay una
+  nueva, llega una notificación, una vez por versión, e **Inicio** lo dice hasta instalarla. Nada se descarga sin tocar **Actualizar**.
+  Se apaga en **Actualizaciones y verificación de APK**.
+- **Notificaciones al empezar:** al terminar la configuración inicial, una hoja explica para qué sirven y Android pide el permiso. A
+  quien ya usaba la app se le pregunta una sola vez.
+- **Operación en la tarjeta:** Venta, Compra, Conteo y Producción arriba de la tarjeta, sin perder las líneas al cambiar.
+
+### Cambiado
+
+- **La tarjeta suma y no borra:** con la tarjeta abierta, lo dicho suma o corrige; sin verbo, sigue la operación de la tarjeta. Otra
+  operación pregunta si empezar otra tarjeta. El tipo o la categoría de un producto que ya existe ofrecen abrir el producto, sin tocar
+  la tarjeta.
+
+### Corregido
+
+- **Conteos y producciones de varios productos:** se registran completos, en una sola transacción, en lugar de rechazarse.
+
 ## [1.0.6] - 2026-11-18
 
 ### Agregado
