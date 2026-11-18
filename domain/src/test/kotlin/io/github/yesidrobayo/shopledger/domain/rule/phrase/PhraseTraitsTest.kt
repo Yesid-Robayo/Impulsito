@@ -281,9 +281,12 @@ class PhraseTraitsTest {
         .read(PhraseTokenizer.tokenize(text), start, amount)
 
     @Test
-    fun `spaced groups join only when there is no doubt`() {
-        // Sin marca y con otro formato, "3 500" puede ser 3 a 500: queda el 3.
-        assertEquals(NumberRead(3_000L, 1, money = false), number("3 500"))
+    fun `spaced groups always join, as dictation writes thousands`() {
+        // Así escribe el dictado los miles: "tres a quinientos" se dicta con su "a".
+        assertEquals(NumberRead(3_500_000L, 2, money = false), number("3 500"))
+        assertEquals(NumberRead(200_000_000L, 2, money = false), number("200\u00A0000"))
+        assertEquals(NumberRead(200_000_000L, 2, money = false), number("200\u202F000"))
+        assertEquals(NumberRead(2_300_000L, 2, money = false), number("2 300 gramos"))
         assertEquals(NumberRead(3_500_000L, 2, money = false), number("3 500", amount = true))
         assertEquals(
             NumberRead(3_500_000L, 2, money = false),

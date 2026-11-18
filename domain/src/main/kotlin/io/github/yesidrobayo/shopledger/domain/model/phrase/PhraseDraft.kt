@@ -24,6 +24,9 @@ import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
  *   nombró sale de la receta; si el producto no tiene receta, lo dicho se guarda como su receta.
  * - [updatesRecipe] es el interruptor `Actualizar la receta`: con él encendido, lo dicho también
  *   cambia la receta guardada, en la misma escritura. Nace apagado.
+ * - [conversions] son las medidas que la persona dijo en la tarjeta, como cuánto pesa una libra de
+ *   harina: la línea ya va convertida con ellas, y al registrar se guardan como conversiones del
+ *   producto, en la misma escritura, para que la próxima vez se convierta sola.
  */
 data class PhraseDraft(
     val intent: PhraseIntent,
@@ -41,7 +44,15 @@ data class PhraseDraft(
     val unitId: Long? = null,
     val inputs: List<DraftLine> = emptyList(),
     val updatesRecipe: Boolean = false,
+    val conversions: List<SaidConversion> = emptyList(),
 )
+
+/**
+ * Una conversión de [productId] que sale de una medida dicha en la tarjeta: una de [unitId] trae
+ * [factorMilli] milésimas de su unidad base. Como una libra no pesa lo mismo en todas partes, la
+ * dice la persona una vez, y queda guardada al registrar.
+ */
+data class SaidConversion(val productId: Long, val unitId: Long, val factorMilli: Long)
 
 /**
  * Una línea de la tarjeta. [product] `null` es un producto que falta elegir, y [quantity] `null`
@@ -52,6 +63,10 @@ data class PhraseDraft(
  * [candidates] son los productos entre los que se pidió elegir cuando falta el producto, como las
  * dos gaseosas de "2 gaseosas": así una corrección como "las grandes" elige entre ellos. Vacía si
  * no se pidió elegir o si ya hay producto.
+ *
+ * [unfit] es lo que se dijo en una unidad que el producto no admite: entonces falta [quantity], y la
+ * tarjeta muestra lo dicho para pedirla en una unidad del producto o, si es de la misma clase,
+ * cuánto mide una de ellas.
  */
 data class DraftLine(
     val product: DraftTarget?,
@@ -60,6 +75,7 @@ data class DraftLine(
     val unitPrice: Money? = null,
     val lineTotal: Money? = null,
     val candidates: List<Long> = emptyList(),
+    val unfit: UnfitQuantity? = null,
 )
 
 /** Un producto de la tarjeta: uno del catálogo, o uno nuevo que se nombró y todavía no existe. */

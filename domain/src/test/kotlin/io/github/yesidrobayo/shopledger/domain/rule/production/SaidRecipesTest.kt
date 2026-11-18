@@ -1,6 +1,8 @@
 package io.github.yesidrobayo.shopledger.domain.rule.production
 
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeLine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -80,5 +82,70 @@ class SaidRecipesTest {
         const val FLOUR = 1L
         const val EGG = 2L
         const val SALT = 3L
+        const val FILLING = 4L
+    }
+
+    // Un combo de la receta, contado una sola vez.
+
+    private fun component(parent: Long, id: Long, milli: Long) =
+        RecipeComponent(parent * 100 + id, parent, id, QuantityMilli(milli))
+
+    /** Un combo de relleno: 0,100 kg de harina y 2 huevos por cada uno. */
+    private val recipes =
+        mapOf(FILLING to listOf(component(FILLING, FLOUR, 100), component(FILLING, EGG, 2_000)))
+    private val modes = mapOf(
+        FILLING to ProductStockMode.COMPONENTS,
+        FLOUR to ProductStockMode.TRACKED,
+        EGG to ProductStockMode.TRACKED,
+    )
+
+    @Test
+    fun `repeated inputs are summed in the place they first appeared`() {
+        assertEquals(
+            listOf(input(FLOUR, 300), input(EGG, 2_000)),
+            SaidRecipes.merged(listOf(input(FLOUR, 100), input(EGG, 2_000), input(FLOUR, 200))),
+        )
+    }
+
+    @Test
+    fun `a combo that brings a said input opens in its components`() {
+        // La receta lleva 2 rellenos y 0,050 kg de harina suelta; se dijo cuánto huevo lleva.
+        val stored = listOf(row(FILLING, 2_000), row(FLOUR, 50))
+        assertEquals(
+            listOf(row(FLOUR, 250), row(EGG, 4_000)),
+            SaidRecipes.opened(stored, setOf(EGG), recipes, modes),
+        )
+        // Con eso, actualizar la receta con el huevo no lo cuenta dos veces.
+        assertEquals(
+            listOf(row(FLOUR, 250), row(EGG, 3_000)),
+            SaidRecipes.recipe(
+                SaidRecipes.opened(stored, setOf(EGG), recipes, modes).orEmpty(),
+                listOf(input(EGG, 6_000)),
+                QuantityMilli(2_000),
+            ),
+        )
+    }
+
+    @Test
+    fun `a combo stays whole when nothing it brings was said alone`() {
+        val stored = listOf(row(FILLING, 2_000), row(EGG, 1_000))
+        // El combo mismo se dijo, o lo dicho ya va suelto en la receta, o no lo trae.
+        assertEquals(stored, SaidRecipes.opened(stored, setOf(FILLING, EGG), recipes, modes))
+        assertEquals(stored, SaidRecipes.opened(stored, setOf(EGG), recipes, modes))
+        assertEquals(stored, SaidRecipes.opened(stored, setOf(SALT), recipes, modes))
+        // Uno que no es combo, aunque tenga receta, no se abre.
+        val tracked = modes + (FILLING to ProductStockMode.TRACKED)
+        assertEquals(stored, SaidRecipes.opened(stored, setOf(FLOUR), recipes, tracked))
+        assertEquals(
+            listOf(row(SALT, 10)),
+            SaidRecipes.opened(listOf(row(SALT, 10)), setOf(FLOUR), recipes, modes),
+        )
+        // Un combo sin receta leída no trae nada que abrir.
+        assertEquals(stored, SaidRecipes.opened(stored, setOf(FLOUR), emptyMap(), modes))
+    }
+
+    @Test
+    fun `a combo whose components round to zero cannot be opened`() {
+        assertNull(SaidRecipes.opened(listOf(row(FILLING, 1)), setOf(FLOUR), recipes, modes))
     }
 }

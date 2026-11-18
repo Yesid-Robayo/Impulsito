@@ -86,6 +86,14 @@ class AdjustStockUseCase(
         }
     }
 
+    /**
+     * Lo mismo que [all] dentro de una transacción que ya abrió quien llama, como el conteo de un
+     * producto nuevo dicho con una frase, que se crea en la misma escritura.
+     */
+    internal suspend fun allWithin(
+        requests: List<StockAdjustmentRequest>,
+    ): TxResult<StockAdjustmentsResult> = adjustAll(requests)
+
     private suspend fun adjustAll(
         requests: List<StockAdjustmentRequest>,
     ): TxResult<StockAdjustmentsResult> {

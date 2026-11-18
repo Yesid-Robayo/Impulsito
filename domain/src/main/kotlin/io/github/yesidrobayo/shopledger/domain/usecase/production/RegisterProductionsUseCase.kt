@@ -52,6 +52,14 @@ class RegisterProductionsUseCase(
         }
     }
 
+    /**
+     * Lo mismo que [invoke] dentro de una transacción que ya abrió quien llama, como producir un
+     * producto nuevo dicho con una frase, que se crea en la misma escritura.
+     */
+    internal suspend fun registerWithin(
+        steps: List<ProductionStep>,
+    ): TxResult<RegisterProductionsResult> = registerAll(steps)
+
     private suspend fun registerAll(
         steps: List<ProductionStep>,
     ): TxResult<RegisterProductionsResult> {

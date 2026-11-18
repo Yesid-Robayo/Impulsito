@@ -623,7 +623,7 @@ class PhraseScreenTest {
     }
 
     @Test
-    fun aNewProductShowsWhatWasSaidAndIsCreatedWithIt() {
+    fun aNewProductShowsWhatWasSaidAndIsCreatedWithTheOperation() {
         val registered = mutableListOf<PhraseDraft>()
         val model =
             viewModel(
@@ -639,24 +639,16 @@ class PhraseScreenTest {
         compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
         compose.waitUntil(TIMEOUT_MS) { has("Harina") }
 
+        // Sin parecidos en el catálogo, es nuevo de una vez: no hay que crearlo antes.
+        compose.onNodeWithText(text(R.string.phrase_new_tag)).assertIsDisplayed()
         compose.onNodeWithText(text(R.string.product_usage_input)).assertIsDisplayed()
         val category = text(R.string.phrase_category_to_create, "Materias primas")
         compose.onNodeWithText(category).assertIsDisplayed()
-        compose.onNodeWithText(text(R.string.selection_create, "Harina")).performClick()
-        compose.waitUntil(TIMEOUT_MS) { registered.isNotEmpty() }
-
-        // Se crea con el uso y la categoría que se dijeron, en la unidad de la línea.
-        assertEquals(
-            PhraseDraft(
-                intent = PhraseIntent.NEW_PRODUCT,
-                target = DraftTarget.New("Harina", NEW_TRAITS),
-                unitId = KILO,
-            ),
-            registered.single(),
-        )
-        compose.waitUntil(TIMEOUT_MS) {
-            card(model).lines.single().product == CardProduct.Chosen(NEW_ID, "Harina")
-        }
+        assertEquals(false, has(text(R.string.selection_create, "Harina")))
+        val product = card(model).lines.single().product as CardProduct.New
+        assertEquals(false, product.needsCreating)
+        // Nada se crea hasta registrar la compra, que lo crea en su misma escritura.
+        assertEquals(emptyList<PhraseDraft>(), registered)
     }
 
     @Test
@@ -675,7 +667,7 @@ class PhraseScreenTest {
             card(model).lines.single().product ==
                 CardProduct.New(
                     "Harina",
-                    needsCreating = true,
+                    needsCreating = false,
                     usage = ProductUsage.INPUT,
                     category = MATERIALS_NAME,
                 )

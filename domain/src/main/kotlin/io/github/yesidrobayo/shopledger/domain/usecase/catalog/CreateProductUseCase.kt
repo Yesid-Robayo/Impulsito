@@ -102,6 +102,21 @@ class CreateProductUseCase(
     }
 
     /**
+     * Crea el producto de [form], sin stock inicial, dentro de una transacción que ya abrió quien
+     * llama, como registrar por frase una venta de un producto nuevo: el producto y la venta quedan
+     * juntos o no queda ninguno. Con [newCategory], como en [invoke]. Un rechazo llega como
+     * [TxResult.Rollback], y quien llama deshace todo.
+     */
+    internal suspend fun createWithin(
+        form: ProductForm,
+        newCategory: String?,
+    ): TxResult<SaveProductResult> = if (newCategory == null) {
+        create(form, QuantityMilli.ZERO, InitialCost.PerUnit)
+    } else {
+        inCategory(newCategory, form, QuantityMilli.ZERO, InitialCost.PerUnit)
+    }
+
+    /**
      * La categoría [name], la que ya tiene ese nombre o una nueva, y el producto en ella, dentro de
      * la misma transacción. Un nombre que no sirve para una categoría no crea nada.
      */

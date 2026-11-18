@@ -10,7 +10,8 @@ internal object EnglishVocabulary {
             "sold", "i sold", "we sold", "sale of", "sold to", "bought from me", "bought from us",
             "customer bought",
             "sale", "rang up", "rang", "went out", "they took", "went for",
-            "people took", "customers took", "made a sale of",
+            "people took", "customers took", "made a sale of", "ring up", "rung up", "i rang up",
+            "we rang up", "customer got", "customers got", "a customer got",
         ),
         VerbKind.SELL_NOW to listOf("sell", "i sell", "we sell", "sells"),
         VerbKind.COLLECT to listOf("charged", "i charged", "collected", "i collected"),
@@ -18,14 +19,17 @@ internal object EnglishVocabulary {
             "bought", "i bought", "we bought", "purchased", "i purchased",
             "restocked", "came in", "arrived", "delivery of", "brought", "i brought", "picked up",
             "stocked up on", "stocked up", "i stocked up on", "sold me", "sold us", "came",
-            "delivery came", "the delivery came", "the order came",
+            "delivery came", "the delivery came", "the order came", "bought in",
+            "got a delivery of", "received a delivery of",
         ),
         VerbKind.PRODUCTION to listOf(
             "made", "i made", "we made", "baked", "i baked", "we baked", "produced", "prepared",
             "cooked",
             "manufactured", "batch of", "a batch of", "out of the oven", "took out of the oven",
             "came out of the oven", "fresh out of the oven", "jarred", "assembled",
-            "put together", "oven gave me", "the oven gave me", "whipped up",
+            "put together", "oven gave me", "the oven gave me", "whipped up", "prepped",
+            "i prepped", "fried", "i fried", "we fried", "roasted", "poured", "sewed",
+            "knitted", "crafted",
         ),
         VerbKind.COUNT to listOf(
             "counted", "i counted", "there are", "there is", "theres", "left", "i have", "we have",
@@ -114,7 +118,8 @@ internal object EnglishVocabulary {
         VerbKind.PAY_OUT to
             listOf(
                 "i paid", "we paid", "spent", "i spent", "we spent", "paid for", "transferred",
-                "i transferred", "i sent", "topped up", "i topped up", "invested", "i invested",
+                "i transferred", "i sent", "sent", "topped up", "i topped up", "invested",
+                "i invested",
                 "charged me", "charged us",
             ),
         VerbKind.PAY_ANY to listOf("paid", "payment", "has paid", "paid back"),
@@ -401,12 +406,16 @@ internal object EnglishVocabulary {
             phrases = listOf(
                 // Devoluciones: tienen su propio flujo.
                 "returned", "return", "returns", "gave back", "brought back", "refund", "refunded",
+                "took back", "take back", "taken back",
                 // Anular o borrar: nada se borra desde una frase.
                 "cancel", "cancelled", "canceled", "delete", "deleted", "void", "undo", "erase",
                 // Dinero que no es venta ni gasto: retiros, depósitos y préstamos.
                 "from the register", "from the till", "out of the register", "out of the till",
                 "from the cash box", "to the bank", "in the bank", "withdrew", "withdrawal",
                 "loan", "lent", "borrowed", "lend", "paid myself", "pay myself", "dropped off",
+                "register has", "till has", "drawer has", "in the register", "in the till",
+                "in the drawer", "made money", "made good money", "made some money",
+                "made a lot of money",
                 // Cotizaciones, listas de precios y cambios de todos los precios.
                 "quote", "quotation", "estimate", "price list", "wholesale list",
                 "wholesale price", "on the list", "all prices", "all the prices",
@@ -419,6 +428,11 @@ internal object EnglishVocabulary {
                 "made a purchase", "sold nothing", "bought nothing", "no sales", "nothing sold",
                 // Lo que se acabó no dice cuánto queda ni qué pasó.
                 "sold out", "ran out", "run out",
+                // Cómo se vende algo, o lo que cuesta en otra tienda, no es una operación.
+                // "well" es una muletilla y se quita antes: "are selling well" queda en "selling".
+                "selling", "expensive", "cheap", "cheaper", "pricey", "at the store",
+                "at the market", "at the supermarket", "stop selling", "stopped selling",
+                "no longer", "anymore",
             ),
             negations = listOf(
                 "no", "not", "never", "didnt", "did not", "havent", "have not", "hasnt", "has not",
@@ -427,7 +441,8 @@ internal object EnglishVocabulary {
             percents = listOf("percent", "per cent"),
             notYet = listOf(
                 "tomorrow", "going to", "gonna", "will", "ill", "need to", "have to", "has to",
-                "got to", "gotta", "must", "should", "plan to", "want to", "wanna", "next week",
+                "got to", "gotta", "must", "should", "plan to", "planning to", "planning on",
+                "plan on", "about to", "want to", "wanna", "next week",
                 "next month", "not yet",
             ),
         ),
@@ -445,7 +460,9 @@ internal object EnglishVocabulary {
             shares = listOf("half", "the other half", "part", "all", "everything", "all of it"),
             genericParties = listOf(
                 "a customer", "the customer", "a client", "the client", "to a customer",
-                "to the customer", "a guy", "a lady", "a neighbor", "to a neighbor",
+                "to the customer", "a guy", "a lady", "a neighbor", "to a neighbor", "someone",
+                "somebody", "a woman", "a man", "a girl", "a boy", "a kid", "a person", "the lady",
+                "the guy",
             ),
             recipeEach = listOf("for every", "for each", "each", "every"),
             createLeads = listOf("new"),

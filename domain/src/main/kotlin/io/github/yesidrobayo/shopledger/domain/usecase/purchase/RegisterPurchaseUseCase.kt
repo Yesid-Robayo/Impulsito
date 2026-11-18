@@ -152,6 +152,15 @@ class RegisterPurchaseUseCase(
         RegisterPurchaseResult.StorageFailed(failure.failure)
     }
 
+    /**
+     * Registra [request] dentro de una transacción que ya abrió quien llama, como la compra de un
+     * producto nuevo dicho con una frase, que se crea en la misma escritura. Un rechazo llega como
+     * [TxResult.Rollback], y quien llama deshace todo.
+     */
+    internal suspend fun registerWithin(
+        request: PurchaseRequest,
+    ): TxResult<RegisterPurchaseResult> = register(request)
+
     private suspend fun register(request: PurchaseRequest): TxResult<RegisterPurchaseResult> {
         ledger.start()
         val reference = request.invoiceReference?.trim()?.takeIf { it.isNotEmpty() }

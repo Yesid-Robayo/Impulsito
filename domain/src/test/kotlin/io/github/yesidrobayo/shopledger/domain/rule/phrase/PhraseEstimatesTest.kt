@@ -95,6 +95,36 @@ class PhraseEstimatesTest {
     }
 
     @Test
+    fun `a sale line of a product without a price asks for one`() {
+        val sale = PhraseDraft(
+            PhraseIntent.SALE,
+            lines = listOf(
+                // Con precio en la base.
+                line(of(BREAD), 1_000),
+                // Sin precio: lo pide.
+                line(of(UNPRICED), 1_000),
+                // Sin precio, pero dicho: el total o el precio.
+                line(of(UNPRICED), 1_000, lineTotal = 900),
+                line(of(UNPRICED), 1_000, unitPrice = 900),
+                // Sin precio en la base, en una unidad sin precio propio: lo pide.
+                line(of(UNPRICED), 1_000, unitId = BOX),
+                // Un producto nuevo o uno por elegir: lo dicen sus propios huecos.
+                line(DraftTarget.New("Flan"), 1_000),
+                line(null, 1_000),
+            ),
+        )
+        assertEquals(setOf(1, 4), sale.unpricedSaleLines(prices))
+        // Sin precio en la base, pero con el de su presentación.
+        val boxed = prices.copy(saleByUnit = mapOf((UNPRICED to BOX) to Money(7_000)))
+        assertEquals(setOf(1), sale.unpricedSaleLines(boxed))
+        // Fuera de una venta, ninguna: una compra pide su costo aparte.
+        assertEquals(
+            emptySet<Int>(),
+            sale.copy(intent = PhraseIntent.PURCHASE).unpricedSaleLines(prices),
+        )
+    }
+
+    @Test
     fun `a sale line without a price takes the price the sale will use`() {
         assertEquals(
             listOf(

@@ -12,11 +12,13 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIssue
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLanguage
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.ProductMatch
+import io.github.yesidrobayo.shopledger.domain.model.phrase.UnfitQuantity
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.COMMA_DECIMAL
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.COOKIES
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.EGG
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.EMPANADA
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.GRAM
+import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.LITER
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.POINT_DECIMAL
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.WHEAT_FLOUR
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.spanish
@@ -83,7 +85,10 @@ class PhraseProductionInputsTest {
     fun `an input in another class of unit keeps its quantity as a gap`() {
         val reading = spanish("hice una empanada con 2 litros de harina de trigo")
 
-        assertEquals(listOf(found(WHEAT_FLOUR, null)), reading.inputs)
+        assertEquals(
+            listOf(found(WHEAT_FLOUR, null).copy(unfit = UnfitQuantity(units(2), LITER))),
+            reading.inputs,
+        )
         assertTrue(PhraseIssue.UNIT_NOT_FOR_PRODUCT in reading.issues)
     }
 
@@ -98,7 +103,8 @@ class PhraseProductionInputsTest {
         val draft = requireNotNull(reading.toDraft())
         val created = draft.inputs.single().product as DraftTarget.New
         assertEquals(ProductUsage.INPUT, created.traits.usage)
-        assertEquals(setOf(DraftGap.PRODUCT), draft.gaps())
+        // Se crea al registrar la producción, en la misma escritura.
+        assertEquals(emptySet<DraftGap>(), draft.gaps())
     }
 
     // Lo que falta.
@@ -197,8 +203,36 @@ class PhraseProductionInputsTest {
         assertEquals(emptyList<DraftLine>(), sale.fix("200 g de harina de trigo")?.inputs.orEmpty())
         val two = cookies.copy(lines = cookies.lines + line(EMPANADA, 1_000))
         assertEquals(emptyList<DraftLine>(), two.fix("lleva 3 huevos")?.inputs.orEmpty())
+        // Lo producido por elegir también lleva lo que se dice.
         val choosing = production(line(null, 1_000))
-        assertEquals(emptyList<DraftLine>(), choosing.fix("lleva 3 huevos")?.inputs.orEmpty())
+        assertEquals(listOf(line(EGG, 3_000)), choosing.fix("lleva 3 huevos")?.inputs)
+        assertNull(choosing.fix("la empanada lleva 3 huevos"))
+    }
+
+    @Test
+    fun `something new that is produced is created with what it takes`() {
+        // Un turrón que no existe: se crea al registrar, y lo dicho queda como su receta.
+        val draft = requireNotNull(spanish("hice un turrón con 200 g de harina de trigo").toDraft())
+        assertEquals(DraftTarget.New("Turrón"), draft.lines.single().product)
+        assertEquals(listOf(line(WHEAT_FLOUR, 200_000, GRAM)), draft.inputs)
+        assertEquals(emptySet<DraftGap>(), draft.gaps())
+    }
+
+    @Test
+    fun `what it takes is said for a product that left the catalog, as if it had no recipe`() {
+        val gone = production(line(9_999L, 1_000))
+        assertEquals(listOf(line(EGG, 3_000)), gone.fix("3 huevos")?.inputs)
+    }
+
+    @Test
+    fun `what it takes is said after the card of something new`() {
+        val nougat = production(DraftLine(DraftTarget.New("Turrón"), units(1), null))
+        assertEquals(listOf(line(EGG, 3_000)), nougat.fix("lleva 3 huevos")?.inputs)
+        // Sin verbo también: algo nuevo no tiene receta.
+        assertEquals(listOf(line(EGG, 3_000)), nougat.fix("3 huevos")?.inputs)
+        assertEquals(listOf(line(EGG, 3_000)), nougat.fix("el turrón lleva 3 huevos")?.inputs)
+        // Otro producto antes de "lleva" es otra receta.
+        assertNull(nougat.fix("la empanada lleva 3 huevos"))
     }
 
     @Test

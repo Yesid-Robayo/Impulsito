@@ -2,20 +2,24 @@ package io.github.yesidrobayo.shopledger.domain.rule.phrase
 
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftTarget
 import io.github.yesidrobayo.shopledger.domain.model.phrase.NameMatch
+import io.github.yesidrobayo.shopledger.domain.model.phrase.NewProductTraits
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIntent
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIssue
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseReading
 import io.github.yesidrobayo.shopledger.domain.model.phrase.ProductMatch
+import io.github.yesidrobayo.shopledger.domain.model.phrase.UnfitQuantity
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.BREAD
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.CASH
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.FARMER_CHEESE
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.KILOGRAM
+import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.LITER
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.MARIA
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.MOZZARELLA
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.RENT
@@ -102,14 +106,43 @@ class PhraseDraftTest {
     }
 
     @Test
-    fun `an unknown product is offered as new in a sale, a purchase and a recipe only`() {
+    fun `an unknown product is new where the operation creates it`() {
         val unknown = line(ProductMatch.Unknown("Zanahoria"), units(2))
-        val offered = listOf(PhraseIntent.SALE, PhraseIntent.PURCHASE, PhraseIntent.RECIPE)
+        val offered = listOf(PhraseIntent.SALE, PhraseIntent.PURCHASE, PhraseIntent.PRODUCTION)
         for (intent in PhraseIntent.entries) {
             val product = reading(intent, unknown).toDraft()?.lines?.single()?.product
-            val expected = if (intent in offered) DraftTarget.New("Zanahoria") else null
+            val expected = when (intent) {
+                in offered -> DraftTarget.New("Zanahoria")
+
+                // Un ingrediente nuevo es un insumo.
+                PhraseIntent.RECIPE ->
+                    DraftTarget.New("Zanahoria", NewProductTraits(usage = ProductUsage.INPUT))
+
+                else -> null
+            }
             assertEquals(intent.name, expected, product)
         }
+        // Un conteo dice lo que hay de algo nuevo; otro ajuste no saca lo que no existe.
+        val counted = PhraseReading(
+            intent = PhraseIntent.STOCK_ADJUSTMENT,
+            reason = StockAdjustmentReason.COUNT_CORRECTION,
+            lines = listOf(unknown),
+        ).toDraft()
+        assertEquals(DraftTarget.New("Zanahoria"), counted?.lines?.single()?.product)
+        val damaged = counted?.copy(reason = StockAdjustmentReason.DAMAGED)
+        assertEquals(false, damaged?.createsLineProducts())
+    }
+
+    @Test
+    fun `what was said in a unit the product does not take leaves the quantity to ask`() {
+        val said = UnfitQuantity(units(2), LITER)
+        val draft = PhraseReading(
+            intent = PhraseIntent.SALE,
+            lines = listOf(line(ProductMatch.Found(BREAD), units(2)).copy(unfit = said)),
+        ).toDraft()
+        val card = draft?.lines?.single()
+        assertNull(card?.quantity)
+        assertEquals(said, card?.unfit)
     }
 
     @Test

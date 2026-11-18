@@ -27,16 +27,17 @@ internal class NumberReader(
     private val cents: Boolean = true,
 ) {
     /**
-     * El número que empieza en [start]. [amount] dice que ya se sabe que es un monto, porque va
-     * después de "a", "por" o "en": entonces "50 000" son cincuenta mil, como si el teclado
-     * agrupara los miles con espacio (ver [spacedGroups]), y una cifra pequeña seguida de otra de
-     * dos cifras son unidades y centavos, como se dice un precio: "twelve seventy five", "um e
-     * vinte" (ver [withCents]). Esto último solo si la moneda tiene centavos ([cents]).
+     * El número que empieza en [start]. Unas cifras agrupadas de a tres con espacios, como las
+     * escribe el dictado, son un solo número: "200 000" son doscientos mil (ver [spacedGroups]).
+     * [amount] dice que ya se sabe que es un monto, porque va después de "a", "por" o "en":
+     * entonces una cifra pequeña seguida de otra de dos cifras son unidades y centavos, como se
+     * dice un precio: "twelve seventy five", "um e vinte" (ver [withCents]). Esto solo si la
+     * moneda tiene centavos ([cents]).
      */
     fun read(tokens: List<Token>, start: Int, amount: Boolean = false): NumberRead? {
         val fixed = lexicon.fixedNumbers.matchAt(tokens, start)
         if (fixed != null) return NumberRead(fixed.value, fixed.end, money = false)
-        val spaced = spacedGroups(tokens, start, amount)
+        val spaced = spacedGroups(tokens, start)
         if (spaced != null) return spaced
         val whole = whole(tokens, start) ?: return null
         val pointed = decimals(tokens, whole) ?: whole
@@ -146,13 +147,13 @@ internal class NumberReader(
 
     /**
      * Cifras agrupadas de a tres con espacios, que el dictado parte en palabras: "50 000" o "1 500
-     * 000". Solo se juntan si no hay duda: si el formato regional agrupa con espacio, o si se sabe
-     * que es un monto ([amount]). Así "vendí 3 500" con otro formato siguen siendo 3 y 500, que
-     * puede ser 3 a 500. El primer grupo lleva de una a tres cifras y los siguientes, tres
-     * exactas, sin decimales.
+     * 000", también con el espacio duro o el angosto que escriben algunos teclados de voz. Se
+     * juntan siempre, con cualquier formato regional y aunque no se sepa que es un monto: así
+     * escribe el dictado los miles, y "tres a quinientos" se dicta con su "a". Por eso "vendí 2
+     * 300 gramos" son 2300 gramos. El primer grupo lleva de una a tres cifras y los siguientes,
+     * tres exactas, sin decimales.
      */
-    private fun spacedGroups(tokens: List<Token>, start: Int, amount: Boolean): NumberRead? {
-        if (!amount && !style.grouping.isWhitespace()) return null
+    private fun spacedGroups(tokens: List<Token>, start: Int): NumberRead? {
         if (start >= tokens.size) return null
         val head = tokens[start].norm
         if (head.length > GROUP || !head.all(Char::isDigit)) return null

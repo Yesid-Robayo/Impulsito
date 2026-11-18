@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIntent
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.rule.production.RecipeInputsResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ChangePriceResult
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveConversionResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveRecipeResult
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.RecordCustomerPaymentResult
@@ -76,6 +77,9 @@ sealed interface PhraseRejection {
 
     /** Guardar la receta rechazó lo pedido. */
     data class Recipe(val result: SaveRecipeResult) : PhraseRejection
+
+    /** Guardar la medida que se dijo en la tarjeta, como conversión del producto, la rechazó. */
+    data class Conversion(val result: SaveConversionResult) : PhraseRejection
 
     /**
      * Esta operación se registra con un solo producto, y la tarjeta trae varios: un cambio de

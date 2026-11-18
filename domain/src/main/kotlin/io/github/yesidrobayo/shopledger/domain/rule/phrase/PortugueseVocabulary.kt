@@ -9,9 +9,11 @@ internal object PortugueseVocabulary {
             "me comprou", "compraram", "comprou de mim",
             // "saíram" sem "do forno" é o que se vendeu no balcão.
             "saíram", "despachei", "despachamos", "fiz uma venda de", "fizemos uma venda de",
+            "acabei de vender", "acabamos de vender",
         ),
         VerbKind.SELL_NOW to listOf("vendo", "eu vendo"),
-        VerbKind.COLLECT to listOf("cobrei", "cobramos"),
+        // "passei no cartão": cobrei. Sem ela, "passei" se lia como "assei", uma produção.
+        VerbKind.COLLECT to listOf("cobrei", "cobramos", "passei", "passamos"),
         VerbKind.PURCHASE to listOf(
             "comprei", "compramos", "compro", "compra de", "chegaram", "chegou",
 
@@ -102,6 +104,7 @@ internal object PortugueseVocabulary {
             "abaixei", "subi o preço do", "subi o preço da", "aumentei o preço do",
         ),
         VerbKind.PAY_IN to listOf(
+            "quitou a conta", "acertou a conta", "acertou o fiado", "quitou o fiado",
             "me pagou",
             "me pagaram",
             "me deu",
@@ -171,7 +174,7 @@ internal object PortugueseVocabulary {
             "cada unidade",
         ),
         perUnitLeads = listOf("o", "a", "por", "cada"),
-        amountFor = listOf("por", "em"),
+        amountFor = listOf("por", "em", "pelo", "pela", "pelos", "pelas"),
         separators = listOf("e", "mais", "também", "e também", "além de", "e mais"),
         continuations = mapOf("e meio" to 500L, "e meia" to 500L, "e um quarto" to 250L),
         fixedNumbers = mapOf("um par de" to 2_000L, "um par" to 2_000L),
@@ -393,7 +396,7 @@ internal object PortugueseVocabulary {
             phrases = listOf(
                 // Devoluções: têm seu próprio fluxo.
                 "me devolveram", "devolveram", "me devolveu", "devolveu", "devolvi",
-                "devolvemos", "devolução", "devolver", "devolve",
+                "devolvemos", "devolução", "devolver", "devolve", "de volta",
                 // Anular ou apagar: nada se apaga a partir de uma frase.
                 "cancela", "cancelar", "cancelei", "apaga", "apagar", "apaguei", "exclui",
                 "excluir", "estorna", "estornar", "desfaz", "desfazer", "anula", "anular",
@@ -414,6 +417,10 @@ internal object PortugueseVocabulary {
                 "vendi nada", "nenhuma venda", "sem vendas",
                 // O que acabou não diz quanto sobra nem o que aconteceu.
                 "acabou", "acabaram", "esgotou", "esgotaram",
+                // Como algo vende, ou quanto custa em outra loja, não é uma operação.
+                "vendi bem", "vendemos bem", "vendeu bem", "vende bem", "vendendo bem",
+                "vendi muito", "no mercado", "no supermercado", "caro", "cara", "barato",
+                "barata", "mais caro", "não vendo mais", "parei de vender",
             ),
             negations = listOf("não", "nao", "nunca", "jamais", "nem", "ainda não", "ainda nao"),
             percents = listOf("por cento", "porcento"),
@@ -449,7 +456,9 @@ internal object PortugueseVocabulary {
             genericParties = listOf(
                 "pra um cliente", "para um cliente", "a um cliente", "pra uma cliente",
                 "para uma cliente", "um cliente", "uma cliente", "o cliente", "a cliente",
-                "um freguês", "uma freguesa", "pra um vizinho", "pra uma vizinha",
+                "um freguês", "uma freguesa", "pra um vizinho", "pra uma vizinha", "alguém",
+                "uma moça", "um moço", "uma senhora", "um senhor", "um rapaz", "uma menina",
+                "um menino",
             ),
             recipeEach = listOf("a cada", "para cada", "pra cada", "cada"),
             createLeads = listOf("novo", "nova"),

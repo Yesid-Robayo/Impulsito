@@ -1,5 +1,7 @@
 package io.github.yesidrobayo.shopledger.ui.phrase
 
+import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+
 /** Lo que la persona puede hacer en `Decir o escribir`. */
 sealed interface PhraseAction {
     /** Escribe o dicta en el campo. */
@@ -59,7 +61,10 @@ sealed interface PhraseAction {
     /** Elige [productId] para la línea [index], entre los candidatos o en la lista. */
     data class ChooseProduct(val index: Int, val productId: Long) : PhraseAction
 
-    /** `Crear «…»` en la línea [index]: el producto se crea al registrar. */
+    /**
+     * `Crear «…»` en la línea [index]: donde la operación crea productos al registrar, la línea
+     * queda con el producto nuevo; en las demás, se crea al tocarlo.
+     */
     data class CreateProduct(val index: Int, val name: String) : PhraseAction
 
     /** `Elegir otro` en la línea [index]: abre la lista de productos. */
@@ -74,7 +79,7 @@ sealed interface PhraseAction {
     /** Elige [productId] para el insumo dicho [index], entre los parecidos o en la lista. */
     data class ChooseInputProduct(val index: Int, val productId: Long) : PhraseAction
 
-    /** `Crear «…»` en el insumo dicho [index]: lo crea como insumo y lo elige. */
+    /** `Crear «…»` en el insumo dicho [index]: queda como un insumo nuevo, que se crea al registrar. */
     data class CreateInputProduct(val index: Int, val name: String) : PhraseAction
 
     /** `Elegir otro` en el insumo dicho [index]: abre la lista de productos. */
@@ -84,6 +89,30 @@ sealed interface PhraseAction {
     data class UpdateRecipe(val on: Boolean) : PhraseAction
 
     data class LineQuantityChange(val text: String) : PhraseAction
+
+    /** Elige otra unidad para la línea en su hoja: la cantidad escrita va en ella. */
+    data class LineUnitChange(val unitId: Long) : PhraseAction
+
+    /**
+     * Elige [unitId] en una línea dicha en una unidad que el producto no admite: abre su hoja con
+     * esa unidad, para escribir la cantidad. [input] si es un insumo dicho.
+     */
+    data class ChooseLineUnit(val index: Int, val input: Boolean, val unitId: Long) : PhraseAction
+
+    /**
+     * Elige cuánto mide la unidad sin medida fija del producto de la línea [index], [amount] en la
+     * unidad en que se pregunta: la línea se convierte, y la medida se guarda al registrar.
+     */
+    data class ChooseMeasure(val index: Int, val input: Boolean, val amount: QuantityMilli) :
+        PhraseAction
+
+    /** `Otro valor`: abre la hoja para escribir cuánto mide esa unidad. */
+    data class OpenMeasure(val index: Int, val input: Boolean) : PhraseAction
+
+    data class MeasureChange(val text: String) : PhraseAction
+
+    /** `Listo` en la hoja de la medida. */
+    data object SaveMeasure : PhraseAction
 
     data class LinePriceChange(val text: String) : PhraseAction
 

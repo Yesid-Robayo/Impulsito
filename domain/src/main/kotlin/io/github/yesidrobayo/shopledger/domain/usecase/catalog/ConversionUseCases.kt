@@ -59,6 +59,13 @@ class SaveConversionUseCase(
             transactions.write { save(editingId, draft) }
         }
 
+    /**
+     * Crea la conversión de [draft] dentro de una transacción que ya abrió quien llama, como la
+     * medida que se dijo en una tarjeta de `Decir`, que se guarda con la operación.
+     */
+    internal suspend fun saveWithin(draft: ConversionDraft): TxResult<SaveConversionResult> =
+        save(null, draft)
+
     private suspend fun save(
         editingId: Long?,
         draft: ConversionDraft,

@@ -15,6 +15,7 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseProduct
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseReading
 import io.github.yesidrobayo.shopledger.domain.model.phrase.ProductMatch
+import io.github.yesidrobayo.shopledger.domain.model.phrase.UnfitQuantity
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.BREAD
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.CASH
@@ -319,7 +320,14 @@ class PhraseFormsTest {
         )
         assertEquals(listOf(line(found(BREAD), units(12))), spanish("vendí docena de panes").lines)
         val flour = spanish("vendí una docena de harina de trigo")
-        assertEquals(listOf(line(found(WHEAT_FLOUR), units(1))), flour.lines)
+        // La docena no es de la harina: lo dicho queda a la vista para pedir la cantidad.
+        assertEquals(
+            listOf(
+                line(found(WHEAT_FLOUR), units(1))
+                    .copy(unfit = UnfitQuantity(units(1), DOZEN)),
+            ),
+            flour.lines,
+        )
         assertEquals(setOf(PhraseIssue.UNIT_NOT_FOR_PRODUCT), flour.issues)
         assertEquals(
             listOf(line(found(EGG), units(2), DOZEN)),

@@ -9,6 +9,7 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIntent
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLanguage
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseName
+import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.BOX
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.BREAD
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.CARD
@@ -492,10 +493,22 @@ class PhraseCorrectionTest {
             sale(bread).fix("agrega 2 tornillos de madera"),
         )
         assertEquals(sale(eggs, line(item(BREAD))), sale(eggs).fix("agrega pan"))
+        // Una producción también crea lo que no existe, al registrar; un ajuste no.
         val baked = PhraseDraft(PhraseIntent.PRODUCTION, lines = listOf(bread))
         assertEquals(
-            baked.copy(lines = listOf(bread, line(null, units(3)))),
+            baked.copy(
+                lines = listOf(bread, line(DraftTarget.New("Tornillo de madera"), units(3))),
+            ),
             baked.fix("agrega 3 tornillos de madera"),
+        )
+        val lost = PhraseDraft(
+            PhraseIntent.STOCK_ADJUSTMENT,
+            reason = StockAdjustmentReason.DAMAGED,
+            lines = listOf(bread),
+        )
+        assertEquals(
+            lost.copy(lines = listOf(bread, line(null, units(3)))),
+            lost.fix("agrega 3 tornillos de madera"),
         )
     }
 

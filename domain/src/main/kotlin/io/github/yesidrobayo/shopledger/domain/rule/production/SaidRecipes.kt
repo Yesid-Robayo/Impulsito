@@ -3,8 +3,12 @@ package io.github.yesidrobayo.shopledger.domain.rule.production
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.Scale
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
+import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeLine
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ComboExpansion
+import io.github.yesidrobayo.shopledger.domain.rule.catalog.ComboExpansionResult
 import io.github.yesidrobayo.shopledger.domain.rule.mulDivRound
 
 /**
@@ -15,9 +19,63 @@ import io.github.yesidrobayo.shopledger.domain.rule.mulDivRound
  * - **La receta guarda lo que lleva una unidad**: lo dicho para la tanda se divide entre lo
  *   producido, redondeado. 400 g de harina para 2 pasteles son 200 g por pastel.
  *
+ * - **Un combo de la receta se cuenta una sola vez.** Un insumo dicho que la receta solo lleva
+ *   dentro de un combo reemplaza lo que el combo trae de él, y al actualizar la receta el combo se
+ *   abre en sus componentes: si no, el insumo quedaría dos veces, suelto y dentro del combo.
+ *
  * Todo va en milésimas de la unidad base de cada producto: las unidades ya se llevaron a ella.
  */
 object SaidRecipes {
+    /**
+     * Los insumos de [inputs] con los repetidos en un solo renglón, sumados, en el lugar donde
+     * aparecieron primero: así lo que trae un combo dicho y lo que lleva la receta suelto se juntan.
+     */
+    fun merged(inputs: List<ProductionInput>): List<ProductionInput> {
+        val sums = LinkedHashMap<Long, Long>()
+        for (input in inputs) {
+            sums[input.productId] =
+                (sums[input.productId] ?: 0L) + input.quantity.milli
+        }
+        return sums.map { (id, milli) -> ProductionInput(id, QuantityMilli(milli)) }
+    }
+
+    /**
+     * Las filas de [stored] con cada combo abierto en sus componentes, por unidad, si trae un
+     * insumo de [said] que la receta no lleva suelto y el combo mismo no se dijo: así actualizar la
+     * receta con ese insumo no lo cuenta dos veces. [recipes] trae la receta de cada combo y
+     * [modes] el modo de stock de cada componente, como en `ComboExpansion`. Un componente que ya
+     * está suelto se suma a su fila. `null` si un componente redondea a cero o pasa de su tope.
+     */
+    fun opened(
+        stored: List<RecipeLine>,
+        said: Set<Long>,
+        recipes: Map<Long, List<RecipeComponent>>,
+        modes: Map<Long, ProductStockMode>,
+    ): List<RecipeLine>? {
+        val loose = stored.mapTo(HashSet()) { it.componentProductId }
+        val rows = LinkedHashMap<Long, Long>()
+        for (row in stored) {
+            val id = row.componentProductId
+            val opens = modes[id] == ProductStockMode.COMPONENTS && id !in said &&
+                recipes[id].orEmpty().any {
+                    it.componentProductId in said &&
+                        it.componentProductId !in loose
+                }
+            val parts = if (opens) {
+                when (val expanded = ComboExpansion.expand(id, row.quantity, recipes, modes)) {
+                    is ComboExpansionResult.Leaves ->
+                        expanded.leaves.map { it.productId to it.quantity.milli }
+
+                    else -> return null
+                }
+            } else {
+                listOf(id to row.quantity.milli)
+            }
+            for ((part, milli) in parts) rows[part] = (rows[part] ?: 0L) + milli
+        }
+        return rows.map { (id, milli) -> RecipeLine(id, QuantityMilli(milli)) }
+    }
+
     /**
      * Los insumos de la tanda: los de la receta, [fromRecipe], ya escalados a lo producido, con lo
      * dicho, [said], encima. Un insumo dicho toma el lugar del de la receta, y uno que la receta no

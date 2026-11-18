@@ -46,15 +46,23 @@ class RegisterPhraseProductionWithUseCasesTest {
 
     private fun registerOf(fixture: ProductionFixture): RegisterPhraseUseCase {
         val catalog = fixture.catalog
-        val productions = RegisterProductionsUseCase(
+        val recipes = SaveRecipeUseCase(
             catalog.transactions,
-            SaveRecipeUseCase(
-                catalog.transactions,
-                catalog.products,
-                catalog.components,
-                catalog.clock,
-            ),
-            fixture.register,
+            catalog.products,
+            catalog.components,
+            catalog.clock,
+        )
+        val productions =
+            RegisterProductionsUseCase(catalog.transactions, recipes, fixture.register)
+        // Lo nuevo se crea dentro de la transacción de la producción, con los casos de uso de verdad.
+        val within = PhraseWritersWithin(
+            sale = { error("No es una venta") },
+            purchase = { error("No es una compra") },
+            productions = { productions.registerWithin(it) },
+            adjustments = { error("No es un ajuste") },
+            product = { form, category -> catalog.create.createWithin(form, category) },
+            recipe = { parentId, lines -> recipes.save(parentId, lines) },
+            conversion = { error("No es una medida") },
         )
         return RegisterPhraseUseCase(
             writers = PhraseWriters(
@@ -69,6 +77,7 @@ class RegisterPhraseProductionWithUseCasesTest {
                 price = { _, _ -> error("No es un precio") },
                 product = { _, _ -> error("No es un producto") },
                 recipe = { _, _ -> error("No es una receta") },
+                together = { block -> catalog.transactions.write { block(within) } },
             ),
             products = catalog.products,
             productUnits = FakeProductUnitRepository(catalog.database),
@@ -128,6 +137,57 @@ class RegisterPhraseProductionWithUseCasesTest {
             assertEquals(listOf(WAX to 200L, WICK to 1_000L), recipeOf(fixture, SOAP))
             assertEquals(commits + 1, catalog.transactions.commits)
         }
+
+    /** "hice 2 jabones de avena con 400 g de cera y 2 mechas", de un jabón que no existía. */
+    private val newSoaps = PhraseDraft(
+        intent = PhraseIntent.PRODUCTION,
+        lines = listOf(
+            DraftLine(DraftTarget.New("Jabón de avena inventado"), QuantityMilli(2_000), null),
+        ),
+        inputs = listOf(line(WAX, 400_000, GRAM), line(WICK, 2_000)),
+    )
+
+    @Test
+    fun `something new is created, keeps what was said as recipe and is produced at once`() =
+        runTest {
+            val fixture = prepared()
+            val catalog = fixture.catalog
+            val commits = catalog.transactions.commits
+
+            val result = registerOf(fixture)(newSoaps)
+
+            assertEquals(RegisterPhraseResult.Registered(PhraseIntent.PRODUCTION, 1L), result)
+            val soap = catalog.tables.products.values.single {
+                it.details.name ==
+                    "Jabón de avena inventado"
+            }
+            assertEquals(QuantityMilli(2_000), catalog.product(soap.id).onHand)
+            assertEquals(Money(3_500), catalog.product(soap.id).stockValue)
+            assertEquals(listOf(WAX to 200L, WICK to 1_000L), recipeOf(fixture, soap.id))
+            // El producto, su receta y la producción, en una sola transacción.
+            assertEquals(commits + 1, catalog.transactions.commits)
+        }
+
+    @Test
+    fun `if the production of something new is refused, the product is not left`() = runTest {
+        val fixture = prepared()
+        val before = fixture.catalog.tables
+
+        val result = registerOf(fixture)(
+            newSoaps.copy(inputs = newSoaps.inputs + line(999L, 1_000)),
+        )
+
+        assertEquals(
+            RegisterPhraseResult.Rejected(PhraseRejection.ProductUnavailable(999L)),
+            result,
+        )
+        assertEquals(before, fixture.catalog.tables)
+    }
+
+    @Test
+    fun `a failure at each write of something new and its production leaves nothing`() = runTest {
+        assertEachWriteLeavesNothing(newSoaps)
+    }
 
     @Test
     fun `what was said differs from the recipe and is used only in this batch`() = runTest {

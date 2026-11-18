@@ -13,6 +13,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.phrase.correctedBy
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.followedBy
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ChangePriceUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.CreateProductUseCase
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveConversionUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveRecipeUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.RecordCustomerPaymentUseCase
 import io.github.yesidrobayo.shopledger.domain.usecase.expense.RegisterExpenseUseCase
@@ -40,7 +41,8 @@ import io.github.yesidrobayo.shopledger.ui.format.AppFormats
 /**
  * Lo que `Decir o escribir` hace con la base abierta: leer una frase, corregir la tarjeta con otra
  * frase o sumársela, y registrarla. Cada operación se registra con el caso de uso de siempre, armado como en su
- * pantalla, así lo dicho guarda exactamente lo mismo, con sus reglas y en su transacción.
+ * pantalla, así lo dicho guarda exactamente lo mismo, con sus reglas y en su transacción. Los productos nuevos y las
+ * medidas dichas en la tarjeta se guardan con la operación, en esa misma transacción.
  */
 internal class PhraseUseCases(
     val read: suspend (String) -> PhraseReadResult,
@@ -206,6 +208,15 @@ internal fun phraseUseCases(
                     ports.lowStockAlerts, calendar, currencyLock, clock, ports.mediaAssets,
                 ),
             recipe = recipe,
+            conversion =
+                SaveConversionUseCase(
+                    ports.transactions,
+                    ports.products,
+                    ports.units,
+                    ports.productUnits,
+                    clock,
+                ),
+            transactions = ports.transactions,
         )
     val register =
         RegisterPhraseUseCase(

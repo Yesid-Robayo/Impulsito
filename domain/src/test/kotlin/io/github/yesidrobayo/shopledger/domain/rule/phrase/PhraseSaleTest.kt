@@ -8,6 +8,7 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIssue
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseReading
 import io.github.yesidrobayo.shopledger.domain.model.phrase.ProductMatch
+import io.github.yesidrobayo.shopledger.domain.model.phrase.UnfitQuantity
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.BOX
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.BREAD
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.CABLE
@@ -364,7 +365,14 @@ class PhraseSaleTest {
     @Test
     fun `a unit the product does not admit is flagged`() {
         val reading = spanish("vendí 2 litros de huevo")
-        assertEquals(listOf(line(found(EGG), units(2))), reading.lines)
+        assertEquals(
+            listOf(line(found(EGG), units(2)).copy(unfit = UnfitQuantity(units(2), LITER))),
+            reading.lines,
+        )
+        // En la tarjeta, la cantidad queda por escribir en una unidad del huevo.
+        val card = requireNotNull(reading.toDraft()).lines.single()
+        assertEquals(null, card.quantity)
+        assertEquals(UnfitQuantity(units(2), LITER), card.unfit)
         assertEquals(setOf(PhraseIssue.UNIT_NOT_FOR_PRODUCT), reading.issues)
     }
 
@@ -404,7 +412,7 @@ class PhraseSaleTest {
                 line(found(EGG), units(2)),
                 line(found(FARMER_CHEESE), QuantityMilli(1_500), KILOGRAM),
                 line(found(MOZZARELLA), QuantityMilli(2_500), KILOGRAM),
-                line(found(BREAD)),
+                line(found(BREAD)).copy(unfit = UnfitQuantity(null, BOX)),
             ),
             spanish(
                 "vendí un par de huevos, kilo y medio de queso campesino, " +

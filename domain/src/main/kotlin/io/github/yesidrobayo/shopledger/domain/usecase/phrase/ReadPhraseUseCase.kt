@@ -121,12 +121,14 @@ class ReadPhraseUseCase(
                 // La misma cuenta de la venta, con la lista inicial.
                 val line = SaleLineRequest(product.id, ONE, unitId = details.unitId)
                 val unit = SaleUnits.of(line, product, mapOf(details.unitId to details))
-                val price = (unit as? SaleUnitResult.Resolved)?.unit?.listPrice ?: continue
+                // Un precio en cero es un producto sin precio: la tarjeta lo pide.
+                val price = (unit as? SaleUnitResult.Resolved)?.unit?.listPrice
+                    ?.takeIf { it > Money.ZERO } ?: continue
                 byUnit[product.id to details.unitId] = price
             }
         }
         return PhrasePrices(
-            sale = active.associate { it.id to it.salePrice },
+            sale = active.filter { it.salePrice > Money.ZERO }.associate { it.id to it.salePrice },
             saleByUnit = byUnit,
             lastCost = active.mapNotNull { product ->
                 val cost = product.replacementCost.takeIf { it > Money.ZERO }

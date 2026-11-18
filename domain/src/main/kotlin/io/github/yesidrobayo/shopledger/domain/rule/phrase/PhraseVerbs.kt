@@ -85,19 +85,31 @@ internal enum class VerbKind(
         steps = listOf(WeakStep.GIFTED_PRODUCTS, WeakStep.CATEGORY),
     ),
 
-    /** Yo pagué o gasté: una compra, un gasto o un pago a proveedor. */
+    /**
+     * Yo pagué o gasté: una compra, un gasto o un pago a proveedor. Dicho de un cliente con lo que
+     * se llevó ("Charles paid for 2 rolls"), es una venta.
+     */
     PAY_OUT(
         PhraseIntent.EXPENSE,
         joins = setOf(PhraseIntent.PURCHASE),
-        steps = listOf(WeakStep.CATEGORY, WeakStep.PURCHASE_PRODUCTS, WeakStep.SUPPLIER),
+        steps = listOf(
+            WeakStep.CATEGORY,
+            WeakStep.CUSTOMER_WITH_GOODS,
+            WeakStep.PURCHASE_PRODUCTS,
+            WeakStep.SUPPLIER,
+        ),
     ),
 
-    /** Un pago sin persona clara, como "pagó" o "abono": decide quién se nombra. */
+    /**
+     * Un pago sin persona clara, como "pagó" o "abono": decide quién se nombra. Un cliente que
+     * pagó lo que se llevó hizo una compra en el negocio: una venta.
+     */
     PAY_ANY(
         PhraseIntent.EXPENSE,
         joins = setOf(PhraseIntent.SALE, PhraseIntent.PURCHASE),
         steps = listOf(
             WeakStep.CATEGORY,
+            WeakStep.CUSTOMER_WITH_GOODS,
             WeakStep.PURCHASE_PRODUCTS,
             WeakStep.CUSTOMER,
             WeakStep.SUPPLIER,
@@ -145,8 +157,20 @@ internal enum class WeakStep(val intent: PhraseIntent) {
     /** Nombra a un cliente. */
     CUSTOMER(PhraseIntent.CUSTOMER_PAYMENT),
 
+    /**
+     * Nombra a un cliente y un producto del catálogo: lo que pagó es lo que se llevó, una venta,
+     * como "Mary paid 3 for a cake". Sin productos, es un abono.
+     */
+    CUSTOMER_WITH_GOODS(PhraseIntent.SALE),
+
     /** Nombra a un proveedor. */
     SUPPLIER(PhraseIntent.SUPPLIER_PAYMENT),
+
+    /**
+     * Nombra a un proveedor, a ningún cliente, y un producto del catálogo: lo que trajo es una
+     * compra, como "3 sacks of sugar from Mr. Ramiro, 90" dicho sin verbo.
+     */
+    SUPPLIER_GOODS(PhraseIntent.PURCHASE),
 
     /** Nombra a un cliente que se llevó algo, o a alguien sin decir quién: "a customer took". */
     BUYER(PhraseIntent.SALE),

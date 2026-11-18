@@ -43,6 +43,21 @@ fun PhraseDraft.estimatedLineAmounts(prices: PhrasePrices, catalog: PhraseCatalo
 }
 
 /**
+ * Las líneas de una venta que se registrarían en cero: su producto no tiene precio, como uno
+ * creado al producirlo, ni en la unidad dicha ni en la base, y no se dijo ninguno. La tarjeta lo
+ * pide, como en un producto nuevo. Fuera de una venta, ninguna.
+ */
+fun PhraseDraft.unpricedSaleLines(prices: PhrasePrices): Set<Int> {
+    if (intent != PhraseIntent.SALE) return emptySet()
+    return lines.indices.filterTo(HashSet()) { index ->
+        val line = lines[index]
+        val id = (line.product as? DraftTarget.Existing)?.productId ?: return@filterTo false
+        val listed = prices.sale[id] ?: line.unitId?.let { prices.saleByUnit[id to it] }
+        line.unitPrice == null && line.lineTotal == null && listed == null
+    }
+}
+
+/**
  * El total que muestra la tarjeta: el dicho, que es el monto de un gasto, un abono o un pago y el
  * "todo por" de una venta o compra; si no se dijo, la suma de las líneas cuando todas tienen monto.
  * `null` si no hay cómo saberlo.
@@ -101,8 +116,10 @@ internal fun quantityIn(
 
 /**
  * Lo que mide una unidad de [unitId] y una de la base del producto, en la misma medida: con la
- * conversión guardada, en milésimas de la base, o entre unidades métricas del mismo tipo. `null`
- * si no se relacionan.
+ * conversión guardada, en milésimas de la base; entre unidades métricas del mismo tipo; o, si la
+ * base no tiene medida fija, como la libra, a través de la conversión guardada de una unidad
+ * métrica del mismo tipo: 200 g de algo que se lleva por libra, con el kilo guardado en 2,205
+ * libras. `null` si no se relacionan.
  */
 private fun measuresOf(
     product: PhraseProduct,
@@ -115,9 +132,15 @@ private fun measuresOf(
     val said = units[unitId] ?: return null
     val base = units[product.baseUnitId] ?: return null
     val saidAmount = said.baseAmountMilli ?: return null
-    val baseAmount = base.baseAmountMilli ?: return null
     if (said.kind != base.kind) return null
-    return saidAmount to baseAmount
+    base.baseAmountMilli?.let { return saidAmount to it }
+    // Con los topes de una medida y de un factor, los dos productos caben en Long.
+    return product.conversions.firstNotNullOfOrNull { conversion ->
+        val measured = units[conversion.unitId]?.takeIf { it.kind == said.kind }
+        measured?.baseAmountMilli?.let { amount ->
+            saidAmount * conversion.factorMilli to amount * Scale.MILLI
+        }
+    }
 }
 
 private fun Money.amountFor(quantity: QuantityMilli): Money? =

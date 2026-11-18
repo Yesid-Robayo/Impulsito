@@ -195,6 +195,10 @@ sealed interface CardRecipe {
  * @param lastCost en una compra sin costo dicho, el último costo del producto en la unidad de la
  *   línea, para ofrecerlo con un toque. Nunca se pone solo: un costo errado daña el promedio.
  * @param recipe en un insumo dicho de una producción, lo que dice la receta de él, o `null`.
+ * @param units las unidades en que se puede llevar el producto, para cambiar la de la línea: las
+ *   suyas y las métricas de su clase, o todas las del catálogo si es nuevo. Vacía sin producto.
+ * @param unfit lo que se dijo en una unidad que el producto no admite, mientras falte la cantidad,
+ *   o `null`.
  */
 @Immutable
 data class CardLine(
@@ -207,6 +211,31 @@ data class CardLine(
     val otherOperation: Boolean = false,
     val lastCost: Money? = null,
     val recipe: CardRecipe? = null,
+    val units: List<CardUnit> = emptyList(),
+    val unfit: CardUnfit? = null,
+    /** Una línea de venta de un producto sin precio, sin uno dicho: lo pide. */
+    val needsPrice: Boolean = false,
+)
+
+/**
+ * Lo que se dijo en una unidad que el producto no admite: [quantity] de [unit], o la unidad sola.
+ * Si es de la misma clase que la del producto pero una de las dos no tiene medida fija, [measure]
+ * pregunta cuánto mide; si no, la línea ofrece sus unidades para escribir la cantidad.
+ */
+@Immutable
+data class CardUnfit(val quantity: QuantityMilli?, val unit: CardUnit, val measure: CardMeasure?)
+
+/**
+ * Cuánto mide una de [unit], la unidad sin medida fija, de [product]: se elige una de [options],
+ * los valores comunes en [measureUnit], o se escribe otro. Al registrar queda guardado en el
+ * producto.
+ */
+@Immutable
+data class CardMeasure(
+    val unit: CardUnit,
+    val product: String,
+    val measureUnit: CardUnit,
+    val options: List<QuantityMilli>,
 )
 
 /** El producto de una línea o de una receta. */
@@ -285,7 +314,8 @@ sealed interface PhraseSheet {
      * Corregir una línea: su cantidad, su precio o costo por unidad, cambiar el producto o
      * quitarla. Los textos son lo que la persona escribe; los errores se marcan al tocar `Listo`.
      * Un cambio de precio o de costo no lleva cantidad: [showsQuantity] es falso. [input] dice si es
-     * un insumo dicho de una producción, y no una línea.
+     * un insumo dicho de una producción, y no una línea. [units] son las unidades que se pueden
+     * elegir para la línea; [unit] es la elegida.
      */
     @Immutable
     data class Line(
@@ -299,6 +329,20 @@ sealed interface PhraseSheet {
         val quantityError: Boolean = false,
         val priceError: Boolean = false,
         val input: Boolean = false,
+        val units: List<CardUnit> = emptyList(),
+    ) : PhraseSheet
+
+    /**
+     * Escribir cuánto mide una unidad sin medida fija de un producto, como cuánto pesa su libra,
+     * para la línea [index], o el insumo dicho [index] si [input]: [text] en [measure].
+     */
+    @Immutable
+    data class Measure(
+        val index: Int,
+        val input: Boolean,
+        val measure: CardMeasure,
+        val text: String,
+        val error: Boolean = false,
     ) : PhraseSheet
 
     /** Escribir un monto de la tarjeta: el total, el precio o el costo. */

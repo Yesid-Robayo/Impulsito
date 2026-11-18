@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.yesidrobayo.shopledger.domain.model.Limit
 import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
+import io.github.yesidrobayo.shopledger.domain.model.Scale
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.phrase.CardFollowUp
@@ -29,11 +30,17 @@ import io.github.yesidrobayo.shopledger.domain.model.region.NumberInput
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
 import io.github.yesidrobayo.shopledger.domain.model.valueOrNull
 import io.github.yesidrobayo.shopledger.domain.rule.TextNormalizer
+import io.github.yesidrobayo.shopledger.domain.rule.mulDivRound
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.asOperation
+import io.github.yesidrobayo.shopledger.domain.rule.phrase.createsLineProducts
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.estimatedLineAmounts
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.estimatedTotal
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.gaps
+import io.github.yesidrobayo.shopledger.domain.rule.phrase.measureQuestion
+import io.github.yesidrobayo.shopledger.domain.rule.phrase.measuredWith
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.recipeAmounts
+import io.github.yesidrobayo.shopledger.domain.rule.phrase.unitsFor
+import io.github.yesidrobayo.shopledger.domain.rule.phrase.unpricedSaleLines
 import io.github.yesidrobayo.shopledger.domain.rule.region.NumberInputParser
 import io.github.yesidrobayo.shopledger.domain.rule.timesQuantity
 import io.github.yesidrobayo.shopledger.domain.usecase.phrase.PhraseReadResult
@@ -68,6 +75,13 @@ import kotlinx.coroutines.withContext
  * - **Producir con lo que se dice.** En una producción, lo que se dice que lleva va a sus insumos:
  *   con la receta se usa solo en esta tanda, salvo con `Actualizar la receta`, y sin receta queda
  *   como su receta al registrar.
+ * - **Lo nuevo se crea al registrar.** Un producto que no se parece a ninguno del catálogo queda
+ *   como nuevo en la tarjeta, y se crea con la operación, en su misma escritura. Se puede cambiar
+ *   por otro antes de registrar.
+ * - **Las unidades se cambian y se miden.** Cada línea deja elegir su unidad entre las del
+ *   producto. Lo dicho en una unidad que el producto no admite queda a la vista y pide la cantidad
+ *   en una suya, o, si es de la misma clase pero sin medida fija, como la libra, cuánto mide: la
+ *   línea se convierte en el acto y la medida se guarda en el producto al registrar.
  *
  * @param read lee la frase con el catálogo del negocio.
  * @param correct aplica una frase corta sobre la propuesta, o `null` si no es una corrección.
@@ -150,8 +164,7 @@ class PhraseViewModel(
             is PhraseAction.ChooseProduct ->
                 editLine(action.index) { it.copy(product = DraftTarget.Existing(action.productId)) }
 
-            is PhraseAction.CreateProduct ->
-                createProduct(PickPurpose.LineProduct(action.index), action.name)
+            is PhraseAction.CreateProduct -> createLineProduct(action.index, action.name)
 
             is PhraseAction.PickProduct -> openPick(PickPurpose.LineProduct(action.index))
 
@@ -159,13 +172,42 @@ class PhraseViewModel(
 
             is PhraseAction.OpenInput -> openLine(action.index, input = true)
 
+            is PhraseAction.ChooseLineUnit -> openLine(action.index, action.input, action.unitId)
+
+            is PhraseAction.LineUnitChange -> updateSheet<PhraseSheet.Line> { sheet ->
+                sheet.copy(unit = sheet.units.firstOrNull { it.id == action.unitId } ?: sheet.unit)
+            }
+
+            is PhraseAction.ChooseMeasure -> chooseMeasure(
+                action.index,
+                action.input,
+                action.amount,
+            )
+
+            is PhraseAction.OpenMeasure -> openMeasure(action.index, action.input)
+
+            is PhraseAction.MeasureChange -> updateSheet<PhraseSheet.Measure> {
+                it.copy(text = action.text, error = false)
+            }
+
+            PhraseAction.SaveMeasure -> saveMeasure()
+
             is PhraseAction.ChooseInputProduct ->
                 editInput(action.index) {
                     it.copy(product = DraftTarget.Existing(action.productId))
                 }
 
-            is PhraseAction.CreateInputProduct ->
-                createProduct(PickPurpose.InputProduct(action.index), action.name)
+            // Un insumo nuevo se crea al registrar, como insumo salvo que se dijera otro uso.
+            is PhraseAction.CreateInputProduct -> {
+                val name = action.name.trim()
+                if (name.isNotEmpty()) {
+                    editInput(action.index) { input ->
+                        val said = (input.product as? DraftTarget.New)?.traits
+                        val traits = INPUT_TRAITS.with(said ?: NewProductTraits.NONE)
+                        input.copy(product = DraftTarget.New(name, traits))
+                    }
+                }
+            }
 
             is PhraseAction.PickInputProduct -> openPick(PickPurpose.InputProduct(action.index))
 
@@ -215,19 +257,18 @@ class PhraseViewModel(
                 closeSheet()
             }
 
-            is PhraseAction.CreateTarget ->
-                if (session?.draft?.intent == PhraseIntent.NEW_PRODUCT) {
-                    // El producto nuevo se crea al registrar: aquí solo cambia su nombre, y lo que
-                    // se dijo de él queda.
+            // El producto nuevo o el de la receta se crea al registrar: aquí solo cambia su nombre,
+            // y lo que se dijo de él queda.
+            is PhraseAction.CreateTarget -> {
+                val name = action.name.trim()
+                if (name.isNotEmpty()) {
                     editDraft { draft ->
-                        val name = action.name.trim()
                         val said = (draft.target as? DraftTarget.New)?.copy(name = name)
                         draft.copy(target = said ?: DraftTarget.New(name))
                     }
-                    closeSheet()
-                } else {
-                    createProduct(PickPurpose.Target, action.name)
                 }
+                closeSheet()
+            }
 
             is PhraseAction.PickNewCategory -> openPick(PickPurpose.NewCategory(action.index))
 
@@ -512,13 +553,18 @@ class PhraseViewModel(
         state.update { it.copy(sheet = null) }
     }
 
-    /** Abre la hoja de la línea [index], o del insumo dicho [index] si [input]. */
-    private fun openLine(index: Int, input: Boolean) {
+    /**
+     * Abre la hoja de la línea [index], o del insumo dicho [index] si [input], con [unitId] elegida
+     * si se tocó una unidad: entonces la cantidad se escribe en ella.
+     */
+    private fun openLine(index: Int, input: Boolean, unitId: Long? = null) {
         val current = session ?: return
         val line = linesOf(current.draft, input).getOrNull(index) ?: return
         val existing =
             (line.product as? DraftTarget.Existing)?.let { current.product(it.productId) }
-        val unit = (line.unitId ?: existing?.baseUnitId)?.let(current::unit)?.toCardUnit()
+        val units = current.unitsFor(line).map { it.toCardUnit() }
+        val chosen = unitId?.let { id -> units.firstOrNull { it.id == id } }
+        val unit = chosen ?: (line.unitId ?: existing?.baseUnitId)?.let(current::unit)?.toCardUnit()
         val title =
             when (val product = line.product) {
                 is DraftTarget.Existing -> existing?.name
@@ -541,6 +587,7 @@ class PhraseViewModel(
                         showsPrice = !input && current.draft.intent in PRICED_LINES,
                         showsQuantity = input || current.draft.intent !in PRICE_ONLY,
                         input = input,
+                        units = units,
                     ),
             )
         }
@@ -606,12 +653,22 @@ class PhraseViewModel(
             return
         }
         val priceChanged = checkPrice && price != line.unitPrice
+        // La unidad elegida en la hoja; la base del producto se guarda como "sin unidad dicha".
+        val base =
+            (line.product as? DraftTarget.Existing)?.let {
+                session?.product(it.productId)
+            }?.baseUnitId
+        val unitId = sheet.unit?.id?.takeIf { it != base }
         val change: (DraftLine) -> DraftLine = {
+            val counted = if (sheet.showsQuantity) quantity else it.quantity
             it.copy(
-                quantity = if (sheet.showsQuantity) quantity else it.quantity,
+                quantity = counted,
+                unitId = if (sheet.units.isEmpty()) it.unitId else unitId,
                 unitPrice = if (checkPrice) price else it.unitPrice,
                 // Un precio nuevo manda sobre el total que se dijo para la línea.
                 lineTotal = if (priceChanged) null else it.lineTotal,
+                // Con la cantidad escrita en una unidad del producto, lo dicho en otra ya no hace falta.
+                unfit = if (counted != null) null else it.unfit,
             )
         }
         if (sheet.input) editInput(sheet.index, change) else editLine(sheet.index, change)
@@ -688,7 +745,7 @@ class PhraseViewModel(
         val intent = current.draft.intent
         val canCreate =
             when (purpose) {
-                is PickPurpose.LineProduct -> intent in CREATES_LINE_PRODUCTS
+                is PickPurpose.LineProduct -> current.draft.createsLineProducts()
                 is PickPurpose.InputProduct -> true
                 PickPurpose.Target -> true
                 is PickPurpose.NewCategory -> true
@@ -784,33 +841,40 @@ class PhraseViewModel(
     }
 
     /**
-     * `Crear «…»`: crea el producto con su nombre, como un producto nuevo dicho con una frase, y lo
-     * elige en la línea o en la receta. Ningún caso de uso crea un producto dentro de la escritura
-     * de una venta, una compra o una receta, así que se crea antes, en su propia transacción. La
-     * unidad dicha en la línea es su unidad base.
+     * `Crear «…»` en la línea [index]. Donde la operación crea productos al registrar, la línea
+     * queda con el producto nuevo, con lo que se dijo de él, y se crea con la operación; un
+     * ingrediente de una receta es un insumo. En las demás, se crea al tocarlo: ver
+     * [createProduct].
      */
-    private fun createProduct(purpose: PickPurpose, name: String) {
+    private fun createLineProduct(index: Int, name: String) {
+        val draft = session?.draft ?: return
+        if (!draft.createsLineProducts()) {
+            createProduct(index, name)
+            return
+        }
+        val clean = name.trim()
+        if (clean.isEmpty()) return
+        editLine(index) { line ->
+            val said = (line.product as? DraftTarget.New)?.traits ?: NewProductTraits.NONE
+            val traits = if (draft.intent == PhraseIntent.RECIPE) INPUT_TRAITS.with(said) else said
+            line.copy(product = DraftTarget.New(clean, traits))
+        }
+    }
+
+    /**
+     * `Crear «…»` en una línea de una operación que no crea productos al registrar, como un ajuste:
+     * crea el producto con su nombre en su propia transacción, como un producto nuevo dicho con una
+     * frase, y lo elige en la línea. La unidad dicha en la línea es su unidad base.
+     */
+    private fun createProduct(index: Int, name: String) {
         val current = session ?: return
         val stage = state.value.stage as? PhraseStage.Card ?: return
         val clean = name.trim()
         if (clean.isEmpty() || stage.registering || work?.isActive == true) return
-        val line =
-            when (purpose) {
-                is PickPurpose.LineProduct -> current.draft.lines.getOrNull(purpose.index)
-                is PickPurpose.InputProduct -> current.draft.inputs.getOrNull(purpose.index)
-                PickPurpose.Target, PickPurpose.Party, is PickPurpose.NewCategory -> null
-            }
-        val unitId = line?.unitId
-        // Lo que se dijo del producto, como su uso o su categoría, se usa al crearlo. Un insumo
-        // que no dice otro uso se crea como insumo.
-        val spoken = if (line != null) line.product else current.draft.target
-        val said = (spoken as? DraftTarget.New)?.traits ?: NewProductTraits.NONE
-        val traits =
-            if (purpose is PickPurpose.InputProduct) {
-                NewProductTraits(usage = ProductUsage.INPUT).with(said)
-            } else {
-                said
-            }
+        val line = current.draft.lines.getOrNull(index) ?: return
+        val unitId = line.unitId
+        // Lo que se dijo del producto, como su uso o su categoría, se usa al crearlo.
+        val traits = (line.product as? DraftTarget.New)?.traits ?: NewProductTraits.NONE
         val request =
             PhraseDraft(
                 intent = PhraseIntent.NEW_PRODUCT,
@@ -833,39 +897,14 @@ class PhraseViewModel(
                     val draft = named.draft
                     val chosen = DraftTarget.Existing(productId)
                     val next =
-                        when (purpose) {
-                            is PickPurpose.LineProduct ->
-                                named.edited(
-                                    draft.copy(
-                                        lines =
-                                            draft.lines.mapIndexed { i, line ->
-                                                if (i == purpose.index) {
-                                                    line.copy(product = chosen)
-                                                } else {
-                                                    line
-                                                }
-                                            },
-                                    ),
-                                )
-
-                            is PickPurpose.InputProduct ->
-                                named.edited(
-                                    draft.copy(
-                                        inputs =
-                                            draft.inputs.mapIndexed { i, input ->
-                                                if (i == purpose.index) {
-                                                    input.copy(product = chosen)
-                                                } else {
-                                                    input
-                                                }
-                                            },
-                                    ),
-                                )
-
-                            PickPurpose.Target -> named.edited(draft.copy(target = chosen))
-
-                            is PickPurpose.NewCategory, PickPurpose.Party -> named
-                        }
+                        named.edited(
+                            draft.copy(
+                                lines =
+                                    draft.lines.mapIndexed { i, line ->
+                                        if (i == index) line.copy(product = chosen) else line
+                                    },
+                            ),
+                        )
                     session = next
                     state.update { it.copy(stage = PhraseStage.Card(cardOf(next))) }
                 }
@@ -877,6 +916,95 @@ class PhraseViewModel(
                 else -> fail(stage, PhraseFailure.Rejected)
             }
         }
+    }
+
+    /**
+     * Cuánto mide la unidad sin medida fija del producto de la línea [index], o del insumo [index]
+     * si [input], elegido entre los valores comunes: [amount] en la unidad en que se pregunta. Si no
+     * se puede aplicar, abre la hoja para escribir otro valor, marcada.
+     */
+    private fun chooseMeasure(index: Int, input: Boolean, amount: QuantityMilli) {
+        if (!applyMeasure(index, input, amount)) {
+            openMeasure(index, input)
+            updateSheet<PhraseSheet.Measure> { it.copy(error = true) }
+        }
+    }
+
+    /** `Otro valor`: la hoja para escribir cuánto mide la unidad sin medida fija de la línea. */
+    private fun openMeasure(index: Int, input: Boolean) {
+        val current = session ?: return
+        val line = linesOf(current.draft, input).getOrNull(index) ?: return
+        val measure = measureOf(current, line) ?: return
+        state.update { it.copy(sheet = PhraseSheet.Measure(index, input, measure, text = "")) }
+    }
+
+    private fun saveMeasure() {
+        val sheet = state.value.sheet as? PhraseSheet.Measure ?: return
+        val read = NumberInputParser.quantity(sheet.text, numbers.quantitySymbols, LINE_LIMIT)
+        val amount = (read as? NumberInput.Value)?.value?.takeIf { it > QuantityMilli.ZERO }
+        if (amount == null || !applyMeasure(sheet.index, sheet.input, amount)) {
+            state.update { it.copy(sheet = sheet.copy(error = true)) }
+        }
+    }
+
+    /**
+     * Convierte la línea [index], o el insumo [index] si [input], con lo que mide una unidad sin
+     * medida fija de su producto, [amount] en la unidad en que se pregunta, y deja la medida en la
+     * tarjeta para guardarla al registrar. Las demás líneas e insumos del mismo producto que
+     * preguntan lo mismo se convierten igual. Devuelve si se pudo.
+     */
+    private fun applyMeasure(index: Int, input: Boolean, amount: QuantityMilli): Boolean {
+        val current = session ?: return false
+        val draft = current.draft
+        val line = linesOf(draft, input).getOrNull(index) ?: return false
+        val target = line.product as? DraftTarget.Existing ?: return false
+        val product = current.product(target.productId) ?: return false
+        val catalog = current.catalog
+        val unfit = line.unfit ?: return false
+        val question = catalog.measureQuestion(product, unfit.unitId) ?: return false
+        val measureAmount = current.unit(question.measureUnitId)?.baseAmountMilli ?: return false
+        val amountMilli =
+            mulDivRound(amount.milli, measureAmount, Scale.MILLI).valueOrNull() ?: return false
+        val measured = line.measuredWith(product, catalog, amountMilli) ?: return false
+        val converted: (List<DraftLine>) -> List<DraftLine> = { all ->
+            all.map { other ->
+                val asks = other.unfit?.let { catalog.measureQuestion(product, it.unitId) }
+                if (other.product == target && asks?.unitId == question.unitId) {
+                    other.measuredWith(product, catalog, amountMilli)?.line ?: other
+                } else {
+                    other
+                }
+            }
+        }
+        val conversion = measured.conversion
+        editDraft {
+            it.copy(
+                lines = converted(it.lines),
+                inputs = converted(it.inputs),
+                conversions =
+                    it.conversions.filterNot { said ->
+                        said.productId == conversion.productId && said.unitId == conversion.unitId
+                    } + conversion,
+            )
+        }
+        closeSheet()
+        return true
+    }
+
+    /** Lo que se pregunta de la medida de [line], con sus valores comunes, o `null` si nada. */
+    private fun measureOf(current: Session, line: DraftLine): CardMeasure? {
+        val target = line.product as? DraftTarget.Existing ?: return null
+        val product = current.product(target.productId) ?: return null
+        val unfit = line.unfit ?: return null
+        val question = current.catalog.measureQuestion(product, unfit.unitId) ?: return null
+        val loose = current.unit(question.unitId) ?: return null
+        val shown = current.unit(question.measureUnitId) ?: return null
+        val amount = shown.baseAmountMilli ?: return null
+        val options =
+            question.optionsMilli.mapNotNull { option ->
+                mulDivRound(option, Scale.MILLI, amount).valueOrNull()?.let(::QuantityMilli)
+            }
+        return CardMeasure(loose.toCardUnit(), product.name, shown.toCardUnit(), options)
     }
 
     private fun fail(stage: PhraseStage.Card, failure: PhraseFailure) {
@@ -940,10 +1068,24 @@ class PhraseViewModel(
         fun unit(id: Long): PhraseUnit? = units[id]
 
         /**
-         * Lo que falta de la propuesta, sabiendo qué productos tienen receta por el catálogo leído.
-         * Uno creado desde la tarjeta todavía no tiene.
+         * Las unidades que se pueden elegir para [line]: las del producto y las métricas de su
+         * clase, todas las del catálogo si es uno nuevo, o ninguna si falta el producto.
          */
-        fun gaps(): Set<DraftGap> = draft.gaps { id -> products[id]?.hasRecipe == true }
+        fun unitsFor(line: DraftLine): List<PhraseUnit> = when (val target = line.product) {
+            is DraftTarget.Existing -> products[target.productId]?.let(catalog::unitsFor).orEmpty()
+            is DraftTarget.New -> catalog.units
+            null -> emptyList()
+        }
+
+        /**
+         * Lo que falta de la propuesta, sabiendo qué productos tienen receta por el catálogo leído.
+         * Uno creado desde la tarjeta todavía no tiene. Una venta de un producto sin precio, que
+         * quedaría en cero, pide el precio.
+         */
+        fun gaps(): Set<DraftGap> {
+            val gaps = draft.gaps { id -> products[id]?.hasRecipe == true }
+            return if (draft.unpricedSaleLines(prices).isEmpty()) gaps else gaps + DraftGap.PRICE
+        }
 
         /** El producto que se produce, si la tarjeta es una producción de uno solo del catálogo. */
         fun made(): PhraseProduct? {
@@ -1053,6 +1195,7 @@ class PhraseViewModel(
         val catalog = session.catalog
         // Lo que pondrá la operación de siempre: lo dicho, o en una venta el precio del producto.
         val estimated = draft.estimatedLineAmounts(session.prices, catalog)
+        val unpriced = draft.unpricedSaleLines(session.prices)
         val lines =
             draft.lines.mapIndexed { index, line ->
                 val existing =
@@ -1064,7 +1207,12 @@ class PhraseViewModel(
                                 ?.let { CardProduct.Chosen(target.productId, it) }
                                 ?: CardProduct.Missing(emptyList(), null, canCreate = false)
 
-                        is DraftTarget.New -> newProduct(target, needsCreating = true, catalog)
+                        is DraftTarget.New ->
+                            newProduct(
+                                target,
+                                needsCreating = !draft.createsLineProducts(),
+                                catalog,
+                            )
 
                         null ->
                             CardProduct.Missing(
@@ -1073,7 +1221,7 @@ class PhraseViewModel(
                                         .mapNotNull(session::product)
                                         .map { CardOption(it.id, it.name) },
                                 spoken = session.lineSpoken.getOrNull(index),
-                                canCreate = intent in CREATES_LINE_PRODUCTS,
+                                canCreate = draft.createsLineProducts(),
                             )
                     }
                 val unit = (line.unitId ?: existing?.baseUnitId)?.let(session::unit)?.toCardUnit()
@@ -1096,6 +1244,9 @@ class PhraseViewModel(
                     amount = amount,
                     otherOperation = existing != null && !existing.fits(intent),
                     lastCost = lastCost,
+                    units = session.unitsFor(line).map { it.toCardUnit() },
+                    unfit = unfitOf(session, line),
+                    needsPrice = index in unpriced,
                 )
             }
         val payment =
@@ -1141,12 +1292,8 @@ class PhraseViewModel(
                             ?.let { CardProduct.Chosen(chosen.productId, it) }
                             ?: CardProduct.Missing(emptyList(), null, canCreate = true)
 
-                    is DraftTarget.New ->
-                        newProduct(
-                            chosen,
-                            needsCreating = intent != PhraseIntent.NEW_PRODUCT,
-                            catalog,
-                        )
+                    // El de la receta y el producto nuevo se crean al registrar.
+                    is DraftTarget.New -> newProduct(chosen, needsCreating = false, catalog)
 
                     null ->
                         CardProduct.Missing(
@@ -1165,6 +1312,8 @@ class PhraseViewModel(
         val total = draft.estimatedTotal(session.prices, catalog)
         val made = session.made()
         val said = draft.intent == PhraseIntent.PRODUCTION && draft.inputs.isNotEmpty()
+        // Un producto nuevo no tiene receta: lo dicho queda como la suya.
+        val madeNew = draft.lines.singleOrNull()?.product is DraftTarget.New
         // Sin receta, o diciendo qué llevó, "no tiene receta" ya lo dice la tarjeta en su lugar.
         val recipeShown = DraftGap.INPUTS in gaps || said
         val notices =
@@ -1214,7 +1363,7 @@ class PhraseViewModel(
                 emptyList()
             },
             updatesRecipe = draft.updatesRecipe.takeIf { said && made?.hasRecipe == true },
-            savesRecipe = said && made != null && !made.hasRecipe,
+            savesRecipe = said && (madeNew || (made != null && !made.hasRecipe)),
         )
     }
 
@@ -1235,7 +1384,8 @@ class PhraseViewModel(
                             ?.let { CardProduct.Chosen(target.productId, it) }
                             ?: CardProduct.Missing(emptyList(), null, canCreate = false)
 
-                    is DraftTarget.New -> newProduct(target, needsCreating = true, session.catalog)
+                    // Un insumo nuevo se crea al registrar la producción.
+                    is DraftTarget.New -> newProduct(target, needsCreating = false, session.catalog)
 
                     null ->
                         CardProduct.Missing(
@@ -1268,8 +1418,20 @@ class PhraseViewModel(
                 unitPrice = null,
                 amount = null,
                 recipe = amount,
+                units = session.unitsFor(input).map { it.toCardUnit() },
+                unfit = unfitOf(session, input),
             )
         }
+    }
+
+    /**
+     * Lo dicho de [line] en una unidad que su producto no admite, mientras falte la cantidad: con la
+     * pregunta de cuánto mide, si es de su misma clase sin medida fija. `null` si no hay.
+     */
+    private fun unfitOf(session: Session, line: DraftLine): CardUnfit? {
+        val unfit = line.unfit?.takeIf { line.quantity == null } ?: return null
+        val unit = session.unit(unfit.unitId)?.toCardUnit() ?: return null
+        return CardUnfit(unfit.quantity, unit, measureOf(session, line))
     }
 
     /**
@@ -1336,9 +1498,8 @@ class PhraseViewModel(
         /** Las que suman sus líneas en un total. */
         val SUMMED = setOf(PhraseIntent.SALE, PhraseIntent.PURCHASE)
 
-        /** Las que dejan crear el producto de una línea que no existe. */
-        val CREATES_LINE_PRODUCTS =
-            setOf(PhraseIntent.SALE, PhraseIntent.PURCHASE, PhraseIntent.RECIPE)
+        /** Lo que se sabe de un insumo nuevo: es un insumo, salvo que se dijera otro uso. */
+        val INPUT_TRAITS = NewProductTraits(usage = ProductUsage.INPUT)
 
         /** Las que llevan un precio o un costo por unidad en cada línea. */
         val PRICED_LINES =

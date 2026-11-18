@@ -5,6 +5,7 @@ import io.github.yesidrobayo.shopledger.domain.model.Money
 import io.github.yesidrobayo.shopledger.domain.model.QuantityMilli
 import io.github.yesidrobayo.shopledger.domain.model.Scale
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDetails
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ConversionDraft
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductStockMode
@@ -16,6 +17,7 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.DraftTarget
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseDraft
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseIntent
+import io.github.yesidrobayo.shopledger.domain.model.phrase.SaidConversion
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineAmount
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseLineRequest
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseRequest
@@ -32,6 +34,7 @@ import io.github.yesidrobayo.shopledger.domain.port.ProductRepository
 import io.github.yesidrobayo.shopledger.domain.port.ProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailure
 import io.github.yesidrobayo.shopledger.domain.port.StorageFailureException
+import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.port.UnitRepository
 import io.github.yesidrobayo.shopledger.domain.rule.mulDivRound
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseAmounts
@@ -45,6 +48,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnitResult
 import io.github.yesidrobayo.shopledger.domain.rule.sale.SaleUnits
 import io.github.yesidrobayo.shopledger.domain.rule.timesQuantity
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ChangePriceResult
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveConversionResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveRecipeResult
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerPaymentRequest
@@ -60,6 +64,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CorrectCostResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentsResult
+import kotlinx.coroutines.flow.first
 
 /**
  * Registra la tarjeta que confirmó la persona con el caso de uso de siempre de su operación: arma
@@ -74,15 +79,21 @@ import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentsRes
  * - **Los precios que no se dijeron** son los de la venta de siempre: el del producto, o el de su
  *   presentación, en la lista inicial. Una compra, en cambio, nunca registra un costo que no se
  *   dijo: la tarjeta lo pide, como la compra de siempre, porque un costo errado daña el promedio.
- * - **Un producto nuevo se crea antes.** Ningún caso de uso crea un producto dentro de la misma
- *   escritura de una venta, una compra o una receta, así que una línea con un producto nuevo es
- *   un hueco: la tarjeta lo crea con un producto nuevo de esta misma función y lo vuelve a elegir.
- *   Se crea con lo que se dijo de él: su uso, si es un servicio y su categoría, que se crea con
- *   él si no existe.
+ * - **Un producto nuevo se crea con la operación.** Un producto que no existía, en una venta,
+ *   una compra, una producción, un conteo o una receta, como línea, como insumo o como lo que se
+ *   produce, se crea dentro de la misma escritura que la operación: si algo se rechaza, no queda
+ *   ni el producto. Se crea con lo que se dijo de él: su uso, si es un servicio y su categoría,
+ *   que se crea con él si no existe; en la unidad dicha, o la de siempre si no se dijo; y, en una
+ *   venta, con el precio dicho como su precio. Un nombre que se repite en la tarjeta es un solo
+ *   producto.
+ * - **Una medida dicha en la tarjeta se guarda.** Cuánto pesa una libra de harina, dicho en la
+ *   tarjeta, queda como una conversión del producto en la misma escritura, para que la próxima vez
+ *   se convierta sola. La línea ya va convertida.
  * - **Las unidades** se respetan donde la operación las admite: una presentación de venta en la
  *   venta y una de compra en la compra. Lo demás se lleva a la unidad base, con la conversión que
- *   guardó la persona o, entre unidades métricas, con su medida; un precio dicho por esa unidad va
- *   entonces como el total de la línea.
+ *   guardó la persona o, entre unidades métricas, con su medida, también a través de la conversión
+ *   guardada de una unidad métrica cuando la base no tiene medida fija; un precio dicho por esa
+ *   unidad va entonces como el total de la línea.
  * - **El dinero** de un gasto, una compra pagada, un abono o un pago sale de la cuenta del método
  *   de pago dicho, si tiene una; la venta ya lo hace sola con su método.
  * - **Un conteo o un ajuste de varios productos** se registra entero en una sola transacción: cada
@@ -104,29 +115,87 @@ class RegisterPhraseUseCase(
         val gaps = draft.gaps()
         if (gaps.isNotEmpty()) return RegisterPhraseResult.Incomplete(gaps)
         return try {
-            register(draft)
+            if (writesTogether(draft)) {
+                writers.together { within -> together(draft, within) }
+            } else {
+                register(draft, Sink.of(writers))
+            }
         } catch (failure: StorageFailureException) {
             RegisterPhraseResult.StorageFailed(failure.failure)
         }
     }
 
-    private suspend fun register(draft: PhraseDraft): RegisterPhraseResult = when (draft.intent) {
-        PhraseIntent.SALE -> sale(draft)
-        PhraseIntent.PURCHASE -> purchase(draft)
-        PhraseIntent.EXPENSE -> expense(draft)
-        PhraseIntent.PRODUCTION -> production(draft)
-        PhraseIntent.STOCK_ADJUSTMENT -> adjustment(draft)
-        PhraseIntent.CUSTOMER_PAYMENT -> customerPayment(draft)
-        PhraseIntent.SUPPLIER_PAYMENT -> supplierPayment(draft)
-        PhraseIntent.RECIPE -> recipe(draft)
-        PhraseIntent.NEW_PRODUCT -> newProduct(draft)
-        PhraseIntent.COST_CORRECTION -> costCorrection(draft)
-        PhraseIntent.PRICE_CHANGE -> priceChange(draft)
+    /**
+     * Si la tarjeta crea algo más que su operación: un producto nuevo en una línea, un insumo o lo
+     * que se produce, o una medida dicha. Un producto nuevo como operación se crea solo.
+     */
+    private fun writesTogether(draft: PhraseDraft): Boolean {
+        if (draft.intent == PhraseIntent.NEW_PRODUCT) return false
+        val products = draft.lines.map { it.product } + draft.inputs.map { it.product } +
+            draft.target
+        return draft.conversions.isNotEmpty() || products.any { it is DraftTarget.New }
     }
+
+    /**
+     * Dentro de una sola transacción: guarda las medidas dichas, crea los productos nuevos y
+     * registra la operación con ellos. Solo confirma si la operación quedó registrada.
+     */
+    private suspend fun together(
+        draft: PhraseDraft,
+        within: PhraseWritersWithin,
+    ): TxResult<RegisterPhraseResult> {
+        for (said in draft.conversions) {
+            val saved = within.conversion(conversionOf(said)).outcome
+            // Una medida que el producto ya tiene guardada no cambia lo que muestra la tarjeta.
+            val kept =
+                saved is SaveConversionResult.Saved || saved == SaveConversionResult.UnitTaken
+            if (!kept) return TxResult.Rollback(rejected(PhraseRejection.Conversion(saved)))
+        }
+        val creator = NewProducts(within)
+        val resolved = when (val made = creator.resolve(draft)) {
+            is Made.Ready -> made.draft
+
+            is Made.Refused -> return TxResult.Rollback(
+                rejected(PhraseRejection.Product(made.result)),
+            )
+        }
+        val result = register(resolved, Sink.within(within))
+        return if (result is RegisterPhraseResult.Registered) {
+            TxResult.Commit(result)
+        } else {
+            TxResult.Rollback(result)
+        }
+    }
+
+    private fun conversionOf(said: SaidConversion): ConversionDraft = ConversionDraft(
+        productId = said.productId,
+        unitId = said.unitId,
+        factorMilli = said.factorMilli,
+        salePrice = null,
+        barcode = null,
+        // Es una medida, no una presentación: no se ofrece aparte al vender ni al comprar.
+        forSale = false,
+        forPurchase = false,
+    )
+
+    private suspend fun register(draft: PhraseDraft, sink: Sink): RegisterPhraseResult =
+        when (draft.intent) {
+            PhraseIntent.SALE -> sale(draft, sink)
+            PhraseIntent.PURCHASE -> purchase(draft, sink)
+            PhraseIntent.EXPENSE -> expense(draft)
+            PhraseIntent.PRODUCTION -> production(draft, sink)
+            PhraseIntent.STOCK_ADJUSTMENT -> adjustment(draft, sink)
+            PhraseIntent.CUSTOMER_PAYMENT -> customerPayment(draft)
+            PhraseIntent.SUPPLIER_PAYMENT -> supplierPayment(draft)
+            PhraseIntent.RECIPE -> recipe(draft, sink)
+            PhraseIntent.NEW_PRODUCT -> newProduct(draft)
+            PhraseIntent.COST_CORRECTION -> costCorrection(draft)
+            PhraseIntent.PRICE_CHANGE -> priceChange(draft)
+        }
 
     // Cada operación.
 
-    private suspend fun sale(draft: PhraseDraft): RegisterPhraseResult {
+    private suspend fun sale(draft: PhraseDraft, sink: Sink): RegisterPhraseResult {
         val methodId = requireNotNull(draft.paymentMethodId) { "Una venta completa tiene pago" }
         val lines = ArrayList<SaleLineRequest>()
         val amounts = ArrayList<Money?>()
@@ -148,14 +217,14 @@ class RegisterPhraseUseCase(
             customerId = draft.partyId,
             orderAdjustment = adjustment,
         )
-        val result = writers.sale(request)
+        val result = sink.sale(request)
         // Lo que no es un registro ni una falla de la base es un rechazo con su motivo.
         if (result is RegisterSaleResult.Registered) return registered(draft, result.saleId)
         if (result is RegisterSaleResult.StorageFailed) return failed(result.failure)
         return rejected(PhraseRejection.Sale(result))
     }
 
-    private suspend fun purchase(draft: PhraseDraft): RegisterPhraseResult {
+    private suspend fun purchase(draft: PhraseDraft, sink: Sink): RegisterPhraseResult {
         val lines = ArrayList<PurchaseLineRequest>()
         for ((index, line) in draft.lines.withIndex()) {
             val product = productOf(line) ?: return unavailable(line)
@@ -180,7 +249,7 @@ class RegisterPhraseUseCase(
             amountPaid = if (draft.credit) Money.ZERO else null,
             moneyAccountId = account,
         )
-        val result = writers.purchase(request)
+        val result = sink.purchase(request)
         if (result is RegisterPurchaseResult.Registered) return registered(draft, result.purchaseId)
         if (result is RegisterPurchaseResult.StorageFailed) return failed(result.failure)
         return rejected(PhraseRejection.Purchase(result))
@@ -207,7 +276,7 @@ class RegisterPhraseUseCase(
      * dichos, cada producto sale de su receta, y uno sin receta pide decir qué lleva. Con insumos
      * dichos, que son de un solo producto, se produce con lo dicho: ver [withSaid].
      */
-    private suspend fun production(draft: PhraseDraft): RegisterPhraseResult {
+    private suspend fun production(draft: PhraseDraft, sink: Sink): RegisterPhraseResult {
         val said = draft.inputs
         if (said.isNotEmpty() && draft.lines.size != 1) {
             return rejected(PhraseRejection.OneProductAtATime)
@@ -215,6 +284,7 @@ class RegisterPhraseUseCase(
         val recipes = components.findAll().groupBy { it.parentProductId }
         val componentIds = recipes.values.flatten().mapTo(HashSet()) { it.componentProductId }
         val modes = products.findByIds(componentIds).associate { it.id to it.details.stockMode }
+        val book = RecipeBook(recipes, modes)
         val steps = ArrayList<ProductionStep>()
         for ((index, line) in draft.lines.withIndex()) {
             val product = productOf(line) ?: return unavailable(line)
@@ -225,31 +295,20 @@ class RegisterPhraseUseCase(
             if (said.isEmpty() && stored.isEmpty()) {
                 return RegisterPhraseResult.Incomplete(setOf(DraftGap.INPUTS))
             }
-            val fromRecipe = if (stored.isEmpty()) {
-                emptyList()
-            } else {
-                when (
-                    val result =
-                        ProductionRules.recipeInputs(product.id, placed.quantity, recipes, modes)
-                ) {
-                    is RecipeInputsResult.Inputs -> result.inputs
-
-                    is RecipeInputsResult.InputRoundsToZero,
-                    RecipeInputsResult.QuantityOutOfRange,
-                    RecipeInputsResult.TooDeep,
-                    -> return rejected(PhraseRejection.ProductionInputs(result))
-                }
-            }
             steps += if (said.isEmpty()) {
+                val fromRecipe = when (val read = book.inputs(product.id, placed.quantity)) {
+                    is BookRead.Inputs -> read.inputs
+                    is BookRead.Refused -> return rejected(read.reason)
+                }
                 ProductionStep(ProductionRequest(product.id, placed.quantity, fromRecipe, null))
             } else {
-                when (val step = withSaid(draft, product.id, placed.quantity, stored, fromRecipe)) {
+                when (val step = withSaid(draft, product.id, placed.quantity, stored, book)) {
                     is SaidStep.Ready -> step.step
                     is SaidStep.Refused -> return step.result
                 }
             }
         }
-        return when (val result = writers.productions(steps)) {
+        return when (val result = sink.productions(steps)) {
             is RegisterProductionsResult.Registered -> registered(draft, result.batchIds.first())
 
             is RegisterProductionsResult.RecipeRejected ->
@@ -266,21 +325,25 @@ class RegisterPhraseUseCase(
      * Producir [produced] milésimas de [productId] con lo que se dijo que llevó, cada insumo
      * llevado a su unidad base:
      *
-     * - **Se produce con lo dicho**, y lo que la receta lleva y no se nombró, [fromRecipe], sale de
-     *   la receta escalado a lo producido. Un insumo dicho que la receta no lleva entra solo en esta
-     *   tanda.
+     * - **Se produce con lo dicho**, y lo que la receta guardada, [stored], lleva y no se nombró
+     *   sale de ella escalado a lo producido. Un insumo dicho que la receta no lleva entra solo en
+     *   esta tanda. Un combo dicho se consume por sus componentes, en lugar de lo que la receta
+     *   trae de ese combo, y un insumo dicho manda sobre todo lo que la tanda lleva de él, suelto o
+     *   dentro de un combo: nada se cuenta dos veces.
      * - **Sin receta,** lo dicho se guarda como su receta, por unidad, en la misma transacción.
      * - **Con el interruptor de actualizar la receta**, lo dicho también reemplaza o se agrega a la
-     *   receta guardada, [stored], por unidad; lo que no se nombró queda como estaba.
+     *   receta guardada, por unidad; lo que no se nombró queda como estaba. Un combo de la receta
+     *   que trae un insumo dicho se abre en sus componentes, para no llevarlo dos veces.
      */
     private suspend fun withSaid(
         draft: PhraseDraft,
         productId: Long,
         produced: QuantityMilli,
         stored: List<RecipeComponent>,
-        fromRecipe: List<ProductionInput>,
+        book: RecipeBook,
     ): SaidStep {
         val said = ArrayList<ProductionInput>()
+        val combos = HashSet<Long>()
         for ((index, input) in draft.inputs.withIndex()) {
             val component = productOf(input) ?: return SaidStep.Refused(unavailable(input))
             val placed = placementOf(component, input, keeps = { false })
@@ -288,14 +351,34 @@ class RegisterPhraseUseCase(
                     rejected(PhraseRejection.InputUnitNotConvertible(index)),
                 )
             said += ProductionInput(component.id, placed.quantity)
+            if (component.details.stockMode == ProductStockMode.COMPONENTS) combos += component.id
         }
-        val inputs = SaidRecipes.inputs(fromRecipe, said)
+        // Lo que la receta lleva sin los combos dichos, y lo que traen los combos dichos.
+        val unsaid = book.without(productId, combos)
+        val parts = (
+            listOf(ProductionInput(productId, produced)) +
+                said.filter { it.productId in combos }
+            )
+        val consumed = ArrayList<ProductionInput>()
+        for ((index, part) in parts.withIndex()) {
+            val from = if (index == 0) unsaid else book
+            when (val read = from.inputs(part.productId, part.quantity)) {
+                is BookRead.Inputs -> consumed += read.inputs
+                is BookRead.Refused -> return SaidStep.Refused(rejected(read.reason))
+            }
+        }
+        val inputs = SaidRecipes.inputs(
+            SaidRecipes.merged(consumed),
+            said.filter { it.productId !in combos },
+        )
         val request = ProductionRequest(productId, produced, inputs, note = null)
         if (stored.isNotEmpty() && !draft.updatesRecipe) {
             return SaidStep.Ready(ProductionStep(request))
         }
         val rows = stored.map { RecipeLine(it.componentProductId, it.quantity) }
-        val recipe = SaidRecipes.recipe(rows, said, produced)
+        val ids = said.mapTo(HashSet()) { it.productId }
+        val recipe = SaidRecipes.opened(rows, ids, book.recipes, book.modes)
+            ?.let { SaidRecipes.recipe(it, said, produced) }
             ?: return SaidStep.Refused(rejected(PhraseRejection.AmountNotApplicable))
         return SaidStep.Ready(ProductionStep(request, recipe))
     }
@@ -305,7 +388,7 @@ class RegisterPhraseUseCase(
      * línea fija lo que hay de su producto, y con otro motivo cada línea sale con ese motivo. Si
      * una línea se rechaza, no queda ninguna.
      */
-    private suspend fun adjustment(draft: PhraseDraft): RegisterPhraseResult {
+    private suspend fun adjustment(draft: PhraseDraft, sink: Sink): RegisterPhraseResult {
         val reason = requireNotNull(draft.reason) { "Un ajuste completo tiene motivo" }
         val requests = draft.lines.mapIndexed { index, line ->
             val product = productOf(line) ?: return unavailable(line)
@@ -319,7 +402,7 @@ class RegisterPhraseUseCase(
                 StockAdjustmentRequest.Change(product.id, reason, placed.quantity)
             }
         }
-        return when (val result = writers.adjustments(requests)) {
+        return when (val result = sink.adjustments(requests)) {
             is StockAdjustmentsResult.Adjusted -> registered(draft, result.movementIds.first())
 
             StockAdjustmentsResult.NoDifference ->
@@ -370,7 +453,7 @@ class RegisterPhraseUseCase(
      * La receta guarda cuánto lleva una unidad del producto, en la unidad base de cada insumo: lo
      * dicho para lo que rinde se divide entre esa cantidad, redondeado.
      */
-    private suspend fun recipe(draft: PhraseDraft): RegisterPhraseResult {
+    private suspend fun recipe(draft: PhraseDraft, sink: Sink): RegisterPhraseResult {
         val target = requireNotNull(draft.target as? DraftTarget.Existing) {
             "Una receta completa tiene su producto"
         }
@@ -385,7 +468,7 @@ class RegisterPhraseUseCase(
                 ?: return rejected(PhraseRejection.AmountNotApplicable)
             lines += RecipeLine(product.id, QuantityMilli(perUnit))
         }
-        val result = writers.recipe(target.productId, lines)
+        val result = sink.recipe(target.productId, lines)
         if (result is SaveRecipeResult.Saved) return registered(draft, target.productId)
         if (result is SaveRecipeResult.StorageFailed) return failed(result.failure)
         return rejected(PhraseRejection.Recipe(result))
@@ -476,8 +559,23 @@ class RegisterPhraseUseCase(
         val said = units.findById(unitId) ?: return null
         val base = units.findById(baseId) ?: return null
         val saidAmount = PhraseMeasures.baseAmountMilli(said.systemKey) ?: return null
-        val baseAmount = PhraseMeasures.baseAmountMilli(base.systemKey) ?: return null
-        return if (said.kind == base.kind) UnitFit.Scaled(saidAmount, baseAmount) else null
+        if (said.kind != base.kind) return null
+        PhraseMeasures.baseAmountMilli(base.systemKey)?.let {
+            return UnitFit.Scaled(saidAmount, it)
+        }
+        // Una base sin medida fija, como la libra: a través de la conversión guardada de una unidad
+        // métrica de su clase. Con los topes de una medida y de un factor, todo cabe en Long.
+        for (conversion in productUnits.observeByProduct(product.id).first()) {
+            val measured = units.findById(conversion.details.unitId)?.takeIf {
+                it.kind == said.kind
+            }
+            val amount = PhraseMeasures.baseAmountMilli(measured?.systemKey) ?: continue
+            return UnitFit.Scaled(
+                saidAmount * conversion.details.factorMilli,
+                amount * Scale.MILLI,
+            )
+        }
+        return null
     }
 
     /**
@@ -635,8 +733,152 @@ class RegisterPhraseUseCase(
         data object Unavailable : Account
     }
 
+    /**
+     * Los casos de uso de las operaciones que pueden llevar productos nuevos: los de siempre, que
+     * abren su propia transacción, o los que escriben dentro de la que abrió [together].
+     */
+    private class Sink(
+        val sale: suspend (SaleRequest) -> RegisterSaleResult,
+        val purchase: suspend (PurchaseRequest) -> RegisterPurchaseResult,
+        val productions: suspend (List<ProductionStep>) -> RegisterProductionsResult,
+        val adjustments: suspend (List<StockAdjustmentRequest>) -> StockAdjustmentsResult,
+        val recipe: suspend (Long, List<RecipeLine>) -> SaveRecipeResult,
+    ) {
+        companion object {
+            fun of(writers: PhraseWriters) = Sink(
+                writers.sale,
+                writers.purchase,
+                writers.productions,
+                writers.adjustments,
+                writers.recipe,
+            )
+
+            fun within(writers: PhraseWritersWithin) = Sink(
+                sale = { writers.sale(it).outcome },
+                purchase = { writers.purchase(it).outcome },
+                productions = { writers.productions(it).outcome },
+                adjustments = { writers.adjustments(it).outcome },
+                recipe = { parentId, lines -> writers.recipe(parentId, lines).outcome },
+            )
+        }
+    }
+
+    /**
+     * Crea, dentro de la transacción de [within], los productos nuevos de una tarjeta: los de sus
+     * líneas, sus insumos y lo que se produce o lleva la receta. Un nombre que se repite, sin
+     * mayúsculas, es el mismo producto.
+     */
+    private inner class NewProducts(private val within: PhraseWritersWithin) {
+        private val ids = HashMap<String, Long>()
+        private var refused: SaveProductResult? = null
+
+        suspend fun resolve(draft: PhraseDraft): Made {
+            val lines = draft.lines.map { line ->
+                val price = if (draft.intent == PhraseIntent.SALE) salePriceOf(line) else Money.ZERO
+                line.copy(product = target(line.product, line.unitId, price) ?: return refusal())
+            }
+            val inputs = draft.inputs.map { input ->
+                input.copy(
+                    product =
+                        target(input.product, input.unitId, Money.ZERO) ?: return refusal(),
+                )
+            }
+            val target = draft.target?.let { target(it, null, Money.ZERO) ?: return refusal() }
+            return Made.Ready(draft.copy(lines = lines, inputs = inputs, target = target))
+        }
+
+        private fun refusal(): Made = Made.Refused(checkNotNull(refused))
+
+        /**
+         * [said] ya creado, o `null` si se rechazó. Uno que existe queda como está; uno que falta
+         * no llega aquí, porque es un hueco.
+         */
+        private suspend fun target(said: DraftTarget?, unitId: Long?, price: Money): DraftTarget? {
+            val new = said as? DraftTarget.New ?: return said
+            val key = new.name.trim().lowercase()
+            ids[key]?.let { return DraftTarget.Existing(it) }
+            val traits = new.traits
+            val form = ProductForm(
+                name = new.name,
+                categoryId = traits.categoryId,
+                baseUnitId = unitId,
+                stockMode = traits.stockMode ?: ProductStockMode.TRACKED,
+                salePrice = price,
+                usage = traits.usage,
+            )
+            val category = traits.newCategory.takeIf { traits.categoryId == null }
+            return when (val result = within.product(form, category).outcome) {
+                is SaveProductResult.Saved -> {
+                    ids[key] = result.productId
+                    DraftTarget.Existing(result.productId)
+                }
+
+                else -> {
+                    refused = result
+                    null
+                }
+            }
+        }
+    }
+
+    /** Lo que se dijo que cobra una unidad de una línea de venta: su precio, o su total entre la cantidad. */
+    private fun salePriceOf(line: DraftLine): Money {
+        line.unitPrice?.let { return it }
+        val total = line.lineTotal ?: return Money.ZERO
+        val quantity = line.quantity ?: return Money.ZERO
+        return PhraseAmounts.exactLine(total, quantity)?.unitPrice ?: Money.ZERO
+    }
+
+    /** La tarjeta con sus productos nuevos ya creados, o por qué no se pudo crear uno. */
+    private sealed interface Made {
+        data class Ready(val draft: PhraseDraft) : Made
+
+        data class Refused(val result: SaveProductResult) : Made
+    }
+
+    /**
+     * Las recetas guardadas, por producto, y el modo de stock de cada componente: con ellas se
+     * calcula lo que pide una receta o un combo para una cantidad.
+     */
+    private class RecipeBook(
+        val recipes: Map<Long, List<RecipeComponent>>,
+        val modes: Map<Long, ProductStockMode>,
+    ) {
+        /** Lo que piden [quantity] milésimas de [productId], o por qué no se puede calcular. */
+        fun inputs(productId: Long, quantity: QuantityMilli): BookRead =
+            when (val result = ProductionRules.recipeInputs(productId, quantity, recipes, modes)) {
+                is RecipeInputsResult.Inputs -> BookRead.Inputs(result.inputs)
+
+                is RecipeInputsResult.InputRoundsToZero,
+                RecipeInputsResult.QuantityOutOfRange,
+                RecipeInputsResult.TooDeep,
+                -> BookRead.Refused(PhraseRejection.ProductionInputs(result))
+            }
+
+        /** Las mismas recetas, sin las filas de [productId] que son [removed]. */
+        fun without(productId: Long, removed: Set<Long>): RecipeBook {
+            val kept = recipes[productId].orEmpty().filter { it.componentProductId !in removed }
+            return RecipeBook(recipes + (productId to kept), modes)
+        }
+    }
+
+    /** Lo que pide una receta, o el motivo para no registrar. */
+    private sealed interface BookRead {
+        data class Inputs(val inputs: List<ProductionInput>) : BookRead
+
+        data class Refused(val reason: PhraseRejection) : BookRead
+    }
+
     private companion object {
         /** Una unidad entera: lo que rinde una receta que no dice cuánto. */
         val ONE = QuantityMilli(1_000L)
     }
 }
+
+/** El valor de un paso, se confirme o se deshaga: aquí todo se junta en la misma transacción. */
+private val <T> TxResult<T>.outcome: T
+    get() = when (this) {
+        is TxResult.Commit -> value
+        is TxResult.CommitUncounted -> value
+        is TxResult.Rollback -> value
+    }

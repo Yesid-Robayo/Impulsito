@@ -572,9 +572,11 @@ private fun RecipeNote(card: PhraseCard, recipe: CardRecipe) {
 
 /**
  * Las acciones de una fila de la tarjeta: las de una línea o las de un insumo dicho. [pickCategory]
- * es `null` donde la categoría del producto por crear no se elige aquí.
+ * es `null` donde la categoría del producto por crear no se elige aquí. [input] dice cuál de las
+ * dos es.
  */
 private class LineCallbacks(
+    val input: Boolean,
     val open: (Int) -> PhraseAction,
     val choose: (Int, Long) -> PhraseAction,
     val pick: (Int) -> PhraseAction,
@@ -584,6 +586,7 @@ private class LineCallbacks(
 
 private val LINE_CALLBACKS =
     LineCallbacks(
+        input = false,
         open = { PhraseAction.OpenLine(it) },
         choose = { index, id -> PhraseAction.ChooseProduct(index, id) },
         pick = { PhraseAction.PickProduct(it) },
@@ -594,6 +597,7 @@ private val LINE_CALLBACKS =
 /** Un insumo nuevo se crea como insumo, sin elegir categoría desde la tarjeta. */
 private val INPUT_CALLBACKS =
     LineCallbacks(
+        input = true,
         open = { PhraseAction.OpenInput(it) },
         choose = { index, id -> PhraseAction.ChooseInputProduct(index, id) },
         pick = { PhraseAction.PickInputProduct(it) },
@@ -738,7 +742,12 @@ private fun LineNotes(
 
         is CardProduct.Chosen -> Unit
     }
-    if (line.quantity == null && !pricedOnly) GapTag(R.string.phrase_line_no_quantity)
+    val unfit = line.unfit
+    if (unfit != null) {
+        UnfitNote(line, unfit, callbacks.input, onAction)
+    } else if (line.quantity == null && !pricedOnly) {
+        GapTag(R.string.phrase_line_no_quantity)
+    }
     line.recipe?.let { RecipeNote(card, it) }
     if (line.otherOperation) {
         StatusTag(
@@ -766,6 +775,11 @@ private fun LineNotes(
             }
         }
 
+        // Un producto nuevo, o uno sin precio, no tiene precio todavía: la venta lo pide.
+        card.intent == PhraseIntent.SALE && unpriced &&
+            (line.product is CardProduct.New || line.needsPrice) ->
+            GapTag(R.string.phrase_price_missing)
+
         // Una venta sin precio que mostrar, con la cantidad: sin ella, ya lo dice su etiqueta.
         card.intent == PhraseIntent.SALE && line.amount == null && line.quantity != null &&
             line.product is CardProduct.Chosen ->
@@ -777,6 +791,78 @@ private fun LineNotes(
 
         else -> Unit
     }
+}
+
+/**
+ * Lo que se dijo en una unidad que el producto no admite, en su lugar de la línea. Si es de la
+ * misma clase pero una de las dos unidades no tiene medida fija, pregunta cuánto mide, con los
+ * valores comunes en chips y `Otro valor`; si no, ofrece las unidades del producto para escribir la
+ * cantidad en una de ellas.
+ */
+@Composable
+private fun UnfitNote(
+    line: CardLine,
+    unfit: CardUnfit,
+    input: Boolean,
+    onAction: (PhraseAction) -> Unit,
+) {
+    val quantity = unfit.quantity
+    val said = if (quantity != null) lineQuantity(quantity, unfit.unit) else unfit.unit.name
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val measure = unfit.measure
+    if (measure == null) {
+        Text(
+            text = stringResource(R.string.phrase_unfit_unit, said),
+            style = MaterialTheme.typography.bodyMedium,
+            color = muted,
+        )
+        if (line.units.isNotEmpty()) {
+            CompactChipRow(
+                options = line.units,
+                label = { it.name },
+                selected = emptySet(),
+                onToggle = { onAction(PhraseAction.ChooseLineUnit(line.index, input, it.id)) },
+                multiple = false,
+            )
+        }
+        return
+    }
+    val question =
+        when (measure.unit.kind) {
+            UnitKind.MASS -> R.string.phrase_measure_mass
+            UnitKind.VOLUME -> R.string.phrase_measure_volume
+            UnitKind.LENGTH, UnitKind.COUNT, UnitKind.OTHER -> R.string.phrase_measure_length
+        }
+    Text(
+        text = stringResource(R.string.phrase_said_as, said),
+        style = MaterialTheme.typography.bodyMedium,
+        color = muted,
+    )
+    Text(
+        text = stringResource(question, measure.unit.name, measure.product),
+        style = MaterialTheme.typography.bodyMedium,
+    )
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.s8),
+        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s4),
+    ) {
+        CompactChipRow(
+            options = measure.options,
+            label = { lineQuantity(it, measure.measureUnit) },
+            selected = emptySet(),
+            onToggle = { onAction(PhraseAction.ChooseMeasure(line.index, input, it)) },
+            multiple = false,
+        )
+        InlineTextButton(
+            text = stringResource(R.string.phrase_measure_other_value),
+            onClick = { onAction(PhraseAction.OpenMeasure(line.index, input)) },
+        )
+    }
+    Text(
+        text = stringResource(R.string.phrase_measure_saved),
+        style = MaterialTheme.typography.bodySmall,
+        color = muted,
+    )
 }
 
 /**
@@ -1243,6 +1329,7 @@ private fun PhraseSheets(uiState: PhraseUiState, onAction: (PhraseAction) -> Uni
         is PhraseSheet.Line -> LineSheet(card, sheet, onAction)
         is PhraseSheet.Amount -> AmountSheet(card, sheet, onAction)
         is PhraseSheet.Pick -> PickSheet(card, sheet, onAction)
+        is PhraseSheet.Measure -> MeasureSheet(sheet, onAction)
         null -> Unit
     }
 }
@@ -1267,6 +1354,19 @@ private fun LineSheet(
         },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(spacing.s12)) {
+            // La unidad de la línea se cambia aquí, entre las que admite su producto.
+            if (sheet.units.size > 1) {
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
+                    SectionLabel(stringResource(R.string.phrase_unit))
+                    CompactChipRow(
+                        options = sheet.units,
+                        label = { it.name },
+                        selected = setOfNotNull(sheet.unit),
+                        onToggle = { onAction(PhraseAction.LineUnitChange(it.id)) },
+                        multiple = false,
+                    )
+                }
+            }
             if (sheet.showsQuantity) {
                 QuantityField(
                     value = sheet.quantityText,
@@ -1315,6 +1415,49 @@ private fun LineSheet(
                     color = MaterialTheme.colorScheme.error,
                 )
             }
+        }
+    }
+}
+
+/** Escribir cuánto mide una unidad sin medida fija de un producto, como cuánto pesa su libra. */
+@Composable
+private fun MeasureSheet(sheet: PhraseSheet.Measure, onAction: (PhraseAction) -> Unit) {
+    val measure = sheet.measure
+    val question =
+        when (measure.unit.kind) {
+            UnitKind.MASS -> R.string.phrase_measure_mass
+            UnitKind.VOLUME -> R.string.phrase_measure_volume
+            UnitKind.LENGTH, UnitKind.COUNT, UnitKind.OTHER -> R.string.phrase_measure_length
+        }
+    AppBottomSheet(
+        onDismissRequest = { onAction(PhraseAction.CloseSheet) },
+        title = stringResource(R.string.phrase_measure_other_value),
+        action = {
+            PrimaryActionButton(
+                text = stringResource(R.string.phrase_done),
+                onClick = { onAction(PhraseAction.SaveMeasure) },
+                variant = ActionVariant.PRIMARY,
+            )
+        },
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.s12)) {
+            Text(
+                text = stringResource(question, measure.unit.name, measure.product),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            QuantityField(
+                value = sheet.text,
+                onValueChange = { onAction(PhraseAction.MeasureChange(it)) },
+                label = stringResource(R.string.phrase_quantity),
+                unit = unitLabelOf(measure.measureUnit, fraction = true),
+                error = if (sheet.error) stringResource(R.string.phrase_quantity_invalid) else null,
+                imeAction = ImeAction.Done,
+            )
+            Text(
+                text = stringResource(R.string.phrase_measure_saved),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

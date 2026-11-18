@@ -257,13 +257,13 @@ class ReadPhraseUseCaseTest {
 
     @Test
     fun `prices are the ones the sale uses, and the last cost only a suggestion`() = runTest {
+        // Una caja de harina que se vende sin precio propio: con la harina en cero, también.
+        world.addConversion(5L, FLOUR, BOX, 2_000)
         assertEquals(
             PhrasePrices(
+                // Un precio en cero no es un precio: la camiseta y la harina no tienen.
                 sale = mapOf(
-                    SHIRT to Money.ZERO,
-                    RED_SHIRT to Money.ZERO,
                     HAIRCUT to Money(1_000_000_000_000),
-                    FLOUR to Money.ZERO,
                     BREAD to Money(50_000),
                 ),
                 // La caja de 12 panes al precio del pan, y la docena con su precio propio.

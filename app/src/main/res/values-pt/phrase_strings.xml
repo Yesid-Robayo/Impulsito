@@ -57,6 +57,13 @@
     <string name="phrase_use_last_cost">Último custo: %1$s</string>
     <string name="phrase_use_last_cost_hidden">Usar o último custo</string>
     <string name="phrase_new_tag">Novo</string>
+    <string name="phrase_unfit_unit">Foi dito %1$s, e este produto não é medido nessa unidade. Em que unidade vai?</string>
+    <string name="phrase_said_as">Foi dito %1$s.</string>
+    <string name="phrase_measure_mass">Quanto pesa 1 %1$s de %2$s?</string>
+    <string name="phrase_measure_volume">Quanto tem 1 %1$s de %2$s?</string>
+    <string name="phrase_measure_length">Quanto mede 1 %1$s de %2$s?</string>
+    <string name="phrase_measure_other_value">Outro valor</string>
+    <string name="phrase_measure_saved">Ao registrar, esta medida fica salva no produto.</string>
     <string name="phrase_new_category">Categoria: %1$s</string>
     <string name="phrase_category_to_create">Categoria nova: %1$s</string>
     <string name="phrase_pick_category">Escolher categoria</string>

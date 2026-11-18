@@ -111,6 +111,10 @@ sealed interface ProductMatch {
  * [unitId], y es `null` si no se dijo: la pantalla pone una. [unitId] es `null` si no se dijo
  * unidad, y entonces vale la base del producto. [unitPrice] es el precio de una unidad dicha y
  * [lineTotal] lo que se dijo por toda la línea.
+ *
+ * [unfit] es lo que se dijo en una unidad que el producto no admite, como "200 g" de algo que se
+ * cuenta por unidad: la unidad no se propone, y la tarjeta muestra lo dicho para pedir la cantidad
+ * en una unidad del producto.
  */
 data class PhraseLine(
     val product: ProductMatch,
@@ -118,7 +122,14 @@ data class PhraseLine(
     val unitId: Long?,
     val unitPrice: Money?,
     val lineTotal: Money?,
+    val unfit: UnfitQuantity? = null,
 )
+
+/**
+ * Una cantidad dicha en una unidad que el producto no admite: [quantity] milésimas de [unitId], o
+ * `null` si se dijo la unidad sin número.
+ */
+data class UnfitQuantity(val quantity: QuantityMilli?, val unitId: Long)
 
 /**
  * Lo que entendió el intérprete de una frase. Nunca registra nada: la pantalla lo muestra para

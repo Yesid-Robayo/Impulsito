@@ -12,6 +12,7 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseProduct
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseReading
 import io.github.yesidrobayo.shopledger.domain.model.phrase.ProductMatch
+import io.github.yesidrobayo.shopledger.domain.model.phrase.UnfitQuantity
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.BOX
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.BREAD
@@ -20,6 +21,7 @@ import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.CASH
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.CHOCO_CAKE
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.COOKIES
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.CORN_FLOUR
+import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.DOZEN
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.EGG
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.EMPANADA
 import io.github.yesidrobayo.shopledger.domain.rule.phrase.PhraseCatalogs.FARMER_CHEESE
@@ -327,7 +329,10 @@ class PhraseSpeechTest {
         )
         // Con un precio por docena, la línea queda como se dijo.
         assertEquals(
-            listOf(line(found(BREAD), units(2), unitPrice = money(500))),
+            listOf(
+                line(found(BREAD), units(2), unitPrice = money(500))
+                    .copy(unfit = UnfitQuantity(units(2), DOZEN)),
+            ),
             spanish("vendí 2 docenas de panes a 500").lines,
         )
         assertEquals(

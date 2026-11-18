@@ -7,6 +7,7 @@ import io.github.yesidrobayo.shopledger.domain.model.catalog.MeasureUnit
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Product
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductConversion
 import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductForm
+import io.github.yesidrobayo.shopledger.domain.model.catalog.ProductUsage
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeComponent
 import io.github.yesidrobayo.shopledger.domain.model.catalog.RecipeLine
 import io.github.yesidrobayo.shopledger.domain.model.catalog.Supplier
@@ -19,6 +20,7 @@ import io.github.yesidrobayo.shopledger.domain.model.payment.PaymentMethodRecord
 import io.github.yesidrobayo.shopledger.domain.model.purchase.PurchaseRequest
 import io.github.yesidrobayo.shopledger.domain.model.sale.SaleRequest
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentRequest
+import io.github.yesidrobayo.shopledger.domain.port.TxResult
 import io.github.yesidrobayo.shopledger.domain.rule.customer.PaymentAllocation
 import io.github.yesidrobayo.shopledger.domain.testing.FakePaymentMethodRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeProductComponentRepository
@@ -27,6 +29,7 @@ import io.github.yesidrobayo.shopledger.domain.testing.FakeProductUnitRepository
 import io.github.yesidrobayo.shopledger.domain.testing.FakeUnitRepository
 import io.github.yesidrobayo.shopledger.domain.testing.InMemoryDatabase
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.ChangePriceResult
+import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveConversionResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveProductResult
 import io.github.yesidrobayo.shopledger.domain.usecase.catalog.SaveRecipeResult
 import io.github.yesidrobayo.shopledger.domain.usecase.customer.CustomerPaymentRequest
@@ -39,6 +42,7 @@ import io.github.yesidrobayo.shopledger.domain.usecase.production.RegisterProduc
 import io.github.yesidrobayo.shopledger.domain.usecase.purchase.RegisterPurchaseResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.RegisterSaleResult
 import io.github.yesidrobayo.shopledger.domain.usecase.sale.measureUnit
+import io.github.yesidrobayo.shopledger.domain.usecase.sale.product
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.CorrectCostResult
 import io.github.yesidrobayo.shopledger.domain.usecase.stock.StockAdjustmentsResult
 import kotlin.time.Instant
@@ -75,6 +79,21 @@ internal class RecordingWriters {
     var price: ChangePriceResult = ChangePriceResult.Changed(19L)
     var product: SaveProductResult = SaveProductResult.Saved(20L)
     var recipe: SaveRecipeResult = SaveRecipeResult.Saved
+    var conversion: SaveConversionResult = SaveConversionResult.Saved(30L)
+
+    /** El rechazo al crear un producto dentro de la escritura conjunta, o `null` si se crea. */
+    var refusedProduct: SaveProductResult? = null
+
+    /** El id del siguiente producto que se crea dentro de la escritura conjunta. */
+    var nextProductId = 40L
+
+    /** Cómo terminó cada escritura conjunta: `true` si se confirmó, `false` si se deshizo. */
+    val committed = mutableListOf<Boolean>()
+
+    /** Lo que hace la base de prueba al crear un producto dentro de la escritura conjunta. */
+    var onCreate: (Long, ProductForm) -> Unit = { _, _ -> }
+
+    private fun <T> commit(value: T): TxResult<T> = TxResult.Commit(value)
 
     fun writers(): PhraseWriters = PhraseWriters(
         sale = { request: SaleRequest ->
@@ -122,6 +141,62 @@ internal class RecordingWriters {
             requests += RecipeCall(parentId, lines)
             recipe
         },
+        together = { block ->
+            val within = PhraseWritersWithin(
+                sale = { request ->
+                    requests += request
+                    commit(sale)
+                },
+                purchase = { request ->
+                    requests += request
+                    commit(purchase)
+                },
+                productions = { steps ->
+                    requests.addAll(steps)
+                    commit(productions)
+                },
+                adjustments = { list ->
+                    requests.addAll(list)
+                    commit(adjustments)
+                },
+                product = { form, newCategory ->
+                    requests += form
+                    newCategories += newCategory
+                    val refused = refusedProduct
+                    if (refused != null) {
+                        TxResult.Rollback(refused)
+                    } else {
+                        val id = nextProductId++
+                        onCreate(id, form)
+                        commit(SaveProductResult.Saved(id))
+                    }
+                },
+                recipe = { parentId, lines ->
+                    requests += RecipeCall(parentId, lines)
+                    commit(recipe)
+                },
+                conversion = { draft ->
+                    requests += draft
+                    commit(conversion)
+                },
+            )
+            when (val result = block(within)) {
+                is TxResult.Commit -> {
+                    committed += true
+                    result.value
+                }
+
+                is TxResult.CommitUncounted -> {
+                    committed += true
+                    result.value
+                }
+
+                is TxResult.Rollback -> {
+                    committed += false
+                    result.value
+                }
+            }
+        },
     )
 }
 
@@ -137,7 +212,20 @@ internal class PhraseWorld {
     val units = FakeUnitRepository(database)
     val components = FakeProductComponentRepository(database)
     val paymentMethods = FakePaymentMethodRepository(database)
-    val writers = RecordingWriters()
+    val writers = RecordingWriters().also { recording ->
+        // Lo que se crea dentro de la escritura conjunta queda en la base, como en la de verdad.
+        recording.onCreate = { id, form ->
+            addProducts(
+                product(
+                    id,
+                    form.name,
+                    salePrice = form.salePrice.minor,
+                    unitId = form.baseUnitId ?: UNIT,
+                    usage = form.usage ?: ProductUsage.SALE,
+                ),
+            )
+        }
+    }
 
     init {
         database.seed { tables ->

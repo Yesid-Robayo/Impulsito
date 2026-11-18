@@ -16,6 +16,7 @@ import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLanguage
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseLine
 import io.github.yesidrobayo.shopledger.domain.model.phrase.PhraseReading
 import io.github.yesidrobayo.shopledger.domain.model.phrase.ProductMatch
+import io.github.yesidrobayo.shopledger.domain.model.phrase.UnfitQuantity
 import io.github.yesidrobayo.shopledger.domain.model.stock.StockAdjustmentReason
 import io.github.yesidrobayo.shopledger.domain.rule.roundDiv
 
@@ -748,9 +749,16 @@ internal class PhraseSession(
 
         WeakStep.CUSTOMER -> facts.party?.customer != null
 
+        WeakStep.CUSTOMER_WITH_GOODS ->
+            facts.party?.customer != null && facts.drafts.any { products.names(it.span) { true } }
+
         WeakStep.BUYER -> facts.party?.customer != null || facts.someone
 
         WeakStep.SUPPLIER -> facts.party?.supplier != null
+
+        WeakStep.SUPPLIER_GOODS ->
+            facts.party?.supplier != null && facts.party.customer == null &&
+                facts.drafts.any { products.names(it.span) { true } }
 
         WeakStep.PRICE_ONLY ->
             facts.drafts.none { it.quantity != null } && facts.drafts.any { it.unitPrice != null }
@@ -1186,17 +1194,19 @@ internal class PhraseSession(
             )
             return ResolvedLine(line, resolution.issue, unitFits = true, draft = draft)
         }
-        // Una unidad que el producto no admite no se propone: queda el problema, y la base del
-        // producto.
-        val fits = unitFits(resolution.match, draft.unitId)
+        // Una unidad que el producto no admite no se propone: queda el problema, la base del
+        // producto y lo que se dijo, para pedir la cantidad en una unidad suya.
+        val unfit = unfitUnit(resolution.match, draft.unitId)
+        val quantity = draft.quantity?.let(::QuantityMilli)
         val line = PhraseLine(
             product = resolution.match,
-            quantity = draft.quantity?.let(::QuantityMilli),
-            unitId = draft.unitId.takeIf { fits },
+            quantity = quantity,
+            unitId = draft.unitId.takeIf { unfit == null },
             unitPrice = draft.unitPrice?.let(::money),
             lineTotal = draft.lineTotal?.let(::money),
+            unfit = unfit?.let { UnfitQuantity(quantity, it) },
         )
-        return ResolvedLine(line, resolution.issue, fits, draft)
+        return ResolvedLine(line, resolution.issue, unfit == null, draft)
     }
 
     /**
@@ -1220,10 +1230,11 @@ internal class PhraseSession(
         return quantity * factor
     }
 
-    private fun unitFits(match: ProductMatch, unitId: Long?): Boolean {
-        val found = match as? ProductMatch.Found ?: return true
-        val unit = units.byId(unitId ?: return true)
-        return units.admits(products.byId(found.id), unit)
+    /** La unidad dicha si el producto no la admite, o `null` si la admite o no se dijo. */
+    private fun unfitUnit(match: ProductMatch, unitId: Long?): Long? {
+        val found = match as? ProductMatch.Found ?: return null
+        val unit = units.byId(unitId ?: return null)
+        return unit.id.takeUnless { units.admits(products.byId(found.id), unit) }
     }
 
     private fun issues(drafts: List<LineDraft>, lines: List<ResolvedLine>): Set<PhraseIssue> =
@@ -1321,7 +1332,8 @@ internal class PhraseSession(
          * Sin verbo, decide lo nombrado: una categoría es un gasto y un producto del catálogo, una
          * venta.
          */
-        val NO_VERB_STEPS = listOf(WeakStep.CATEGORY, WeakStep.SALE_PRODUCTS)
+        val NO_VERB_STEPS =
+            listOf(WeakStep.CATEGORY, WeakStep.SUPPLIER_GOODS, WeakStep.SALE_PRODUCTS)
 
         /**
          * Si se dicen dos motivos, gana el más específico: "se dañó la leche por vencida" es un

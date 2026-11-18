@@ -59,8 +59,9 @@ internal class CorrectionSession(
      */
     private fun inputsSaid(draft: PhraseDraft, body: List<Token>): PhraseDraft? {
         if (draft.intent != PhraseIntent.PRODUCTION) return null
-        val made = (draft.lines.singleOrNull()?.product as? DraftTarget.Existing)?.productId
-            ?: return null
+        // Lo producido puede ser del catálogo, uno nuevo que se crea al registrar, o uno por elegir.
+        val madeProduct = (draft.lines.singleOrNull() ?: return null).product
+        val made = (madeProduct as? DraftTarget.Existing)?.productId
         // "agrega 2 huevos", "y 3 huevos": lo que abre una línea más no es parte de lo dicho.
         val start = body.indexOfFirst { !it.isSeparator }.coerceAtLeast(0)
         val spoken = body.subList(words.additions.matchAt(body, start)?.end ?: start, body.size)
@@ -71,7 +72,7 @@ internal class CorrectionSession(
             null -> {
                 val led = spoken.firstOrNull()?.norm in lexicon.yieldLeads
                 val open = led || draft.inputs.isNotEmpty() ||
-                    productsById[made]?.hasRecipe != true
+                    made?.let(productsById::get)?.hasRecipe != true
                 if (!open) return null
                 spoken.subList(if (led) 1 else 0, spoken.size)
             }
@@ -80,7 +81,10 @@ internal class CorrectionSession(
                 // "it takes", "se usa": un pronombre antes del verbo no nombra otro producto.
                 val before = spoken.subList(0, first.start)
                     .filterNot { it.isSeparator || it.norm in lexicon.pronouns }
-                if (named(before) && made !in idsOf(matchOf(before, ANY_PRODUCT))) return null
+                val ids = idsOf(matchOf(before, ANY_PRODUCT))
+                if (named(before) && !names(madeProduct, ids, shaper.shape(before).texts)) {
+                    return null
+                }
                 (first.end until spoken.size)
                     .filter { index -> uses.none { index >= it.start && index < it.end } }
                     .map { spoken[it] }
@@ -455,7 +459,7 @@ internal class CorrectionSession(
             val match = matchOf(line.span, rule)
             val unknown = match is ProductMatch.Unknown && line.quantity == null
             if (line.unreadable || (loose && unknown)) return null
-            val product = targetOf(match, draft.intent)
+            val product = targetOf(match, draft)
             if (!fits(product, line.unitId)) return null
             DraftLine(
                 product = product,
@@ -553,7 +557,7 @@ internal class CorrectionSession(
         val rule = ruleOf(draft.intent)
         if (aim.indices.size == 1) {
             val index = aim.indices[0]
-            lines[index] = changedLine(lines[index], aim, value, rule, draft.intent, keepsPrice)
+            lines[index] = changedLine(lines[index], aim, value, rule, draft, keepsPrice)
                 ?: return null
         } else {
             // Varias líneas pueden ser: lo que se corrigió queda en hueco en todas.
@@ -677,7 +681,7 @@ internal class CorrectionSession(
         aim: Aim,
         value: Said,
         rule: ProductRule,
-        intent: PhraseIntent,
+        draft: PhraseDraft,
         keepsPrice: Boolean,
     ): DraftLine? {
         val chosen = aim.rename.takeIf { line.product == null && line.candidates.isNotEmpty() }
@@ -691,7 +695,7 @@ internal class CorrectionSession(
             // Un producto que podría ser varios deja la línea en hueco, para elegir.
             val match = renamed(line.product, aim, rule)
             if (match != null) {
-                targetOf(match, intent)
+                targetOf(match, draft)
             } else {
                 extendedNew(line.product, aim) ?: return null
             }
@@ -821,13 +825,14 @@ internal class CorrectionSession(
 
     // Piezas comunes.
 
-    private fun targetOf(match: ProductMatch, intent: PhraseIntent): DraftTarget? = when (match) {
+    /** El producto de una línea de [draft]; uno que no está es nuevo donde se crea al registrar. */
+    private fun targetOf(match: ProductMatch, draft: PhraseDraft): DraftTarget? = when (match) {
         is ProductMatch.Found -> DraftTarget.Existing(match.id)
 
         is ProductMatch.Choose -> null
 
         is ProductMatch.Unknown ->
-            if (intent in NEW_TARGET_INTENTS) DraftTarget.New(match.spokenName) else null
+            if (draft.createsLineProducts()) DraftTarget.New(match.spokenName) else null
     }
 
     /** Si el producto admite la unidad. Lo que no está en el catálogo no se puede revisar. */
@@ -907,10 +912,6 @@ internal class CorrectionSession(
             PhraseIntent.SUPPLIER_PAYMENT,
         )
         val TOTAL_INTENTS = PAYMENT_INTENTS
-
-        /** Donde un producto que no está se propone para crearlo, como al leer la frase. */
-        val NEW_TARGET_INTENTS =
-            setOf(PhraseIntent.SALE, PhraseIntent.PURCHASE, PhraseIntent.RECIPE)
 
         /** Las formas de tarjeta donde se dice lo que es un producto nuevo. */
         val DESCRIBED = setOf(Shape.LINES, Shape.NEW_PRODUCT)

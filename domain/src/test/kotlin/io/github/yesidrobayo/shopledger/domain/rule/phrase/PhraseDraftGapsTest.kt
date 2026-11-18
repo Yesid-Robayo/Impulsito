@@ -53,16 +53,59 @@ class PhraseDraftGapsTest {
                 ),
             ),
         )
+        // Un producto nuevo se crea al registrar, pero necesita nombre y su precio dicho.
         assertEquals(
-            setOf(DraftGap.PRODUCT, DraftGap.QUANTITY),
+            setOf(DraftGap.PRODUCT, DraftGap.QUANTITY, DraftGap.PRICE),
             gaps(
                 PhraseDraft(
                     PhraseIntent.SALE,
-                    lines = listOf(line(product = DraftTarget.New("Zanahoria"), quantity = 0L)),
+                    lines = listOf(
+                        line(product = DraftTarget.New("Zanahoria"), quantity = 0L),
+                        line(product = DraftTarget.New(" ")),
+                    ),
                     paymentMethodId = 1L,
                 ),
             ),
         )
+        val carrots = line(product = DraftTarget.New("Zanahoria"))
+        val priced = PhraseDraft(
+            PhraseIntent.SALE,
+            lines = listOf(carrots.copy(unitPrice = Money(500))),
+            paymentMethodId = 1L,
+        )
+        assertEquals(emptySet<DraftGap>(), gaps(priced))
+        val totaled = priced.copy(lines = listOf(carrots.copy(lineTotal = Money(900))))
+        assertEquals(emptySet<DraftGap>(), gaps(totaled))
+    }
+
+    @Test
+    fun `a new product is created where the operation creates it, elsewhere it is a gap`() {
+        val carrots = line(product = DraftTarget.New("Zanahoria"))
+        val count = PhraseDraft(
+            PhraseIntent.STOCK_ADJUSTMENT,
+            reason = StockAdjustmentReason.COUNT_CORRECTION,
+            lines = listOf(carrots),
+        )
+        assertEquals(emptySet<DraftGap>(), gaps(count))
+        val damaged = count.copy(reason = StockAdjustmentReason.DAMAGED)
+        assertEquals(setOf(DraftGap.PRODUCT), gaps(damaged))
+        val made = PhraseDraft(PhraseIntent.PRODUCTION, lines = listOf(carrots))
+        // Lo nuevo no tiene receta: pide lo que lleva, y con eso se registra.
+        assertEquals(setOf(DraftGap.INPUTS), gaps(made))
+        assertEquals(
+            emptySet<DraftGap>(),
+            gaps(made.copy(inputs = listOf(line(product = DraftTarget.New("Harina"))))),
+        )
+        val purchase = PhraseDraft(
+            PhraseIntent.PURCHASE,
+            lines = listOf(carrots.copy(unitPrice = Money(100))),
+        )
+        assertEquals(emptySet<DraftGap>(), gaps(purchase))
+        val price = PhraseDraft(
+            PhraseIntent.PRICE_CHANGE,
+            lines = listOf(carrots.copy(unitPrice = Money(100))),
+        )
+        assertEquals(setOf(DraftGap.PRODUCT), gaps(price))
     }
 
     @Test
@@ -184,9 +227,18 @@ class PhraseDraftGapsTest {
 
     @Test
     fun `a recipe needs an existing product, its inputs and a positive yield`() {
+        // Uno nuevo se crea con la receta; uno sin nombre o sin elegir falta.
+        assertEquals(
+            setOf(DraftGap.PRODUCT),
+            gaps(PhraseDraft(PhraseIntent.RECIPE, target = DraftTarget.New("Torta"))),
+        )
         assertEquals(
             setOf(DraftGap.TARGET, DraftGap.PRODUCT),
-            gaps(PhraseDraft(PhraseIntent.RECIPE, target = DraftTarget.New("Torta"))),
+            gaps(PhraseDraft(PhraseIntent.RECIPE, target = DraftTarget.New(""))),
+        )
+        assertEquals(
+            setOf(DraftGap.TARGET, DraftGap.PRODUCT),
+            gaps(PhraseDraft(PhraseIntent.RECIPE)),
         )
         val recipe = PhraseDraft(PhraseIntent.RECIPE, target = bread, lines = listOf(line()))
         assertEquals(emptySet<DraftGap>(), gaps(recipe))
