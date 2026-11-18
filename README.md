@@ -5,7 +5,7 @@
 **Productos, stock, costos, ventas, gastos y ganancias de un emprendimiento, desde el celular. Sin internet, sin servidores y con
 respaldo en la nube que tú elijas.**
 
-![Versión](https://img.shields.io/badge/versión-1.0.0-43e5a0)
+![Versión](https://img.shields.io/badge/versión-1.0.7-43e5a0)
 ![Plataforma](https://img.shields.io/badge/plataforma-Android%208.0%2B-2f5fb3)
 ![Idiomas](https://img.shields.io/badge/idiomas-español%20%7C%20english%20%7C%20português-7ddc8f)
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-blue)](LICENSE)
@@ -13,8 +13,8 @@ respaldo en la nube que tú elijas.**
 
 **Español** · [English](README.en.md) · [Cambios por versión](CHANGELOG.md)
 
-<img src="docs/images/home.png" alt="Inicio con las ventas de hoy y la ganancia del mes" width="280">
-<img src="docs/images/sale.png" alt="Una venta nueva con cuatro productos en el carrito" width="280">
+<img src="docs/images/home.png" alt="Inicio con las ventas de hoy, la ganancia del mes y el botón del micrófono" width="250">
+<img src="docs/images/say.png" alt="Decir o escribir con una tarjeta de compra de tres productos" width="250">
 
 </div>
 
@@ -53,27 +53,64 @@ app está en español, inglés y portugués.
 
 ## ✨ Funciones
 
+### 🎙️ Dilo y queda anotado
+
+Toca el micrófono, abajo a la derecha, y di lo que pasó: «vendí 2 empanadas en efectivo», «compré 3 kilos de harina a 9.000» o
+«hice 10 panes». La app arma una tarjeta con lo que entendió y nada se guarda hasta que tocas **Registrar**. Con la tarjeta
+abierta, lo que dices después suma o corrige, nunca borra. Funciona sin internet, con el reconocimiento de voz del teléfono, y
+no guarda audio. También puedes escribirlo.
+
+<table>
+<tr>
+<td width="55%">
+
+### 🛒 Vender
+
+Busca el producto, escanéalo o dilo, y cobra con uno o varios métodos de pago.
+
 - **Vende en pocos toques:** varios métodos de pago en una venta, comisiones y neto recibido, cambio, propinas, descuentos y ventas
   en espera. Una venta nunca se borra: anularla deja un registro compensatorio.
 - **Clientes y crédito:** ventas a crédito, abonos, extractos, saldo a favor y puntos. Solo se pide el nombre. Los recordatorios los
   envías tú, uno por uno, con la app que elijas.
-- **Productos a tu manera:** unidades y conversiones, servicios, variantes, combos y recetas, fotos, campos propios, listas de
-  precios y actualización masiva de precios con alertas de margen.
 - **Escáner de códigos** con la cámara o con un lector externo, y códigos y etiquetas propios para imprimir.
-- **El stock es un libro:** cada cambio es un movimiento que nunca se edita. Lotes y vencimientos, números de serie, ubicaciones y
-  transferencias, producción, reposición sugerida y conteo a ciegas.
-- **Compras y proveedores:** costo promedio y de reposición, compras a plazo con pagos parciales y vencimientos, y devoluciones al
-  proveedor.
-- **Devoluciones y cambios de producto** que conservan el costo original, para que la ganancia y los reportes sigan bien.
+- **Documentos:** comprobantes de venta en PDF o imagen, cotizaciones, pedidos y entregas, y un catálogo para compartir. Son
+  documentos internos, nunca facturas. Impresión en impresoras térmicas Bluetooth emparejadas o con el servicio de impresión del
+  sistema.
+
+</td>
+<td align="center" width="45%"><img src="docs/images/sale.png" alt="Una venta nueva con cuatro productos en el carrito" width="250"></td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td align="center" width="45%"><img src="docs/images/expenses.png" alt="Gastos del mes con su parte por categoría" width="250"></td>
+<td width="55%">
+
+### 💸 Gastos y ganancia
+
+**Gastos**, en la barra de abajo, muestra los gastos del mes y **Por categoría** cuánto se lleva cada una.
+
 - **Gastos, gastos recurrentes y dinero:** cuentas con su saldo, retiros, aportes y transferencias, y sesiones de caja con conteo por
   denominación.
 - **Ganancia y margen confiables:** ganancia en ventas y ganancia final del mes, impuestos con las tasas que tú escribes (incluidos o
   añadidos) y una gráfica por día. Los montos se guardan como números enteros, nunca con decimales flotantes.
 - **Reportes:** resumen de gestión, flujo de caja proyectado, punto de equilibrio, metas, análisis de productos y clientes, resumen
   diario y comparación en términos reales.
-- **Documentos:** comprobantes de venta en PDF o imagen, cotizaciones, pedidos y entregas, y un catálogo para compartir. Son
-  documentos internos, nunca facturas. Impresión en impresoras térmicas Bluetooth emparejadas o con el servicio de impresión del
-  sistema.
+
+</td>
+</tr>
+</table>
+
+### Y además
+
+- **Productos a tu manera:** unidades y conversiones, servicios, variantes, combos y recetas, fotos, campos propios, listas de
+  precios y actualización masiva de precios con alertas de margen.
+- **El stock es un libro:** cada cambio es un movimiento que nunca se edita. Lotes y vencimientos, números de serie, ubicaciones y
+  transferencias, producción, reposición sugerida y conteo a ciegas.
+- **Compras y proveedores:** costo promedio y de reposición, compras a plazo con pagos parciales y vencimientos, y devoluciones al
+  proveedor.
+- **Devoluciones y cambios de producto** que conservan el costo original, para que la ganancia y los reportes sigan bien.
 - **Importar y exportar:** trae productos desde CSV o una hoja de cálculo, y saca todo a CSV o `.xlsx` cuando quieras.
 - **Copias en la nube que elijas,** con cifrado opcional y un código de recuperación. Mira [Copias de seguridad](#-copias-de-seguridad).
 - **Privacidad en el celular:** bloqueo con la huella, el rostro o el PIN del teléfono, un modo discreto que oculta los montos, un
@@ -105,11 +142,13 @@ Perder los datos es lo peor que le puede pasar a un negocio, así que esto va pr
 ## 🔒 Privacidad
 
 - **Sin cuenta, sin anuncios, sin analítica, sin reportes de fallos y sin rastreo.** La app funciona completa sin internet.
-- **Solo se conecta a dos lugares:** el servicio WebDAV que elijas y, solo cuando tocas **Buscar actualización**, el aviso de versión
-  firmado en `https://yesid-robayo.github.io/Impulsito/version.json`. Esa consulta no envía ningún dato: el servidor solo ve tu
-  dirección IP, como en cualquier petición web.
-- **Permisos solo cuando hacen falta:** la cámara al escanear o tomar una foto, y Bluetooth solo para impresoras emparejadas. La app
-  no lee tus contactos: eliges uno con el selector del sistema.
+- **Solo se conecta a dos lugares:** el servicio WebDAV que elijas y el aviso de versión firmado en
+  `https://yesid-robayo.github.io/Impulsito/version.json`, una vez al día y cuando tocas **Buscar actualización**. Esa consulta no
+  envía ningún dato: el servidor solo ve tu dirección IP, como en cualquier petición web. La búsqueda diaria se apaga en
+  **Actualizaciones y verificación de APK**.
+- **Permisos solo cuando hacen falta:** el micrófono mientras escuchas para **Decir**, la cámara al escanear o tomar una foto,
+  Bluetooth solo para impresoras emparejadas, y las notificaciones para avisar de las copias, los recordatorios y las versiones
+  nuevas. La app no lee tus contactos: eliges uno con el selector del sistema.
 - Lee la [política de privacidad](https://yesid-robayo.github.io/Impulsito/#privacy) y los
   [términos de uso](https://yesid-robayo.github.io/Impulsito/#terms).
 
@@ -118,17 +157,17 @@ Perder los datos es lo peor que le puede pasar a un negocio, así que esto va pr
 Impulsito no está en ninguna tienda de aplicaciones. El único lugar oficial para obtenerla son los
 [Releases](https://github.com/Yesid-Robayo/Impulsito/releases) de este repositorio.
 
-1. Descarga `impulsito-1.0.0.apk` del release.
+1. Descarga `impulsito-1.0.7.apk` del release.
 2. **Compruébalo antes de instalar.** En un computador con las herramientas de compilación del SDK de Android, compara su SHA-256 con
    el de las notas del release, y su certificado de firma con la huella de abajo. En PowerShell:
 
    ```powershell
    $bt = (Get-ChildItem "$env:ANDROID_HOME\build-tools" | Sort-Object Name | Select-Object -Last 1).FullName
-   & "$bt\apksigner.bat" verify --print-certs --verbose -Werr .\impulsito-1.0.0.apk
-   Get-FileHash -Algorithm SHA256 .\impulsito-1.0.0.apk
+   & "$bt\apksigner.bat" verify --print-certs --verbose -Werr .\impulsito-1.0.7.apk
+   Get-FileHash -Algorithm SHA256 .\impulsito-1.0.7.apk
    ```
 
-   En Linux o macOS, `apksigner verify --print-certs impulsito-1.0.0.apk` y `sha256sum impulsito-1.0.0.apk` hacen lo mismo.
+   En Linux o macOS, `apksigner verify --print-certs impulsito-1.0.7.apk` y `sha256sum impulsito-1.0.7.apk` hacen lo mismo.
 
    La línea `Signer #1 certificate SHA-256 digest` debe mostrar el certificado de release, con o sin dos puntos:
 
@@ -149,7 +188,8 @@ certificado.
 **La app nunca descarga ni instala nada por su cuenta:** solo cuando tú lo pides.
 
 1. Haz una copia y comprueba que sea reciente.
-2. **Buscar actualización** te dice si hay una versión nueva. Es opcional y solo se ejecuta cuando la tocas.
+2. Una vez al día, la app mira si hay una versión nueva y te avisa con una notificación y en **Inicio**. **Buscar
+   actualización** lo mira en el momento. La búsqueda diaria se apaga con **Buscar actualizaciones automáticamente**.
 3. Desde la `1.0.2`, toca **Actualizar**: la app baja esa versión de [Releases](https://github.com/Yesid-Robayo/Impulsito/releases),
    comprueba que sea el archivo anunciado en el aviso firmado y que lleve la firma de la app, y Android te pide confirmar. La primera
    vez, Android también pide permitir que Impulsito instale sus actualizaciones.
@@ -162,7 +202,7 @@ Si Android rechaza una actualización porque la firma es distinta, el archivo no
 
 - **Kotlin** 2.4 y **Jetpack Compose** (BOM 2026.09.00) con Material 3, Navigation 3 y el diseño adaptable para tabletas.
 - **Room** 3 con su propio **SQLite empaquetado**, para que la base se comporte igual en todos los celulares.
-- **WorkManager** para las copias automáticas, **OkHttp** 5 solo para WebDAV y el aviso de versión, y **Tink** 1.24 para el cifrado
+- **WorkManager** para las copias automáticas y la búsqueda diaria de versiones, **OkHttp** 5 solo para WebDAV y el aviso de versión, y **Tink** 1.24 para el cifrado
   opcional de las copias.
 - **CameraX** y **zxing-cpp** para el escáner, **Vico** para las gráficas y **Glance** para el widget.
 - Tres módulos: `domain` (reglas del negocio, Kotlin puro), `data` (base, copias y red) y `app` (pantallas).

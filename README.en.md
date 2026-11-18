@@ -5,7 +5,7 @@
 **Products, inventory, costs, sales, expenses and profit for a small business, from the phone. Offline, with no servers, and
 backed up to the cloud you choose.**
 
-![Version](https://img.shields.io/badge/version-1.0.0-43e5a0)
+![Version](https://img.shields.io/badge/version-1.0.7-43e5a0)
 ![Platform](https://img.shields.io/badge/platform-Android%208.0%2B-2f5fb3)
 ![Languages](https://img.shields.io/badge/languages-español%20%7C%20english%20%7C%20português-7ddc8f)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
@@ -13,8 +13,8 @@ backed up to the cloud you choose.**
 
 [Español](README.md) · **English** · [Changelog](CHANGELOG.en.md)
 
-<img src="docs/images/home-en.png" alt="Home screen with today's sales and the month's profit" width="280">
-<img src="docs/images/sale-en.png" alt="A new sale with four products in the cart" width="280">
+<img src="docs/images/home-en.png" alt="Home with today's sales, the month's profit and the microphone button" width="250">
+<img src="docs/images/say-en.png" alt="Say or type with a purchase card of three products" width="250">
 
 </div>
 
@@ -54,26 +54,63 @@ payment methods. The app is in Spanish, English and Portuguese.
 
 ## ✨ Features
 
+### 🎙️ Say it and it's written down
+
+Tap the microphone at the bottom right and say what happened: "sold 2 empanadas in cash", "bought 3 kilos of flour at 9,000" or
+"made 10 loaves". The app builds a card with what it understood, and nothing is saved until you tap **Register**. With the card
+open, whatever you say next adds or corrects, never clears. It works offline, with the phone's speech recognition, and keeps no
+audio. You can also type it.
+
+<table>
+<tr>
+<td width="55%">
+
+### 🛒 Sell
+
+Search for the product, scan it or say it, and take payment with one or several methods.
+
 - **Sell in a few taps:** several payment methods in one sale, payment fees and net received, change, tips, discounts and held sales.
   A sale is never deleted: voiding it leaves a compensating record.
 - **Customers and credit:** sales on credit, payments on account, statements, credit balance and loyalty points. Only the name is
   required. Reminders are sent by you, one by one, through the app you choose.
-- **Products your way:** units and conversions, services, variants, combos and recipes, photos, your own fields, price lists and
-  bulk price updates with margin alerts.
 - **Barcode scanner** with the camera or an external reader, and your own codes and labels to print.
-- **Inventory as a ledger:** every stock change is a movement that is never edited. Batches and expiry dates, serial numbers,
-  locations and transfers, production, suggested reorders and blind counts.
-- **Purchases and suppliers:** average and replacement cost, purchases on credit with partial payments and due dates, and returns
-  to the supplier.
-- **Returns and exchanges** that keep the original cost, so profit and reports stay right.
+- **Documents:** sales receipts as PDF or image, quotes, orders and deliveries, and a shareable catalog. They are internal
+  documents, never invoices. Printing on paired Bluetooth thermal printers or through the system print service.
+
+</td>
+<td align="center" width="45%"><img src="docs/images/sale-en.png" alt="A new sale with four products in the cart" width="250"></td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td align="center" width="45%"><img src="docs/images/expenses-en.png" alt="The month's expenses with each category's share" width="250"></td>
+<td width="55%">
+
+### 💸 Expenses and profit
+
+**Expenses**, in the bottom bar, shows the month's expenses, and **By category** how much each one takes.
+
 - **Expenses, recurring expenses and money:** accounts with their balances, withdrawals, contributions and transfers, and cash
   register sessions with a count by denomination.
 - **Profit and margin you can trust:** sales profit and final profit for the month, taxes with the rates you type in (included or
   added), and a daily chart. Amounts are stored as whole numbers, never as floating point.
 - **Reports:** management summary, projected cash flow, break-even, goals, product and customer analysis, daily summary and
   comparison in real terms.
-- **Documents:** sales receipts as PDF or image, quotes, orders and deliveries, and a shareable catalog. They are internal
-  documents, never invoices. Printing on paired Bluetooth thermal printers or through the system print service.
+
+</td>
+</tr>
+</table>
+
+### And also
+
+- **Products your way:** units and conversions, services, variants, combos and recipes, photos, your own fields, price lists and
+  bulk price updates with margin alerts.
+- **Inventory as a ledger:** every stock change is a movement that is never edited. Batches and expiry dates, serial numbers,
+  locations and transfers, production, suggested reorders and blind counts.
+- **Purchases and suppliers:** average and replacement cost, purchases on credit with partial payments and due dates, and returns
+  to the supplier.
+- **Returns and exchanges** that keep the original cost, so profit and reports stay right.
 - **Import and export:** bring products from CSV or a spreadsheet, and take everything out to CSV or `.xlsx` whenever you want.
 - **Backups to the cloud you choose,** with optional encryption and a recovery code. See [Backups](#-backups).
 - **Privacy on the phone:** app lock with the phone's fingerprint, face or PIN, a discreet mode that hides amounts, an audit
@@ -105,11 +142,12 @@ Losing the data is the worst thing that can happen to a business, so this part c
 ## 🔒 Privacy
 
 - **No account, no ads, no analytics, no crash reporting and no tracking.** The app works fully offline.
-- **It only connects to two places:** the WebDAV service you choose, and, only when you tap **Check for update**, the signed version
-  notice at `https://yesid-robayo.github.io/Impulsito/version.json`. That check sends no data: the host only sees your IP address,
-  as with any web request.
-- **Permissions only when needed:** the camera when you scan or take a photo, and Bluetooth only for paired printers. The app
-  doesn't read your contacts: you pick one with the system picker.
+- **It only connects to two places:** the WebDAV service you choose, and the signed version notice at
+  `https://yesid-robayo.github.io/Impulsito/version.json`, once a day and when you tap **Check for update**. That check sends no
+  data: the host only sees your IP address, as with any web request. The daily check is turned off in **Updates and APK check**.
+- **Permissions only when needed:** the microphone while you're listening for **Say**, the camera when you scan or take a photo,
+  Bluetooth only for paired printers, and notifications to tell you about backups, reminders and new versions. The app doesn't
+  read your contacts: you pick one with the system picker.
 - Read the [privacy policy](https://yesid-robayo.github.io/Impulsito/#privacy) and the
   [terms of use](https://yesid-robayo.github.io/Impulsito/#terms).
 
@@ -118,17 +156,17 @@ Losing the data is the worst thing that can happen to a business, so this part c
 Impulsito isn't in any app store. The only official place to get it is this repository's
 [Releases](https://github.com/Yesid-Robayo/Impulsito/releases).
 
-1. Download `impulsito-1.0.0.apk` from the release.
+1. Download `impulsito-1.0.7.apk` from the release.
 2. **Check it before installing.** On a computer with the Android SDK build tools, compare its SHA-256 with the one in the release
    notes, and its signing certificate with the fingerprint below. In PowerShell:
 
    ```powershell
    $bt = (Get-ChildItem "$env:ANDROID_HOME\build-tools" | Sort-Object Name | Select-Object -Last 1).FullName
-   & "$bt\apksigner.bat" verify --print-certs --verbose -Werr .\impulsito-1.0.0.apk
-   Get-FileHash -Algorithm SHA256 .\impulsito-1.0.0.apk
+   & "$bt\apksigner.bat" verify --print-certs --verbose -Werr .\impulsito-1.0.7.apk
+   Get-FileHash -Algorithm SHA256 .\impulsito-1.0.7.apk
    ```
 
-   On Linux or macOS, `apksigner verify --print-certs impulsito-1.0.0.apk` and `sha256sum impulsito-1.0.0.apk` do the same.
+   On Linux or macOS, `apksigner verify --print-certs impulsito-1.0.7.apk` and `sha256sum impulsito-1.0.7.apk` do the same.
 
    The line `Signer #1 certificate SHA-256 digest` must show the release certificate, with or without colons:
 
@@ -148,7 +186,8 @@ Impulsito needs Android 8.0 or newer. Inside the app, **Updates and APK check** 
 **The app never downloads or installs anything by itself:** only when you ask.
 
 1. Make a backup and check that it's recent.
-2. **Check for update** tells you whether there is a new version. It's optional and only runs when you tap it.
+2. Once a day, the app checks whether there is a new version and tells you with a notification and on **Home**. **Check for
+   update** checks right away. The daily check is turned off with **Check for updates automatically**.
 3. From `1.0.2`, tap **Update**: the app downloads that version from [Releases](https://github.com/Yesid-Robayo/Impulsito/releases),
    checks it's the file announced in the signed notice and carries the app's signature, and Android asks you to confirm. The first
    time, Android also asks to allow Impulsito to install its updates.
@@ -161,7 +200,7 @@ If Android refuses an update because the signature is different, the file isn't 
 
 - **Kotlin** 2.4 and **Jetpack Compose** (BOM 2026.09.00) with Material 3, Navigation 3 and the adaptive layout for tablets.
 - **Room** 3 with its own **bundled SQLite**, so the database behaves the same on every phone.
-- **WorkManager** for automatic backups, **OkHttp** 5 only for WebDAV and the version notice, and **Tink** 1.24 for the optional
+- **WorkManager** for automatic backups and the daily version check, **OkHttp** 5 only for WebDAV and the version notice, and **Tink** 1.24 for the optional
   backup encryption.
 - **CameraX** and **zxing-cpp** for the scanner, **Vico** for the charts and **Glance** for the widget.
 - Three modules: `domain` (business rules, plain Kotlin), `data` (database, backups and network) and `app` (screens).
