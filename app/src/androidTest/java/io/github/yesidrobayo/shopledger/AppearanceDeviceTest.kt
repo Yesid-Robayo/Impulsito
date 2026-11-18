@@ -100,7 +100,8 @@ class AppearanceDeviceTest {
         }
         capture("$name-1-home")
 
-        for ((tab, label) in listOf(1 to "records", 2 to "products", 3 to "numbers")) {
+        // El segundo lugar de la barra es Vender, que abre una venta: Registros se abre desde Inicio.
+        for ((tab, label) in listOf(2 to "products", 3 to "numbers")) {
             tap(bar.tabX(tab), bar.barCenterY)
             awaitPixel("$name $label activo", scheme.secondaryContainer) {
                 it.at(bar.pillX(tab), bar.pillY)
@@ -111,8 +112,9 @@ class AppearanceDeviceTest {
             capture("$name-${tab + 1}-$label")
         }
 
-        // Vender abre la venta encima, sin barra; atrás vuelve a la pestaña, y atrás otra vez a Inicio.
-        tap(bar.sellX, bar.sellY)
+        // Vender, en la barra, abre la venta encima, sin barra; atrás vuelve a la pestaña, y atrás otra
+        // vez a Inicio. El botón del centro es Decir.
+        tap(bar.tabX(1), bar.barCenterY)
         awaitPixel("$name venta sin barra", scheme.surface) { it.at(bar.margin, bar.barCenterY) }
         capture("$name-5-new-sale")
         pressBack()
