@@ -18,6 +18,7 @@ import io.github.yesidrobayo.shopledger.domain.model.settings.AppPreferences
 import io.github.yesidrobayo.shopledger.domain.model.settings.ColorPalette
 import io.github.yesidrobayo.shopledger.domain.model.settings.PreferenceChange
 import io.github.yesidrobayo.shopledger.domain.model.settings.ThemeMode
+import io.github.yesidrobayo.shopledger.ui.permission.NotificationPermissionAsked
 import io.github.yesidrobayo.shopledger.ui.theme.Appearance
 import io.github.yesidrobayo.shopledger.ui.theme.paletteOf
 import java.io.File
@@ -54,6 +55,8 @@ class AppearanceDeviceTest {
     @Before
     fun rememberPreferences() {
         original = runBlocking { ports().settings.get().preferences }
+        // La hoja que ofrece los avisos sale una sola vez y oscurecería Inicio: ya se ofreció.
+        File(app.noBackupFilesDir, NotificationPermissionAsked.FILE_NAME).createNewFile()
         // La prueba recorre Inicio y su barra: el primer uso, que se abre encima, ya terminó.
         runBlocking {
             val settings = ports().settings

@@ -387,7 +387,8 @@ class PhraseViewModel(
 
     /**
      * Deja la tarjeta [current] como estaba, con [notice] o [failure] arriba. Si [clears], la frase
-     * ya se atendió y el campo queda vacío; si no, queda para decirla de otra forma.
+     * ya se atendió y el campo queda vacío, el teclado se cierra y la vista baja hasta el aviso; si
+     * no, queda para decirla de otra forma, con el teclado abierto.
      */
     private suspend fun keep(
         current: Session,
@@ -398,7 +399,10 @@ class PhraseViewModel(
         val card = withContext(computation) { cardOf(current) }
         if (clears) setText("")
         state.update {
-            it.copy(stage = PhraseStage.Card(card, failure = failure, notice = notice))
+            it.copy(
+                stage = PhraseStage.Card(card, failure = failure, notice = notice),
+                cardShown = if (clears) it.cardShown + 1 else it.cardShown,
+            )
         }
     }
 

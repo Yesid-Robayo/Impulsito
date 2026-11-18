@@ -2,6 +2,7 @@ package io.github.yesidrobayo.shopledger.ui.phrase
 
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.hasContentDescription
@@ -9,6 +10,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.lifecycle.SavedStateHandle
@@ -218,7 +220,9 @@ class PhraseScreenTest {
             }),
         )
 
-        compose.onNodeWithText(text(R.string.phrase_understand)).performClick()
+        // El teclado se abre solo y sube el botón: el toque va por la acción, no por la posición.
+        compose.onNodeWithText(text(R.string.phrase_understand))
+            .performSemanticsAction(SemanticsActions.OnClick)
 
         // El aviso llega con la recomposición que sigue al toque: se espera a que aparezca.
         compose.waitUntil(TIMEOUT_MS) { has(text(R.string.phrase_field_empty)) }
@@ -344,7 +348,10 @@ class PhraseScreenTest {
         compose.waitUntil(TIMEOUT_MS) { has("Gaseosa pequeña") }
 
         // Hay dos parecidas: la tarjeta pregunta, y registrar sin elegir dice qué falta.
-        compose.onNodeWithText(text(R.string.phrase_register)).performClick()
+        // El botón baja cuando el teclado se cierra: el toque va por la acción, no por la posición.
+        compose.onNodeWithText(text(R.string.phrase_register))
+            .performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitUntil(TIMEOUT_MS) { has(text(R.string.phrase_incomplete)) }
         compose.onNodeWithText(text(R.string.phrase_incomplete)).assertIsDisplayed()
         assertEquals(emptyList<PhraseDraft>(), registered)
 
